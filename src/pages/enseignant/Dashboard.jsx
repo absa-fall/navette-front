@@ -1,0 +1,134 @@
+import Layout from '../../components/Layout'
+import { useAuth } from '../../context/AuthContext'
+import { MapPin, FileText, Clock, CheckCircle, AlertTriangle } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import api from '../../api/axios'
+
+export default function EnseignantDashboard() {
+    const { user } = useAuth()
+    const [stats, setStats] = useState({
+        voyages: 0,
+        rapports: 0,
+        enAttente: 0,
+        approuves: 0,
+    })
+    const [eligibilite, setEligibilite] = useState(null)
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        Promise.all([
+            api.get('/voyages'),
+            api.get('/rapports'),
+            api.get('/voyages/eligibilite'),
+        ]).then(([voyagesRes, rapportsRes, eligRes]) => {
+            const voyages = voyagesRes.data
+            setStats({
+                voyages: voyages.length,
+                rapports: rapportsRes.data.length,
+                enAttente: voyages.filter(v => v.statut === 'en_attente').length,
+                approuves: voyages.filter(v => v.statut === 'approuve').length,
+            })
+            setEligibilite(eligRes.data)
+        }).catch(() => {})
+        .finally(() => setLoading(false))
+    }, [])
+
+    return (
+        <Layout>
+            <div className="space-y-6">
+
+                {/* Header */}
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-800">
+                        Bonjour, {user?.prenom} 👋
+                    </h1>
+                    <p className="text-gray-500 text-sm mt-1">
+                        Espace enseignant — {user?.ufr}
+                    </p>
+                </div>
+
+                {/* Éligibilité */}
+                {!loading && eligibilite && (
+                    <div className={`rounded-xl p-4 flex items-center gap-3 ${
+                        eligibilite.eligible
+                            ? 'bg-green-50 border border-green-200'
+                            : 'bg-orange-50 border border-orange-200'
+                    }`}>
+                        {eligibilite.eligible
+                            ? <CheckCircle size={20} className="text-green-600 flex-shrink-0" />
+                            : <AlertTriangle size={20} className="text-orange-600 flex-shrink-0" />
+                        }
+                        <p className={`text-sm font-medium ${
+                            eligibilite.eligible ? 'text-green-700' : 'text-orange-700'
+                        }`}>
+                            {eligibilite.message}
+                        </p>
+                    </div>
+                )}
+
+                {/* Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                        <div className="bg-blue-100 p-2 rounded-xl w-fit mb-3">
+                            <MapPin size={20} className="text-blue-700" />
+                        </div>
+                        <p className="text-2xl font-bold text-gray-800">{stats.voyages}</p>
+                        <p className="text-sm text-gray-500 mt-1">Voyages total</p>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                        <div className="bg-orange-100 p-2 rounded-xl w-fit mb-3">
+                            <Clock size={20} className="text-orange-700" />
+                        </div>
+                        <p className="text-2xl font-bold text-gray-800">{stats.enAttente}</p>
+                        <p className="text-sm text-gray-500 mt-1">En attente VR</p>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                        <div className="bg-green-100 p-2 rounded-xl w-fit mb-3">
+                            <CheckCircle size={20} className="text-green-700" />
+                        </div>
+                        <p className="text-2xl font-bold text-gray-800">{stats.approuves}</p>
+                        <p className="text-sm text-gray-500 mt-1">Approuvés</p>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                        <div className="bg-purple-100 p-2 rounded-xl w-fit mb-3">
+                            <FileText size={20} className="text-purple-700" />
+                        </div>
+                        <p className="text-2xl font-bold text-gray-800">{stats.rapports}</p>
+                        <p className="text-sm text-gray-500 mt-1">Rapports soumis</p>
+                    </div>
+                </div>
+
+                {/* Actions rapides */}
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <h2 className="text-lg font-semibold text-gray-800 mb-4">Actions rapides</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {eligibilite?.eligible && (
+                            <a href="/enseignant/voyages/nouveau" className="flex items-center gap-4 p-4 border-2 border-dashed border-green-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition group">
+                                <div className="bg-green-100 p-3 rounded-xl group-hover:bg-green-200 transition">
+                                    <MapPin size={22} className="text-green-700" />
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-gray-800">Nouveau voyage</p>
+                                    <p className="text-sm text-gray-500">Soumettre au Vice-Recteur</p>
+                                </div>
+                            </a>
+                        )}
+
+                        <a href="/enseignant/voyages" className="flex items-center gap-4 p-4 border-2 border-dashed border-blue-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition group">
+                            <div className="bg-blue-100 p-3 rounded-xl group-hover:bg-blue-200 transition">
+                                <FileText size={22} className="text-blue-700" />
+                            </div>
+                            <div>
+                                <p className="font-semibold text-gray-800">Mes voyages</p>
+                                <p className="text-sm text-gray-500">Voir mes demandes</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </Layout>
+    )
+}
