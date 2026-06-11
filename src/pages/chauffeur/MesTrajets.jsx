@@ -2,12 +2,8 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
-import { Bus, CheckCircle, FileText, History, Clock, Truck, Trash2 } from 'lucide-react'
-
-const statutConfig = {
-    transmis_chauffeur: { label: 'À exécuter', color: 'bg-yellow-100 text-yellow-700', icon: Truck },
-    execute: { label: 'Exécuté', color: 'bg-green-100 text-green-700', icon: CheckCircle },
-}
+import { useAuth } from '../../context/AuthContext'
+import { Bus, CheckCircle, FileText, History, Truck, Trash2, ThumbsUp, XCircle } from 'lucide-react'
 
 const trajetLabels = {
     dakar_bambey: 'Dakar → Bambey',
@@ -19,6 +15,7 @@ const trajetLabels = {
 export default function MesTrajets() {
     const [searchParams] = useSearchParams()
     const statutFiltre = searchParams.get('statut')
+    const { user } = useAuth()
 
     const [enCours, setEnCours] = useState([])
     const [historique, setHistorique] = useState([])
@@ -28,29 +25,21 @@ export default function MesTrajets() {
     const [onglet, setOnglet] = useState('encours')
     const [selected, setSelected] = useState([])
 
-    useEffect(() => {
-        chargerOrdres()
-    }, [])
+    useEffect(() => { chargerOrdres() }, [])
 
-    // Quand le statutFiltre change, on bascule sur le bon onglet
     useEffect(() => {
-        if (statutFiltre === 'assignes' || statutFiltre === 'en_attente') {
-            setOnglet('encours')
-        } else if (statutFiltre === 'effectues') {
-            setOnglet('historique')
-        }
+        if (statutFiltre === 'assignes' || statutFiltre === 'en_attente') setOnglet('encours')
+        else if (statutFiltre === 'effectues') setOnglet('historique')
     }, [statutFiltre])
 
-    useEffect(() => {
-        setSelected([])
-    }, [onglet])
+    useEffect(() => { setSelected([]) }, [onglet])
 
     const chargerOrdres = () => {
-        api.get('/ordres-mission')
+        api.get('/ordres-mission-chauffeur')
             .then(res => {
                 const tous = res.data
-                setEnCours(tous.filter(o => o.statut === 'transmis_chauffeur'))
-                setHistorique(tous.filter(o => o.statut === 'execute'))
+                setEnCours(tous.filter(o => o.statut === 'transmis_chauffeur' && o.statut_chauffeur !== 'refuse'))
+                setHistorique(tous.filter(o => o.statut === 'execute' || o.statut_chauffeur === 'refuse'))
             })
             .catch(() => {})
             .finally(() => setLoading(false))
@@ -68,17 +57,43 @@ export default function MesTrajets() {
         }
     }
 
+    const approuver = async (id) => {
+        setActionLoading(`approuver-${id}`)
+        try {
+            await api.post(`/ordres-mission/${id}/accepter`)
+            chargerOrdres()
+        } catch (err) {
+            alert(err.response?.data?.message || 'Erreur lors de l\'approbation')
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
+    const refuser = async (id) => {
+        const motif = prompt('Veuillez saisir le motif du refus :')
+        if (!motif || motif.trim() === '') {
+            alert('Le motif du refus est obligatoire.')
+            return
+        }
+        setActionLoading(`refuser-${id}`)
+        try {
+            await api.post(`/ordres-mission/${id}/refuser`, { motif_refus: motif.trim() })
+            chargerOrdres()
+        } catch (err) {
+            alert(err.response?.data?.message || 'Erreur lors du refus')
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
     const toggleSelect = (id) => {
         setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
     }
 
     const toggleSelectAll = () => {
         const ids = historique.map(o => o.id)
-        if (ids.every(id => selected.includes(id))) {
-            setSelected([])
-        } else {
-            setSelected(ids)
-        }
+        if (ids.every(id => selected.includes(id))) setSelected([])
+        else setSelected(ids)
     }
 
     const supprimerSelection = async () => {
@@ -98,74 +113,8 @@ export default function MesTrajets() {
 
     const voirOrdre = (ordre) => {
         const dateDepart = new Date(ordre.date_depart).toLocaleDateString('fr-FR')
-        const dateRetour = ordre.date_retour
-            ? new Date(ordre.date_retour).toLocaleDateString('fr-FR')
-            : '___________'
-
-        const html = `
-        <!DOCTYPE html>
-        <html lang="fr">
-        <head>
-            <meta charset="UTF-8" />
-            <title>Ordre de Mission</title>
-            <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body { font-family: 'Times New Roman', serif; font-size: 13px; padding: 40px; color: #000; }
-                .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-                .header-left { font-size: 11px; line-height: 1.6; }
-                .header-right { text-align: right; font-size: 12px; }
-                .institution { text-align: center; font-weight: bold; font-size: 12px; margin-top: 5px; line-height: 1.5; }
-                .divider { border-top: 1px solid #000; margin: 10px 0; }
-                .title { text-align: center; font-size: 16px; font-weight: bold; text-decoration: underline; margin: 20px 0 25px; letter-spacing: 1px; }
-                .field { display: flex; align-items: baseline; margin-bottom: 14px; }
-                .field-label { min-width: 200px; font-size: 13px; }
-                .field-line { flex: 1; border-bottom: 1px solid #000; padding-bottom: 2px; padding-left: 8px; font-size: 13px; font-weight: bold; }
-                .mention { margin-top: 30px; font-size: 12px; line-height: 1.8; }
-                .signature-section { display: flex; justify-content: flex-end; margin-top: 30px; }
-                .signature-box { text-align: center; font-size: 12px; }
-                .ampliations { margin-top: 50px; font-size: 11px; }
-                .footer { margin-top: 40px; border-top: 1px solid #000; padding-top: 8px; text-align: center; font-size: 10px; }
-                .print-btn { position: fixed; bottom: 20px; right: 20px; background: #1d4ed8; color: white; border: none; padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer; }
-                @media print { .print-btn { display: none; } }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <div class="header-left">
-                    <strong>REPUBLIQUE DU SENEGAL</strong><br/>
-                    Un Peuple-Un But-Une Foi<br/>
-                    Ministère de l'Enseignement supérieur,<br/>
-                    de la Recherche et de l'Innovation<br/><br/>
-                    <strong>UNIVERSITE ALIOUNE DIOP</strong><br/>
-                    <em>« L'excellence est ma constance, l'éthique ma vertu »</em>
-                </div>
-                <div class="header-right">
-                    <strong>N° ______ UAD/R/SG/DRH</strong><br/><br/>
-                    Bambey, le ${dateDepart}
-                </div>
-            </div>
-            <div class="institution">RECTORAT<br/>SECRETARIAT GENERAL<br/><span style="font-size:11px;font-weight:normal">DDrm</span></div>
-            <div style="text-align:right;font-size:12px;margin-top:5px;">Le Secrétaire général</div>
-            <div class="divider"></div>
-            <div class="title">ORDRE DE MISSION</div>
-            <div class="field"><span class="field-label">Monsieur :</span><span class="field-line">${ordre.chauffeur_prenom || ''} ${ordre.chauffeur_nom || ''}</span></div>
-            <div class="field"><span class="field-label">De nationalité :</span><span class="field-line">${ordre.nationalite || 'Sénégalaise'}</span></div>
-            <div class="field"><span class="field-label">Grade et fonction :</span><span class="field-line">${ordre.grade_fonction || 'Chauffeur'}</span></div>
-            <div class="field"><span class="field-label">Se rend à :</span><span class="field-line">${ordre.destination || ''}</span></div>
-            <div class="field"><span class="field-label">Objet de la mission :</span><span class="field-line">${ordre.objet_mission || "conduit la navette de l'UAD"}</span></div>
-            <div class="field"><span class="field-label">Moyen de transport :</span><span class="field-line">${ordre.moyen_transport || ordre.vehicule?.immatriculation || '___________'}</span></div>
-            <div class="field"><span class="field-label">Date de départ :</span><span class="field-line">${dateDepart}</span></div>
-            <div class="field"><span class="field-label">Date de retour :</span><span class="field-line">${dateRetour}</span></div>
-            <div class="field"><span class="field-label">Frais de transport :</span><span class="field-line">${ordre.frais_transport || 'Appui en carburant'}</span></div>
-            <div class="field"><span class="field-label">Indemnité de déplacement :</span><span class="field-line">${ordre.indemnite_deplacement || 'Néant'}</span></div>
-            <div class="mention">Les autorités civiles et militaires des localités traversées sont priées de faciliter à <strong>Monsieur ${ordre.chauffeur_prenom || ''} ${ordre.chauffeur_nom || ''}</strong> l'accomplissement de son voyage.</div>
-            <div class="signature-section"><div class="signature-box">Le Secrétaire Général<br/><br/><br/><br/><strong>${ordre.sgDrh?.prenom || ''} ${ordre.sgDrh?.nom || ''}</strong></div></div>
-            <div class="ampliations"><strong>Ampliations :</strong><br/>- CM/DDL/DRH.<br/>- Intéressé/Chrono.</div>
-            <div class="footer">Tél. : (221) 33 973 30 86. // Fax : (221) 33 973 30 93 // B.P. : 30 – Bambey (République du Sénégal)<br/>Internet : www.uadb.edu.sn // Courriel : rectorat@uadb.edu.sn</div>
-            <button class="print-btn" onclick="window.print()">🖨️ Imprimer / Sauvegarder PDF</button>
-        </body>
-        </html>`
-
+        const dateRetour = ordre.date_retour ? new Date(ordre.date_retour).toLocaleDateString('fr-FR') : '___________'
+        const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"/><title>Ordre de Mission</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Times New Roman',serif;font-size:13px;padding:40px;color:#000;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;}.header-left{font-size:11px;line-height:1.6;}.header-right{text-align:right;font-size:12px;}.institution{text-align:center;font-weight:bold;font-size:12px;margin-top:5px;line-height:1.5;}.divider{border-top:1px solid #000;margin:10px 0;}.title{text-align:center;font-size:16px;font-weight:bold;text-decoration:underline;margin:20px 0 25px;letter-spacing:1px;}.field{display:flex;align-items:baseline;margin-bottom:14px;}.field-label{min-width:200px;font-size:13px;}.field-line{flex:1;border-bottom:1px solid #000;padding-bottom:2px;padding-left:8px;font-size:13px;font-weight:bold;}.mention{margin-top:30px;font-size:12px;line-height:1.8;}.signature-section{display:flex;justify-content:flex-end;margin-top:30px;}.signature-box{text-align:center;font-size:12px;}.ampliations{margin-top:50px;font-size:11px;}.footer{margin-top:40px;border-top:1px solid #000;padding-top:8px;text-align:center;font-size:10px;}.print-btn{position:fixed;bottom:20px;right:20px;background:#1d4ed8;color:white;border:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:bold;cursor:pointer;}@media print{.print-btn{display:none;}}</style></head><body><div class="header"><div class="header-left"><strong>REPUBLIQUE DU SENEGAL</strong><br/>Un Peuple-Un But-Une Foi<br/>Ministère de l'Enseignement supérieur,<br/>de la Recherche et de l'Innovation<br/><br/><strong>UNIVERSITE ALIOUNE DIOP</strong><br/><em>« L'excellence est ma constance, l'éthique ma vertu »</em></div><div class="header-right"><strong>N° ______ UAD/R/SG/DRH</strong><br/><br/>Bambey, le ${dateDepart}</div></div><div class="institution">RECTORAT<br/>SECRETARIAT GENERAL<br/><span style="font-size:11px;font-weight:normal">DDrm</span></div><div style="text-align:right;font-size:12px;margin-top:5px;">Le Secrétaire général</div><div class="divider"></div><div class="title">ORDRE DE MISSION</div><div class="field"><span class="field-label">Monsieur :</span><span class="field-line">${ordre.chauffeur_prenom||''} ${ordre.chauffeur_nom||''}</span></div><div class="field"><span class="field-label">De nationalité :</span><span class="field-line">${ordre.nationalite||'Sénégalaise'}</span></div><div class="field"><span class="field-label">Grade et fonction :</span><span class="field-line">${ordre.grade_fonction||'Chauffeur'}</span></div><div class="field"><span class="field-label">Se rend à :</span><span class="field-line">${ordre.destination||''}</span></div><div class="field"><span class="field-label">Objet de la mission :</span><span class="field-line">${ordre.objet_mission||"conduit la navette de l'UAD"}</span></div><div class="field"><span class="field-label">Moyen de transport :</span><span class="field-line">${ordre.moyen_transport||ordre.vehicule?.immatriculation||'___________'}</span></div><div class="field"><span class="field-label">Date de départ :</span><span class="field-line">${dateDepart}</span></div><div class="field"><span class="field-label">Date de retour :</span><span class="field-line">${dateRetour}</span></div><div class="field"><span class="field-label">Frais de transport :</span><span class="field-line">${ordre.frais_transport||'Appui en carburant'}</span></div><div class="field"><span class="field-label">Indemnité de déplacement :</span><span class="field-line">${ordre.indemnite_deplacement||'Néant'}</span></div><div class="mention">Les autorités civiles et militaires des localités traversées sont priées de faciliter à <strong>Monsieur ${ordre.chauffeur_prenom||''} ${ordre.chauffeur_nom||''}</strong> l'accomplissement de son voyage.</div><div class="signature-section"><div class="signature-box">Le Secrétaire Général<br/><br/><br/><br/><strong>${ordre.sgDrh?.prenom||''} ${ordre.sgDrh?.nom||''}</strong></div></div><div class="ampliations"><strong>Ampliations :</strong><br/>- CM/DDL/DRH.<br/>- Intéressé/Chrono.</div><div class="footer">Tél. : (221) 33 973 30 86. // Fax : (221) 33 973 30 93 // B.P. : 30 – Bambey (République du Sénégal)<br/>Internet : www.uadb.edu.sn // Courriel : rectorat@uadb.edu.sn</div><button class="print-btn" onclick="window.print()">🖨️ Imprimer / Sauvegarder PDF</button></body></html>`
         const win = window.open('', '_blank')
         win.document.write(html)
         win.document.close()
@@ -173,7 +122,6 @@ export default function MesTrajets() {
 
     const toutSelectionne = historique.length > 0 && historique.every(o => selected.includes(o.id))
 
-    // Titre dynamique selon le filtre
     const getTitre = () => {
         if (statutFiltre === 'assignes') return 'Trajets assignés'
         if (statutFiltre === 'en_attente') return 'Trajets en attente'
@@ -187,10 +135,9 @@ export default function MesTrajets() {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">{getTitre()}</h1>
                     <p className="text-gray-500 text-sm mt-1">
-                        {onglet === 'encours' 
-                            ? `${enCours.length} trajet(s) en cours` 
-                            : `${historique.length} trajet(s) dans l'historique`
-                        }
+                        {onglet === 'encours'
+                            ? `${enCours.length} trajet(s) en cours`
+                            : `${historique.length} trajet(s) dans l'historique`}
                     </p>
                 </div>
 
@@ -220,37 +167,90 @@ export default function MesTrajets() {
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {enCours.map(ordre => (
-                                <div key={ordre.id} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className="flex items-center gap-4">
-                                            <div className="bg-blue-100 p-3 rounded-xl"><Bus size={20} className="text-blue-700" /></div>
-                                            <div>
-                                                <p className="font-semibold text-gray-800">{ordre.destination || trajetLabels[ordre.trajet] || ordre.trajet}</p>
-                                                <p className="text-sm text-gray-500 mt-0.5">{new Date(ordre.date_depart).toLocaleDateString('fr-FR')}</p>
-                                                <p className="text-xs text-gray-400 mt-0.5">{ordre.ddl?.prenom} {ordre.ddl?.nom}</p>
+                            {enCours.map(ordre => {
+                                const estApprouve = ordre.statut_chauffeur === 'accepte'
+                                return (
+                                    <div key={ordre.id} className={`bg-white rounded-2xl p-5 border shadow-sm transition ${estApprouve ? 'border-green-200' : 'border-gray-100'}`}>
+                                        <div className="flex items-start justify-between mb-4">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`p-3 rounded-xl ${estApprouve ? 'bg-green-100' : 'bg-blue-100'}`}>
+                                                    <Bus size={20} className={estApprouve ? 'text-green-700' : 'text-blue-700'} />
+                                                </div>
+                                                <div>
+                                                    <p className="font-semibold text-gray-800">{ordre.destination || trajetLabels[ordre.trajet] || ordre.trajet}</p>
+                                                    <p className="text-sm text-gray-500 mt-0.5">{new Date(ordre.date_depart).toLocaleDateString('fr-FR')}</p>
+                                                    <p className="text-xs text-gray-400 mt-0.5">{ordre.ddl?.prenom} {ordre.ddl?.nom}</p>
+                                                </div>
                                             </div>
+                                            {/* ✅ Badge dynamique selon statut_chauffeur */}
+                                            {estApprouve ? (
+                                                <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-green-100 text-green-700">
+                                                    <CheckCircle size={12} /> Approuvé
+                                                </span>
+                                            ) : (
+                                                <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-yellow-100 text-yellow-700">
+                                                    <Truck size={12} /> En attente
+                                                </span>
+                                            )}
                                         </div>
-                                        <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-yellow-100 text-yellow-700">
-                                            <Truck size={12} /> À exécuter
-                                        </span>
+
+                                        <div className="flex gap-3 flex-wrap">
+                                            <button onClick={() => voirOrdre(ordre)}
+                                                className="flex items-center gap-2 border border-blue-200 text-blue-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-50 transition">
+                                                <FileText size={15} /> Voir l'ordre
+                                            </button>
+
+                                            {/* ✅ Approuver/Refuser visibles SEULEMENT si pas encore approuvé */}
+                                            {!estApprouve && (
+                                                <>
+                                                    <button
+                                                        onClick={() => approuver(ordre.id)}
+                                                        disabled={actionLoading === `approuver-${ordre.id}`}
+                                                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-50"
+                                                    >
+                                                        {actionLoading === `approuver-${ordre.id}`
+                                                            ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                            : <ThumbsUp size={16} />}
+                                                        Approuver
+                                                    </button>
+                                                    <button
+                                                        onClick={() => refuser(ordre.id)}
+                                                        disabled={actionLoading === `refuser-${ordre.id}`}
+                                                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition disabled:opacity-50"
+                                                    >
+                                                        {actionLoading === `refuser-${ordre.id}`
+                                                            ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                            : <XCircle size={16} />}
+                                                        Refuser
+                                                    </button>
+                                                </>
+                                            )}
+
+                                            {/* ✅ Marquer exécuté SEULEMENT si approuvé */}
+                                            {estApprouve ? (
+                                                <button
+                                                    onClick={() => executer(ordre.id)}
+                                                    disabled={actionLoading === ordre.id}
+                                                    className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-50 min-w-[140px]"
+                                                >
+                                                    {actionLoading === ordre.id
+                                                        ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                        : <CheckCircle size={16} />}
+                                                    Marquer exécuté
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    disabled
+                                                    className="flex-1 flex items-center justify-center gap-2 bg-gray-200 text-gray-400 py-2.5 rounded-xl text-sm font-semibold cursor-not-allowed min-w-[140px]"
+                                                >
+                                                    <CheckCircle size={16} />
+                                                    Approuvez d'abord
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="flex gap-3">
-                                        <button onClick={() => voirOrdre(ordre)}
-                                            className="flex items-center gap-2 border border-blue-200 text-blue-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-50 transition">
-                                            <FileText size={15} /> Voir l'ordre
-                                        </button>
-                                        <button onClick={() => executer(ordre.id)} disabled={actionLoading === ordre.id}
-                                            className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-50">
-                                            {actionLoading === ordre.id
-                                                ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                : <CheckCircle size={16} />
-                                            }
-                                            Marquer exécuté
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
+                                )
+                            })}
                         </div>
                     )
                 ) : (
@@ -263,7 +263,6 @@ export default function MesTrajets() {
                         </div>
                     ) : (
                         <>
-                            {/* Barre sélection */}
                             <div className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-gray-100 shadow-sm">
                                 <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                                     <input type="checkbox" checked={toutSelectionne} onChange={toggleSelectAll}
@@ -275,8 +274,7 @@ export default function MesTrajets() {
                                         className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
                                         {deleteLoading
                                             ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                            : <Trash2 size={14} />
-                                        }
+                                            : <Trash2 size={14} />}
                                         Supprimer ({selected.length})
                                     </button>
                                 )}
@@ -296,9 +294,16 @@ export default function MesTrajets() {
                                                     <p className="text-xs text-gray-400 mt-0.5">{ordre.ddl?.prenom} {ordre.ddl?.nom}</p>
                                                 </div>
                                             </div>
-                                            <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-green-100 text-green-700">
-                                                <CheckCircle size={12} /> Exécuté
-                                            </span>
+                                            {/* Badge selon statut dans historique */}
+                                            {ordre.statut_chauffeur === 'refuse' ? (
+                                                <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-red-100 text-red-700">
+                                                    <XCircle size={12} /> Refusé
+                                                </span>
+                                            ) : (
+                                                <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-green-100 text-green-700">
+                                                    <CheckCircle size={12} /> Exécuté
+                                                </span>
+                                            )}
                                         </div>
                                         <button onClick={() => voirOrdre(ordre)}
                                             className="flex items-center gap-2 border border-blue-200 text-blue-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-50 transition">

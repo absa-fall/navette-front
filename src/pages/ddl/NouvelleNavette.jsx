@@ -2,12 +2,11 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
-import { MapPin, Calendar, Clock, FileText, CheckCircle, Bus, User, Fuel, DollarSign } from 'lucide-react'
+import { MapPin, Calendar, FileText, CheckCircle, Bus, User, Fuel, DollarSign } from 'lucide-react'
 
 export default function NouvelleNavette() {
     const navigate = useNavigate()
     const [form, setForm] = useState({
-        // Champs de l'ordre de mission
         chauffeur_id: '',
         chauffeur_nom: '',
         chauffeur_prenom: '',
@@ -18,12 +17,9 @@ export default function NouvelleNavette() {
         moyen_transport: '',
         vehicule_id: '',
         date_depart: '',
-        heure_depart: '07:30',
-        heure_perso: '',
         date_retour: '',
         frais_transport: 'Appui en carburant',
         indemnite_deplacement: 'Néant',
-        // Champs supplémentaires
         trajet: '',
         trajet_autre: '',
         motif: '',
@@ -47,7 +43,6 @@ export default function NouvelleNavette() {
     const handleChauffeurChange = (e) => {
         const chauffeurId = e.target.value
         const selectedChauffeur = chauffeurs.find(c => c.id === parseInt(chauffeurId))
-        
         setForm(prev => ({
             ...prev,
             chauffeur_id: chauffeurId,
@@ -59,7 +54,6 @@ export default function NouvelleNavette() {
     const handleVehiculeChange = (e) => {
         const vehiculeId = e.target.value
         const selectedVehicule = vehicules.find(v => v.id === parseInt(vehiculeId))
-        
         setForm(prev => ({
             ...prev,
             vehicule_id: vehiculeId,
@@ -68,21 +62,12 @@ export default function NouvelleNavette() {
     }
 
     const handleSubmit = async () => {
-        if (
-    !form.chauffeur_id ||
-    !form.destination ||
-    !form.date_depart ||
-    !form.date_retour ||
-    !form.motif.trim()
-) {
-    setError('Veuillez remplir tous les champs obligatoires, y compris le motif')
-    return
-}
-
-        const heure = form.heure_perso || form.heure_depart
+        if (!form.chauffeur_id || !form.destination || !form.date_depart || !form.date_retour || !form.motif.trim()) {
+            setError('Veuillez remplir tous les champs obligatoires, y compris le motif')
+            return
+        }
 
         const data = {
-            // Champs ordre de mission
             chauffeur_id: form.chauffeur_id,
             chauffeur_nom: form.chauffeur_nom,
             chauffeur_prenom: form.chauffeur_prenom,
@@ -93,11 +78,9 @@ export default function NouvelleNavette() {
             moyen_transport: form.moyen_transport,
             vehicule_id: form.vehicule_id || null,
             date_depart: form.date_depart,
-            heure_depart: heure,
             date_retour: form.date_retour,
             frais_transport: form.frais_transport,
             indemnite_deplacement: form.indemnite_deplacement,
-            // Champs trajet
             trajet: form.trajet,
             trajet_autre: form.trajet === 'autres' ? form.trajet_autre : null,
             motif: form.motif,
@@ -160,18 +143,14 @@ export default function NouvelleNavette() {
                         >
                             <option value="">Sélectionner un chauffeur</option>
                             {chauffeurs.map(c => (
-                                <option key={c.id} value={c.id}>
-                                    {c.prenom} {c.nom}
-                                </option>
+                                <option key={c.id} value={c.id}>{c.prenom} {c.nom}</option>
                             ))}
                         </select>
                     </div>
 
                     {/* Nationalité */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Nationalité
-                        </label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Nationalité</label>
                         <input
                             type="text"
                             value={form.nationalite}
@@ -182,9 +161,7 @@ export default function NouvelleNavette() {
 
                     {/* Grade et fonction */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Grade et fonction
-                        </label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Grade et fonction</label>
                         <input
                             type="text"
                             value={form.grade_fonction}
@@ -208,11 +185,11 @@ export default function NouvelleNavette() {
                         />
                     </div>
 
-                    {/* Trajet (pour calcul montant) */}
+                    {/* Trajet — ✅ label simplifié, heure_depart supprimée */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             <MapPin size={14} className="inline mr-1" />
-                            Trajet pour calcul
+                            Trajet
                         </label>
                         <select
                             value={form.trajet}
@@ -251,7 +228,7 @@ export default function NouvelleNavette() {
                         />
                     </div>
 
-                    {/* Moyen de transport */}
+                    {/* Véhicule */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             <Bus size={14} className="inline mr-1" />
@@ -264,9 +241,7 @@ export default function NouvelleNavette() {
                         >
                             <option value="">Sélectionner un véhicule</option>
                             {vehicules.map(v => (
-                                <option key={v.id} value={v.id}>
-                                    {v.immatriculation} — {v.capacite} places
-                                </option>
+                                <option key={v.id} value={v.id}>{v.immatriculation} — {v.capacite} places</option>
                             ))}
                         </select>
                     </div>
@@ -282,44 +257,6 @@ export default function NouvelleNavette() {
                             value={form.date_depart}
                             onChange={e => setForm({ ...form, date_depart: e.target.value })}
                             min={new Date().toISOString().split('T')[0]}
-                            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
-
-                    {/* Heure départ */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            <Clock size={14} className="inline mr-1" />
-                            Heure de départ
-                        </label>
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                            <button
-                                onClick={() => setForm({ ...form, heure_depart: '07:30', heure_perso: '' })}
-                                className={`p-3 rounded-xl border-2 text-center transition ${
-                                    form.heure_depart === '07:30' && !form.heure_perso
-                                        ? 'border-blue-600 bg-blue-50'
-                                        : 'border-gray-200 hover:border-blue-300'
-                                }`}
-                            >
-                                <div className="text-lg font-bold text-gray-800">07:30</div>
-                                <div className="text-xs text-gray-500">Départ matinal</div>
-                            </button>
-                            <button
-                                onClick={() => setForm({ ...form, heure_depart: '17:00', heure_perso: '' })}
-                                className={`p-3 rounded-xl border-2 text-center transition ${
-                                    form.heure_depart === '17:00' && !form.heure_perso
-                                        ? 'border-blue-600 bg-blue-50'
-                                        : 'border-gray-200 hover:border-blue-300'
-                                }`}
-                            >
-                                <div className="text-lg font-bold text-gray-800">17:00</div>
-                                <div className="text-xs text-gray-500">Retour soir</div>
-                            </button>
-                        </div>
-                        <input
-                            type="time"
-                            value={form.heure_perso}
-                            onChange={e => setForm({ ...form, heure_perso: e.target.value })}
                             className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
@@ -371,16 +308,16 @@ export default function NouvelleNavette() {
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             <FileText size={14} className="inline mr-1" />
-                            Motif (pour le DRH)
+                            Motif (pour le DRH) <span className="text-red-500">*</span>
                         </label>
                         <textarea
-    required
-    value={form.motif}
-    onChange={e => setForm({ ...form, motif: e.target.value })}
-    rows={3}
-    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-    placeholder="Décrivez le motif..."
-/>
+                            required
+                            value={form.motif}
+                            onChange={e => setForm({ ...form, motif: e.target.value })}
+                            rows={3}
+                            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                            placeholder="Décrivez le motif..."
+                        />
                     </div>
                 </div>
 
