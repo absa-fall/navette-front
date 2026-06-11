@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
 import { Bus, CheckCircle, FileText, History, Clock, Truck, Trash2 } from 'lucide-react'
@@ -16,16 +17,33 @@ const trajetLabels = {
 }
 
 export default function MesTrajets() {
+    const [searchParams] = useSearchParams()
+    const statutFiltre = searchParams.get('statut')
+
     const [enCours, setEnCours] = useState([])
     const [historique, setHistorique] = useState([])
     const [loading, setLoading] = useState(true)
     const [actionLoading, setActionLoading] = useState(null)
-    const [deleteLoading, setDeleteLoading] = useState(null)
+    const [deleteLoading, setDeleteLoading] = useState(false)
     const [onglet, setOnglet] = useState('encours')
+    const [selected, setSelected] = useState([])
 
     useEffect(() => {
         chargerOrdres()
     }, [])
+
+    // Quand le statutFiltre change, on bascule sur le bon onglet
+    useEffect(() => {
+        if (statutFiltre === 'assignes' || statutFiltre === 'en_attente') {
+            setOnglet('encours')
+        } else if (statutFiltre === 'effectues') {
+            setOnglet('historique')
+        }
+    }, [statutFiltre])
+
+    useEffect(() => {
+        setSelected([])
+    }, [onglet])
 
     const chargerOrdres = () => {
         api.get('/ordres-mission')
@@ -50,16 +68,31 @@ export default function MesTrajets() {
         }
     }
 
-    const supprimerHistorique = async (id) => {
-        if (!confirm("Voulez-vous vraiment supprimer ce trajet de l'historique ?")) return
-        setDeleteLoading(id)
+    const toggleSelect = (id) => {
+        setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
+    }
+
+    const toggleSelectAll = () => {
+        const ids = historique.map(o => o.id)
+        if (ids.every(id => selected.includes(id))) {
+            setSelected([])
+        } else {
+            setSelected(ids)
+        }
+    }
+
+    const supprimerSelection = async () => {
+        if (selected.length === 0) return
+        if (!confirm(`Voulez-vous vraiment supprimer ${selected.length} trajet(s) de l'historique ?`)) return
+        setDeleteLoading(true)
         try {
-            await api.delete(`/ordres-mission/${id}/historique`)
-            setHistorique(prev => prev.filter(o => o.id !== id))
+            await Promise.all(selected.map(id => api.delete(`/ordres-mission/${id}/historique`)))
+            setHistorique(prev => prev.filter(o => !selected.includes(o.id)))
+            setSelected([])
         } catch (err) {
-            alert(err.response?.data?.message || 'Erreur')
+            alert('Erreur lors de la suppression.')
         } finally {
-            setDeleteLoading(null)
+            setDeleteLoading(false)
         }
     }
 
@@ -138,94 +171,36 @@ export default function MesTrajets() {
         win.document.close()
     }
 
-    const renderOrdre = (ordre, avecAction = true) => {
-        const statut = statutConfig[ordre.statut] || statutConfig['execute']
-        const Icon = statut.icon
-        return (
-            <div key={ordre.id} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-                <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-4">
-                        <div className="bg-blue-100 p-3 rounded-xl">
-                            <Bus size={20} className="text-blue-700" />
-                        </div>
-                        <div>
-                            <p className="font-semibold text-gray-800">
-                                {ordre.destination || trajetLabels[ordre.trajet] || ordre.trajet}
-                            </p>
-                            <p className="text-sm text-gray-500 mt-0.5">
-                                {new Date(ordre.date_depart).toLocaleDateString('fr-FR')}
-                            </p>
-                            <p className="text-xs text-gray-400 mt-0.5">
-                                {ordre.ddl?.prenom} {ordre.ddl?.nom}
-                            </p>
-                        </div>
-                    </div>
-                    <span className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${statut.color}`}>
-                        <Icon size={12} />
-                        {statut.label}
-                    </span>
-                </div>
+    const toutSelectionne = historique.length > 0 && historique.every(o => selected.includes(o.id))
 
-                <div className="flex gap-3">
-                    <button
-                        onClick={() => voirOrdre(ordre)}
-                        className="flex items-center gap-2 border border-blue-200 text-blue-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-50 transition"
-                    >
-                        <FileText size={15} />
-                        Voir l'ordre
-                    </button>
-
-                    {avecAction ? (
-                        ordre.statut === 'transmis_chauffeur' && (
-                            <button
-                                onClick={() => executer(ordre.id)}
-                                disabled={actionLoading === ordre.id}
-                                className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-50"
-                            >
-                                {actionLoading === ordre.id
-                                    ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                    : <CheckCircle size={16} />
-                                }
-                                Marquer exécuté
-                            </button>
-                        )
-                    ) : (
-                        <button
-                            onClick={() => supprimerHistorique(ordre.id)}
-                            disabled={deleteLoading === ordre.id}
-                            className="flex items-center gap-1.5 border border-red-200 text-red-600 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-50 transition disabled:opacity-50"
-                        >
-                            {deleteLoading === ordre.id
-                                ? <div className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                                : <Trash2 size={15} />
-                            }
-                            Supprimer
-                        </button>
-                    )}
-                </div>
-            </div>
-        )
+    // Titre dynamique selon le filtre
+    const getTitre = () => {
+        if (statutFiltre === 'assignes') return 'Trajets assignés'
+        if (statutFiltre === 'en_attente') return 'Trajets en attente'
+        if (statutFiltre === 'effectues') return 'Trajets effectués'
+        return 'Mes trajets'
     }
 
     return (
         <Layout>
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Mes trajets</h1>
-                    <p className="text-gray-500 text-sm mt-1">{enCours.length} trajet(s) en cours</p>
+                    <h1 className="text-2xl font-bold text-gray-800">{getTitre()}</h1>
+                    <p className="text-gray-500 text-sm mt-1">
+                        {onglet === 'encours' 
+                            ? `${enCours.length} trajet(s) en cours` 
+                            : `${historique.length} trajet(s) dans l'historique`
+                        }
+                    </p>
                 </div>
 
                 <div className="flex gap-2 border-b border-gray-200">
-                    <button
-                        onClick={() => setOnglet('encours')}
-                        className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition ${onglet === 'encours' ? 'border-blue-700 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                    >
+                    <button onClick={() => setOnglet('encours')}
+                        className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition ${onglet === 'encours' ? 'border-blue-700 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
                         En cours ({enCours.length})
                     </button>
-                    <button
-                        onClick={() => setOnglet('historique')}
-                        className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center gap-2 ${onglet === 'historique' ? 'border-blue-700 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                    >
+                    <button onClick={() => setOnglet('historique')}
+                        className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center gap-2 ${onglet === 'historique' ? 'border-blue-700 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
                         <History size={15} />
                         Historique ({historique.length})
                     </button>
@@ -245,7 +220,37 @@ export default function MesTrajets() {
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {enCours.map(ordre => renderOrdre(ordre, true))}
+                            {enCours.map(ordre => (
+                                <div key={ordre.id} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className="flex items-center gap-4">
+                                            <div className="bg-blue-100 p-3 rounded-xl"><Bus size={20} className="text-blue-700" /></div>
+                                            <div>
+                                                <p className="font-semibold text-gray-800">{ordre.destination || trajetLabels[ordre.trajet] || ordre.trajet}</p>
+                                                <p className="text-sm text-gray-500 mt-0.5">{new Date(ordre.date_depart).toLocaleDateString('fr-FR')}</p>
+                                                <p className="text-xs text-gray-400 mt-0.5">{ordre.ddl?.prenom} {ordre.ddl?.nom}</p>
+                                            </div>
+                                        </div>
+                                        <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-yellow-100 text-yellow-700">
+                                            <Truck size={12} /> À exécuter
+                                        </span>
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <button onClick={() => voirOrdre(ordre)}
+                                            className="flex items-center gap-2 border border-blue-200 text-blue-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-50 transition">
+                                            <FileText size={15} /> Voir l'ordre
+                                        </button>
+                                        <button onClick={() => executer(ordre.id)} disabled={actionLoading === ordre.id}
+                                            className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-50">
+                                            {actionLoading === ordre.id
+                                                ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                : <CheckCircle size={16} />
+                                            }
+                                            Marquer exécuté
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     )
                 ) : (
@@ -257,9 +262,52 @@ export default function MesTrajets() {
                             <h3 className="text-gray-700 font-semibold mb-2">Aucun historique</h3>
                         </div>
                     ) : (
-                        <div className="space-y-4">
-                            {historique.map(ordre => renderOrdre(ordre, false))}
-                        </div>
+                        <>
+                            {/* Barre sélection */}
+                            <div className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-gray-100 shadow-sm">
+                                <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                                    <input type="checkbox" checked={toutSelectionne} onChange={toggleSelectAll}
+                                        className="w-4 h-4 rounded border-gray-300 text-blue-600" />
+                                    Tout sélectionner ({historique.length})
+                                </label>
+                                {selected.length > 0 && (
+                                    <button onClick={supprimerSelection} disabled={deleteLoading}
+                                        className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
+                                        {deleteLoading
+                                            ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            : <Trash2 size={14} />
+                                        }
+                                        Supprimer ({selected.length})
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="space-y-4">
+                                {historique.map(ordre => (
+                                    <div key={ordre.id} className={`bg-white rounded-2xl p-5 border shadow-sm transition ${selected.includes(ordre.id) ? 'border-red-200 bg-red-50' : 'border-gray-100'}`}>
+                                        <div className="flex items-start justify-between mb-4">
+                                            <div className="flex items-center gap-4">
+                                                <input type="checkbox" checked={selected.includes(ordre.id)} onChange={() => toggleSelect(ordre.id)}
+                                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 mt-1" />
+                                                <div className="bg-blue-100 p-3 rounded-xl"><Bus size={20} className="text-blue-700" /></div>
+                                                <div>
+                                                    <p className="font-semibold text-gray-800">{ordre.destination || trajetLabels[ordre.trajet] || ordre.trajet}</p>
+                                                    <p className="text-sm text-gray-500 mt-0.5">{new Date(ordre.date_depart).toLocaleDateString('fr-FR')}</p>
+                                                    <p className="text-xs text-gray-400 mt-0.5">{ordre.ddl?.prenom} {ordre.ddl?.nom}</p>
+                                                </div>
+                                            </div>
+                                            <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-green-100 text-green-700">
+                                                <CheckCircle size={12} /> Exécuté
+                                            </span>
+                                        </div>
+                                        <button onClick={() => voirOrdre(ordre)}
+                                            className="flex items-center gap-2 border border-blue-200 text-blue-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-50 transition">
+                                            <FileText size={15} /> Voir l'ordre
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
                     )
                 )}
             </div>

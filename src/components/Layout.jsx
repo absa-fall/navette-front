@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import api from '../api/axios'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -62,8 +63,43 @@ export default function Layout({ children }) {
     const navigate = useNavigate()
     const location = useLocation()
     const [sidebarOpen, setSidebarOpen] = useState(true)
+    const [badges, setBadges] = useState({
+        drhOrdres: 0,
+        drhOrdresApprouves: 0,
+        drhOrdresRejetes: 0,
+        sgDrhOrdres: 0,
+        sgDrhSignes: 0,
+        sgDrhTransmis: 0,
+        viceRecteurVoyages: 0,
+        viceRecteurRapports: 0,
+        trajetsAssignes: 0,
+        enAttente: 0,
+        trajetsEffectues: 0,
+        mesDemandes: 0,
+        mesDemandesRejetees: 0,
+    })
 
     const menu = menuParRole[user?.role] || []
+
+    useEffect(() => {
+        const fetchNotifications = async () => {
+            try {
+                const res = await api.get('/notifications/sidebar')
+                setBadges(prev => ({
+                    ...prev,
+                    ...res.data
+                }))
+            } catch (error) {
+                console.error(error)
+            }
+        }
+
+        fetchNotifications()
+
+        const interval = setInterval(fetchNotifications, 5000)
+
+        return () => clearInterval(interval)
+    }, [])
 
     const handleLogout = async () => {
         await logout()
@@ -102,8 +138,59 @@ export default function Layout({ children }) {
                                 }`}
                             >
                                 <Icon size={18} className="flex-shrink-0" />
-                                {sidebarOpen && <span className="text-sm">{item.label}</span>}
-                                {sidebarOpen && isActive && <ChevronRight size={14} className="ml-auto" />}
+                                {sidebarOpen && (
+                                    <>
+                                        <span className="text-sm flex-1">
+                                            {item.label}
+                                        </span>
+
+                                        {item.path === '/drh/ordres' &&
+                                            badges.drhOrdres > 0 && (
+                                                <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                                    {badges.drhOrdres}
+                                                </span>
+                                            )}
+
+                                        {item.path === '/sg-drh/ordres' &&
+                                            badges.sgDrhOrdres > 0 && (
+                                                <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                                    {badges.sgDrhOrdres}
+                                                </span>
+                                            )}
+
+                                        {item.path === '/vice-recteur/voyages' &&
+                                            badges.viceRecteurVoyages > 0 && (
+                                                <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                                    {badges.viceRecteurVoyages}
+                                                </span>
+                                            )}
+
+                                        {item.path === '/vice-recteur/rapports' &&
+                                            badges.viceRecteurRapports > 0 && (
+                                                <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                                    {badges.viceRecteurRapports}
+                                                </span>
+                                            )}
+
+                                        {item.path === '/chauffeur/trajets' &&
+                                            badges.trajetsAssignes > 0 && (
+                                                <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                                    {badges.trajetsAssignes}
+                                                </span>
+                                            )}
+
+                                        {item.path === '/ddl/navettes' &&
+                                            (badges.mesDemandes > 0 || badges.mesDemandesRejetees > 0) && (
+                                                <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                                    {badges.mesDemandes + badges.mesDemandesRejetees}
+                                                </span>
+                                            )}
+
+                                        {isActive && (
+                                            <ChevronRight size={14} className="ml-auto" />
+                                        )}
+                                    </>
+                                )}
                             </Link>
                         )
                     })}
@@ -146,8 +233,16 @@ export default function Layout({ children }) {
                     <div className="flex items-center gap-4">
                         <button className="relative text-gray-500 hover:text-gray-700">
                             <Bell size={20} />
-                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
-                                3
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                                {
+                                    (badges.drhOrdres || 0) +
+                                    (badges.sgDrhOrdres || 0) +
+                                    (badges.viceRecteurVoyages || 0) +
+                                    (badges.viceRecteurRapports || 0) +
+                                    (badges.trajetsAssignes || 0) +
+                                    (badges.mesDemandes || 0) +
+                                    (badges.mesDemandesRejetees || 0)
+                                }
                             </span>
                         </button>
                         <div className="flex items-center gap-2">

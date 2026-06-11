@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
 import { Bus, CheckCircle, XCircle, Clock, FileText, History, Trash2 } from 'lucide-react'
@@ -19,6 +20,9 @@ const trajetLabels = {
 }
 
 export default function DRHOrdres() {
+    const [searchParams] = useSearchParams()
+    const statutFiltre = searchParams.get('statut') // Récupère ?statut=... depuis l'URL
+
     const [ordres, setOrdres] = useState([])
     const [historique, setHistorique] = useState([])
     const [loading, setLoading] = useState(true)
@@ -27,10 +31,25 @@ export default function DRHOrdres() {
     const [commentaire, setCommentaire] = useState('')
     const [rejetId, setRejetId] = useState(null)
     const [onglet, setOnglet] = useState('attente')
+    const [selected, setSelected] = useState([])
+    const [deleteSelectionLoading, setDeleteSelectionLoading] = useState(false)
 
     useEffect(() => {
         chargerOrdres()
     }, [])
+
+    // Quand le statutFiltre change, on bascule sur le bon onglet
+    useEffect(() => {
+        if (statutFiltre === 'en_attente') {
+            setOnglet('attente')
+        } else if (statutFiltre === 'approuve' || statutFiltre === 'rejete') {
+            setOnglet('historique')
+        }
+    }, [statutFiltre])
+
+    useEffect(() => {
+        setSelected([])
+    }, [onglet])
 
     const chargerOrdres = () => {
         api.get('/ordres-mission')
@@ -41,6 +60,48 @@ export default function DRHOrdres() {
             })
             .catch(() => {})
             .finally(() => setLoading(false))
+    }
+
+    // Filtrer l'historique selon le statut cliqué
+    const historiqueFiltre = () => {
+        if (!statutFiltre || statutFiltre === 'en_attente') {
+            return historique
+        }
+        if (statutFiltre === 'approuve') {
+            return historique.filter(o => o.statut === 'approuve_drh' || o.statut === 'transmis_chauffeur' || o.statut === 'execute')
+        }
+        if (statutFiltre === 'rejete') {
+            return historique.filter(o => o.statut === 'rejete')
+        }
+        return historique
+    }
+
+    const toggleSelect = (id) => {
+        setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
+    }
+
+    const toggleSelectAll = () => {
+        const ids = historiqueFiltre().map(o => o.id)
+        if (ids.every(id => selected.includes(id))) {
+            setSelected([])
+        } else {
+            setSelected(ids)
+        }
+    }
+
+    const supprimerSelection = async () => {
+        if (selected.length === 0) return
+        if (!confirm(`Voulez-vous vraiment supprimer ${selected.length} ordre(s) de l'historique ?`)) return
+        setDeleteSelectionLoading(true)
+        try {
+            await Promise.all(selected.map(id => api.delete(`/ordres-mission/${id}/historique`)))
+            setHistorique(prev => prev.filter(o => !selected.includes(o.id)))
+            setSelected([])
+        } catch (err) {
+            alert('Erreur lors de la suppression.')
+        } finally {
+            setDeleteSelectionLoading(false)
+        }
     }
 
     const approuver = async (id) => {
@@ -139,7 +200,7 @@ export default function DRHOrdres() {
             <div class="divider"></div>
             <div class="title">ORDRE DE MISSION</div>
             <div class="field"><span class="field-label">Monsieur :</span><span class="field-line">${ordre.chauffeur_prenom || ''} ${ordre.chauffeur_nom || ''}</span></div>
-            <div class="field"><span class="field-label">De nationalité :</span><span class="field-line">${ordre.nationalite || 'Sénégalaise'}</span></div>
+            <div class="field"><span class="field-label">De nationalité :</span><span class="field-line">${ordre.nationalite || 'Sénégalais(e)'}</span></div>
             <div class="field"><span class="field-label">Grade et fonction :</span><span class="field-line">${ordre.grade_fonction || 'Chauffeur'}</span></div>
             <div class="field"><span class="field-label">Se rend à :</span><span class="field-line">${ordre.destination || ''}</span></div>
             <div class="field"><span class="field-label">Objet de la mission :</span><span class="field-line">${ordre.objet_mission || "conduit la navette de l'UAD"}</span></div>
@@ -161,13 +222,23 @@ export default function DRHOrdres() {
         win.document.close()
     }
 
+    const toutSelectionne = historiqueFiltre().length > 0 && historiqueFiltre().every(o => selected.includes(o.id))
+
     const renderOrdre = (ordre, avecActions = true) => {
         const statut = statutConfig[ordre.statut] || statutConfig['en_attente_drh']
         const Icon = statut.icon
         return (
-            <div key={ordre.id} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+            <div key={ordre.id} className={`bg-white rounded-2xl p-5 border shadow-sm ${!avecActions && selected.includes(ordre.id) ? 'border-red-200 bg-red-50' : 'border-gray-100'}`}>
                 <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-4">
+                        {!avecActions && (
+                            <input
+                                type="checkbox"
+                                checked={selected.includes(ordre.id)}
+                                onChange={() => toggleSelect(ordre.id)}
+                                className="w-4 h-4 rounded border-gray-300 text-blue-600 mt-1"
+                            />
+                        )}
                         <div className="bg-blue-100 p-3 rounded-xl">
                             <Bus size={20} className="text-blue-700" />
                         </div>
@@ -280,12 +351,25 @@ export default function DRHOrdres() {
         )
     }
 
+    // Titre dynamique selon le filtre
+    const getTitre = () => {
+        if (statutFiltre === 'en_attente') return 'Ordres en attente d\'approbation'
+        if (statutFiltre === 'approuve') return 'Ordres approuvés'
+        if (statutFiltre === 'rejete') return 'Ordres rejetés'
+        return 'Ordres de mission'
+    }
+
     return (
         <Layout>
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Ordres de mission</h1>
-                    <p className="text-gray-500 text-sm mt-1">{ordres.length} ordre(s) en attente</p>
+                    <h1 className="text-2xl font-bold text-gray-800">{getTitre()}</h1>
+                    <p className="text-gray-500 text-sm mt-1">
+                        {onglet === 'attente' 
+                            ? `${ordres.length} ordre(s) en attente` 
+                            : `${historiqueFiltre().length} ordre(s) dans l'historique`
+                        }
+                    </p>
                 </div>
 
                 <div className="flex gap-2 border-b border-gray-200">
@@ -323,7 +407,7 @@ export default function DRHOrdres() {
                         </div>
                     )
                 ) : (
-                    historique.length === 0 ? (
+                    historiqueFiltre().length === 0 ? (
                         <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                             <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <History size={28} className="text-gray-400" />
@@ -333,7 +417,37 @@ export default function DRHOrdres() {
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {historique.map(ordre => renderOrdre(ordre, false))}
+                            {/* Barre tout sélectionner + supprimer */}
+                            <div className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-gray-100 shadow-sm">
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        checked={toutSelectionne}
+                                        onChange={toggleSelectAll}
+                                        className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                                    />
+                                    <span className="text-sm text-gray-600 font-medium">
+                                        {selected.length > 0
+                                            ? `${selected.length} sélectionné(s)`
+                                            : 'Tout sélectionner'
+                                        }
+                                    </span>
+                                </div>
+                                {selected.length > 0 && (
+                                    <button
+                                        onClick={supprimerSelection}
+                                        disabled={deleteSelectionLoading}
+                                        className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50"
+                                    >
+                                        {deleteSelectionLoading
+                                            ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            : <Trash2 size={14} />
+                                        }
+                                        Supprimer la sélection
+                                    </button>
+                                )}
+                            </div>
+                            {historiqueFiltre().map(ordre => renderOrdre(ordre, false))}
                         </div>
                     )
                 )}

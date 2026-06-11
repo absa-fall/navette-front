@@ -1,15 +1,41 @@
 import Layout from '../../components/Layout'
 import { useAuth } from '../../context/AuthContext'
-import { Bus, MapPin, FileText, Clock } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import api from '../../api/axios'
+import { Bus, MapPin, FileText, Clock, XCircle } from 'lucide-react'
 
 export default function DDLDashboard() {
     const { user } = useAuth()
+    const navigate = useNavigate()
+    const [stats, setStats] = useState({
+        demandesNavette: 0,
+        voyagesEtudes: 0,
+        enAttente: 0,
+        rejetees: 0,
+    })
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await api.get('/notifications/sidebar')
+                setStats({
+                    demandesNavette: (res.data.mesDemandes || 0) + (res.data.mesDemandesRejetees || 0),
+                    voyagesEtudes: 0,
+                    enAttente: res.data.mesDemandes || 0,
+                    rejetees: res.data.mesDemandesRejetees || 0,
+                })
+            } catch (error) {
+                console.error('Erreur stats:', error)
+            }
+        }
+
+        fetchStats()
+    }, [])
 
     return (
         <Layout>
             <div className="space-y-6">
-
-                {/* Header */}
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">
                         Bonjour, {user?.prenom} 👋
@@ -19,39 +45,65 @@ export default function DDLDashboard() {
                     </p>
                 </div>
 
-                {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                    {/* Demandes navette - clickeable */}
+                    <div 
+                        onClick={() => navigate('/ddl/navettes')}
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
+                    >
                         <div className="flex items-center justify-between mb-3">
                             <div className="bg-blue-100 p-2 rounded-xl">
                                 <Bus size={20} className="text-blue-700" />
                             </div>
                             <span className="text-xs text-gray-400">Total</span>
                         </div>
-                        <p className="text-2xl font-bold text-gray-800">0</p>
+                        <p className="text-2xl font-bold text-gray-800">{stats.demandesNavette}</p>
                         <p className="text-sm text-gray-500 mt-1">Demandes navette</p>
                     </div>
 
-                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                    {/* Voyages d'études - clickeable */}
+                    <div 
+                        onClick={() => navigate('/ddl/voyages')}
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
+                    >
                         <div className="flex items-center justify-between mb-3">
                             <div className="bg-green-100 p-2 rounded-xl">
                                 <MapPin size={20} className="text-green-700" />
                             </div>
                             <span className="text-xs text-gray-400">Total</span>
                         </div>
-                        <p className="text-2xl font-bold text-gray-800">0</p>
+                        <p className="text-2xl font-bold text-gray-800">{stats.voyagesEtudes}</p>
                         <p className="text-sm text-gray-500 mt-1">Voyages d'études</p>
                     </div>
 
-                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                    {/* En attente - clickeable */}
+                    <div 
+                        onClick={() => navigate('/ddl/en-attente')}
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
+                    >
                         <div className="flex items-center justify-between mb-3">
                             <div className="bg-orange-100 p-2 rounded-xl">
                                 <Clock size={20} className="text-orange-700" />
                             </div>
                             <span className="text-xs text-gray-400">En cours</span>
                         </div>
-                        <p className="text-2xl font-bold text-gray-800">0</p>
+                        <p className="text-2xl font-bold text-gray-800">{stats.enAttente}</p>
                         <p className="text-sm text-gray-500 mt-1">En attente</p>
+                    </div>
+
+                    {/* Demandes rejetées - clickeable */}
+                    <div 
+                        onClick={() => navigate('/ddl/demandes-rejetees')}
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
+                    >
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="bg-red-100 p-2 rounded-xl">
+                                <XCircle size={20} className="text-red-700" />
+                            </div>
+                            <span className="text-xs text-gray-400">Refusées</span>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-800">{stats.rejetees}</p>
+                        <p className="text-sm text-gray-500 mt-1">Demandes rejetées</p>
                     </div>
                 </div>
 

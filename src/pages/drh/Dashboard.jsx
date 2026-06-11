@@ -1,7 +1,34 @@
 import Layout from '../../components/Layout'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import api from '../../api/axios'
 import { FileText, CheckCircle, XCircle, Clock } from 'lucide-react'
 
 export default function DRHDashboard() {
+    const navigate = useNavigate()
+    const [stats, setStats] = useState({
+        enAttente: 0,
+        approuves: 0,
+        rejetes: 0,
+    })
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await api.get('/notifications/sidebar')
+                setStats({
+                    enAttente: res.data.drhOrdres || 0,
+                    approuves: res.data.drhOrdresApprouves || 0,
+                    rejetes: res.data.drhOrdresRejetes || 0,
+                })
+            } catch (error) {
+                console.error('Erreur stats DRH:', error)
+            }
+        }
+
+        fetchStats()
+    }, [])
+
     return (
         <Layout>
             <div className="space-y-6">
@@ -11,33 +38,45 @@ export default function DRHDashboard() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                    {/* Card En attente */}
+                    <div 
+                        onClick={() => navigate('/drh/ordres?statut=en_attente')}
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
+                    >
                         <div className="flex items-center justify-between mb-3">
                             <div className="bg-orange-100 p-2 rounded-xl">
                                 <Clock size={20} className="text-orange-700" />
                             </div>
                         </div>
-                        <p className="text-2xl font-bold text-gray-800">0</p>
+                        <p className="text-2xl font-bold text-gray-800">{stats.enAttente}</p>
                         <p className="text-sm text-gray-500 mt-1">En attente d'approbation</p>
                     </div>
 
-                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                    {/* Card Approuvés */}
+                    <div 
+                        onClick={() => navigate('/drh/ordres?statut=approuve')}
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
+                    >
                         <div className="flex items-center justify-between mb-3">
                             <div className="bg-green-100 p-2 rounded-xl">
                                 <CheckCircle size={20} className="text-green-700" />
                             </div>
                         </div>
-                        <p className="text-2xl font-bold text-gray-800">0</p>
+                        <p className="text-2xl font-bold text-gray-800">{stats.approuves}</p>
                         <p className="text-sm text-gray-500 mt-1">Approuvés</p>
                     </div>
 
-                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                    {/* Card Rejetés */}
+                    <div 
+                        onClick={() => navigate('/drh/ordres?statut=rejete')}
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
+                    >
                         <div className="flex items-center justify-between mb-3">
                             <div className="bg-red-100 p-2 rounded-xl">
                                 <XCircle size={20} className="text-red-700" />
                             </div>
                         </div>
-                        <p className="text-2xl font-bold text-gray-800">0</p>
+                        <p className="text-2xl font-bold text-gray-800">{stats.rejetes}</p>
                         <p className="text-sm text-gray-500 mt-1">Rejetés</p>
                     </div>
                 </div>

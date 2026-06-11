@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
-import { FileText, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react'
+import { FileText, CheckCircle, XCircle, Clock, RefreshCw, Download, Eye } from 'lucide-react'
 
 const statutConfig = {
     soumis: { label: 'Soumis', color: 'bg-blue-100 text-blue-700', icon: Clock },
@@ -22,6 +22,21 @@ export default function EnseignantMesRapports() {
             .catch(() => {})
             .finally(() => setLoading(false))
     }, [])
+
+    const voirPDF = (rapport) => {
+        if (rapport.fichier_pdf) {
+            window.open(`http://127.0.0.1:8000/storage/${rapport.fichier_pdf}`, '_blank')
+        }
+    }
+
+    const telechargerPDF = (rapport) => {
+        if (rapport.fichier_pdf) {
+            const link = document.createElement('a')
+            link.href = `http://127.0.0.1:8000/storage/${rapport.fichier_pdf}`
+            link.download = `rapport_${rapport.voyage?.destination}_${rapport.id}.pdf`
+            link.click()
+        }
+    }
 
     return (
         <Layout>
@@ -66,6 +81,12 @@ export default function EnseignantMesRapports() {
                                                     <p className="text-sm text-gray-500 mt-0.5">
                                                         Déposé le {new Date(rapport.date_depot).toLocaleDateString('fr-FR')}
                                                     </p>
+                                                    {rapport.fichier_pdf && (
+                                                        <p className="text-xs text-green-600 mt-0.5 flex items-center gap-1">
+                                                            <FileText size={12} />
+                                                            PDF joint
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </div>
                                             <span className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${statut.color}`}>
@@ -81,6 +102,26 @@ export default function EnseignantMesRapports() {
                                                 <p className="text-xs font-semibold text-gray-500 mb-2">CONTENU</p>
                                                 <p className="text-sm text-gray-700 whitespace-pre-line">{rapport.contenu}</p>
                                             </div>
+
+                                            {/* Boutons PDF */}
+                                            {rapport.fichier_pdf && (
+                                                <div className="flex gap-3">
+                                                    <button
+                                                        onClick={() => voirPDF(rapport)}
+                                                        className="flex-1 flex items-center justify-center gap-2 bg-blue-100 text-blue-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-200 transition"
+                                                    >
+                                                        <Eye size={16} />
+                                                        Voir le PDF
+                                                    </button>
+                                                    <button
+                                                        onClick={() => telechargerPDF(rapport)}
+                                                        className="flex-1 flex items-center justify-center gap-2 bg-green-100 text-green-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-200 transition"
+                                                    >
+                                                        <Download size={16} />
+                                                        Télécharger
+                                                    </button>
+                                                </div>
+                                            )}
 
                                             {rapport.statut === 'rejete' && rapport.commentaire_vr && (
                                                 <div className="bg-red-50 border border-red-200 rounded-xl p-4">

@@ -11,6 +11,8 @@ import DDLDashboard from './pages/ddl/Dashboard'
 import MesNavettes from './pages/ddl/MesNavettes'
 import NouvelleNavette from './pages/ddl/NouvelleNavette'
 import ModifierNavette from './pages/ddl/ModifierNavette'
+import DemandesRejetees from './pages/ddl/DemandesRejetees'
+import DemandesEnAttente from './pages/ddl/DemandesEnAttente'
 
 // Enseignant
 import EnseignantDashboard from './pages/enseignant/Dashboard'
@@ -28,14 +30,12 @@ import DRHOrdres from './pages/drh/OrdresMission'
 import SGDRHDashboard from './pages/sgdrh/Dashboard'
 import SGDRHOrdres from './pages/sgdrh/OrdresMission'
 
-
 // Chauffeur
 import ChauffeurDashboard from './pages/chauffeur/Dashboard'
 import MesTrajets from './pages/chauffeur/MesTrajets'
 import ChauffeurReservations from './pages/chauffeur/Reservations'
 
 import OrdreMissionPrint from './pages/ordres/OrdreMissionPrint'
-
 
 // SG VR
 import SGVRDashboard from './pages/sgvr/SGDashboard'
@@ -77,6 +77,8 @@ function App() {
                     <Route path="/ddl/navettes" element={<PrivateRoute><MesNavettes /></PrivateRoute>} />
                     <Route path="/ddl/navettes/nouvelle" element={<PrivateRoute><NouvelleNavette /></PrivateRoute>} />
                     <Route path="/ddl/navettes/modifier/:id" element={<PrivateRoute><ModifierNavette /></PrivateRoute>} />
+                    <Route path="/ddl/demandes-rejetees" element={<DemandesRejetees />} />
+                    <Route path="/ddl/en-attente" element={<DemandesEnAttente />} />
 
                     {/* Enseignant */}
                     <Route path="/enseignant/dashboard" element={<PrivateRoute><EnseignantDashboard /></PrivateRoute>} />
@@ -94,13 +96,13 @@ function App() {
                     <Route path="/sg-drh/dashboard" element={<PrivateRoute><SGDRHDashboard /></PrivateRoute>} />
                     <Route path="/sg-drh/ordres" element={<PrivateRoute><SGDRHOrdres /></PrivateRoute>} />
                     <Route
-    path="/ordres-mission/:id/print"
-    element={
-        <PrivateRoute>
-            <OrdreMissionPrint />
-        </PrivateRoute>
-    }
-/>
+                        path="/ordres-mission/:id/print"
+                        element={
+                            <PrivateRoute>
+                                <OrdreMissionPrint />
+                            </PrivateRoute>
+                        }
+                    />
 
                     {/* Chauffeur */}
                     <Route path="/chauffeur/dashboard" element={<PrivateRoute><ChauffeurDashboard /></PrivateRoute>} />
@@ -115,6 +117,7 @@ function App() {
                     <Route path="/vice-recteur/dashboard" element={<PrivateRoute><ViceRecteurDashboard /></PrivateRoute>} />
                     <Route path="/vice-recteur/voyages" element={<PrivateRoute><VoyagesATraiter /></PrivateRoute>} />
                     <Route path="/vice-recteur/rapports" element={<PrivateRoute><RapportsAValider /></PrivateRoute>} />
+                    <Route path="/vice-recteur/rapports-a-valider" element={<PrivateRoute><RapportsAValider /></PrivateRoute>} />
 
                     {/* Admin */}
                     <Route path="/admin/dashboard" element={<PrivateRoute><AdminDashboard /></PrivateRoute>} />
