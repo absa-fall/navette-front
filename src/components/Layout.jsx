@@ -3,8 +3,18 @@ import api from '../api/axios'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
-    Bus, MapPin, FileText, Users, LayoutDashboard,
-    LogOut, Menu, X, ChevronRight, Bell, CheckCircle
+    Bus,
+    MapPin,
+    FileText,
+    Users,
+    LayoutDashboard,
+    LogOut,
+    Menu,
+    X,
+    ChevronRight,
+    Bell,
+    CheckCircle,
+    Trash2
 } from 'lucide-react'
 
 const menuParRole = {
@@ -78,6 +88,92 @@ export default function Layout({ children }) {
         mesDemandes: 0,
         mesDemandesRejetees: 0,
     })
+
+    // === NOUVEAU : Notifications dropdown ===
+    const [notifOpen, setNotifOpen] = useState(false)
+    const [notifications, setNotifications] = useState([])
+
+    // Calculer le total des notifications non lues
+    const totalNotifs = notifications.filter(n => !n.lu).length
+
+    // Charger les notifications détaillées
+    useEffect(() => {
+        const fetchNotifs = async () => {
+            try {
+                const res = await api.get('/notifications')
+                setNotifications(res.data)
+            } catch (error) {
+                console.error('Erreur notifications:', error)
+            }
+        }
+
+        fetchNotifs()
+        
+        // Polling toutes les 10 secondes
+        const interval = setInterval(fetchNotifs, 10000)
+        return () => clearInterval(interval)
+    }, [])
+
+    // Marquer une notification comme lue
+    const marquerLu = async (id) => {
+        try {
+            await api.patch(`/notifications/${id}/lu`)
+            setNotifications(prev => prev.map(n => 
+                n.id === id ? { ...n, lu: true } : n
+            ))
+        } catch (error) {
+            console.error(error)
+        }
+    }
+
+    // Marquer toutes comme lues
+    const marquerToutLu = async () => {
+    try {
+        await api.patch('/notifications/lu-toutes')
+
+        setNotifications(prev =>
+            prev.map(notif => ({
+                ...notif,
+                lu: true
+            }))
+        )
+    } catch (error) {
+        console.error('Erreur marquer toutes lues :', error)
+    }
+}
+const supprimerNotification = async (id) => {
+    try {
+        await api.delete(`/notifications/${id}`)
+
+        setNotifications(prev =>
+            prev.filter(n => n.id !== id)
+        )
+    } catch (error) {
+        console.error(error)
+    }
+}
+const supprimerToutesNotifications = async () => {
+    try {
+        await api.delete('/notifications')
+
+        setNotifications([])
+    } catch (error) {
+        console.error(error)
+    }
+}
+    
+
+    // Fermer le dropdown quand on clique ailleurs
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (notifOpen && !e.target.closest('.notif-dropdown')) {
+                setNotifOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [notifOpen])
+    // === FIN NOUVEAU ===
 
     const menu = menuParRole[user?.role] || []
 
@@ -230,21 +326,128 @@ export default function Layout({ children }) {
                     >
                         {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
                     </button>
+                    
                     <div className="flex items-center gap-4">
-                        <button className="relative text-gray-500 hover:text-gray-700">
-                            <Bell size={20} />
-                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                                {
-                                    (badges.drhOrdres || 0) +
-                                    (badges.sgDrhOrdres || 0) +
-                                    (badges.viceRecteurVoyages || 0) +
-                                    (badges.viceRecteurRapports || 0) +
-                                    (badges.trajetsAssignes || 0) +
-                                    (badges.mesDemandes || 0) +
-                                    (badges.mesDemandesRejetees || 0)
-                                }
-                            </span>
-                        </button>
+                        {/* === CLOCHE DE NOTIFICATION CORRIGÉE === */}
+                        <div className="relative notif-dropdown">
+                            <button 
+                                onClick={() => setNotifOpen(!notifOpen)}
+                                className="relative text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition"
+                            >
+                                <Bell size={20} />
+                                {totalNotifs > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold animate-pulse">
+                                        {totalNotifs > 9 ? '9+' : totalNotifs}
+                                    </span>
+                                )}
+                            </button>
+
+                            {/* Dropdown notifications */}
+                            {notifOpen && (
+                                <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden">
+                                    
+                                    <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50">
+    <h3 className="font-semibold text-sm text-gray-800">
+        Notifications
+    </h3>
+
+    <div className="flex gap-3">
+        {totalNotifs > 0 && (
+            <button
+                onClick={marquerToutLu}
+                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+            >
+                Tout lire
+            </button>
+        )}
+
+        {notifications.length > 0 && (
+            <button
+                onClick={supprimerToutesNotifications}
+                className="text-xs text-red-600 hover:text-red-800 font-medium"
+            >
+                Effacer tout
+            </button>
+        )}
+    </div>
+</div>
+                                    <div className="max-h-80 overflow-y-auto">
+                                        {notifications.length === 0 ? (
+                                            <div className="p-6 text-center text-gray-400">
+                                                <Bell size={32} className="mx-auto mb-2 opacity-30" />
+                                                <p className="text-sm">Aucune notification</p>
+                                            </div>
+                                        ) : (
+                                            notifications.map(notif => (
+                                                <div 
+                                                    key={notif.id}
+                                                   onClick={() => {
+    if (!notif.lu) {
+        marquerLu(notif.id)
+    }
+
+    setNotifOpen(false)
+
+    if (user?.role === 'ddl') {
+        navigate('/ddl/navettes')
+    }
+
+    if (user?.role === 'chauffeur') {
+        navigate('/chauffeur/trajets')
+    }
+
+    if (user?.role === 'drh') {
+        navigate('/drh/ordres')
+    }
+
+    if (user?.role === 'sg_drh') {
+        navigate('/sg-drh/ordres')
+    }
+
+    if (user?.role === 'vice_recteur') {
+        navigate('/vice-recteur/voyages')
+    }
+}}
+                                                    className={`p-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition ${!notif.lu ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`}
+                                                >
+                                                    <div className="flex items-start gap-3">
+                                                        <div className={`p-2 rounded-lg flex-shrink-0 ${!notif.lu ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                                                            <Bell size={14} className={!notif.lu ? 'text-blue-600' : 'text-gray-400'} />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-medium text-gray-800 truncate">{notif.titre}</p>
+                                                            <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{notif.message}</p>
+                                                            <p className="text-xs text-gray-400 mt-1">
+                                                                {new Date(notif.created_at).toLocaleDateString('fr-FR', {
+                                                                    day: 'numeric',
+                                                                    month: 'short',
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit'
+                                                                })}
+                                                            </p>
+                                                            <button
+    onClick={(e) => {
+        e.stopPropagation()
+        supprimerNotification(notif.id)
+    }}
+    className="text-red-500 hover:text-red-700"
+>
+    <Trash2 size={14} />
+</button>
+                                                        </div>
+                                                        {!notif.lu && (
+                                                            <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1" />
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        {/* === FIN CLOCHE === */}
+
                         <div className="flex items-center gap-2">
                             <div className="bg-blue-700 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold">
                                 {user?.prenom?.[0]}{user?.nom?.[0]}

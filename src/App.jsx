@@ -34,8 +34,13 @@ import SGDRHOrdres from './pages/sgdrh/OrdresMission'
 import ChauffeurDashboard from './pages/chauffeur/Dashboard'
 import MesTrajets from './pages/chauffeur/MesTrajets'
 import ChauffeurReservations from './pages/chauffeur/Reservations'
+import ScannerPassager from './pages/chauffeur/ScannerPassager'
 
 import OrdreMissionPrint from './pages/ordres/OrdreMissionPrint'
+
+import ScannerBus from './pages/usager/ScannerBus'
+import UsagerDashboard from './pages/usager/Dashboard'
+
 
 // SG VR
 import SGVRDashboard from './pages/sgvr/SGDashboard'
@@ -109,6 +114,9 @@ function App() {
                     <Route path="/chauffeur/trajets" element={<PrivateRoute><MesTrajets /></PrivateRoute>} />
                     <Route path="/chauffeur/reservations" element={<PrivateRoute><ChauffeurReservations /></PrivateRoute>} />
 
+<Route path="/chauffeur/scanner" element={<PrivateRoute><ScannerPassager /></PrivateRoute>} />
+{/* Usager */}
+<Route path="/usager/dashboard" element={<PrivateRoute><UsagerDashboard /></PrivateRoute>} />
                     {/* SG VR */}
                     <Route path="/sg-vr/dashboard" element={<PrivateRoute><SGVRDashboard /></PrivateRoute>} />
                     <Route path="/sg-vr/recapitulatifs" element={<PrivateRoute><Recapitulatifs /></PrivateRoute>} />

@@ -25,6 +25,11 @@ export default function MesTrajets() {
     const [onglet, setOnglet] = useState('encours')
     const [selected, setSelected] = useState([])
 
+    // ✅ Modal refus
+    const [modalRefus, setModalRefus] = useState({ visible: false, ordreId: null })
+    const [motifRefus, setMotifRefus] = useState('')
+    const [motifError, setMotifError] = useState('')
+
     useEffect(() => { chargerOrdres() }, [])
 
     useEffect(() => {
@@ -69,15 +74,28 @@ export default function MesTrajets() {
         }
     }
 
-    const refuser = async (id) => {
-        const motif = prompt('Veuillez saisir le motif du refus :')
-        if (!motif || motif.trim() === '') {
-            alert('Le motif du refus est obligatoire.')
+    const ouvrirModalRefus = (id) => {
+        setMotifRefus('')
+        setMotifError('')
+        setModalRefus({ visible: true, ordreId: id })
+    }
+
+    const fermerModalRefus = () => {
+        setModalRefus({ visible: false, ordreId: null })
+        setMotifRefus('')
+        setMotifError('')
+    }
+
+    const confirmerRefus = async () => {
+        if (!motifRefus.trim()) {
+            setMotifError('Le motif est obligatoire.')
             return
         }
+        const id = modalRefus.ordreId
+        fermerModalRefus()
         setActionLoading(`refuser-${id}`)
         try {
-            await api.post(`/ordres-mission/${id}/refuser`, { motif_refus: motif.trim() })
+            await api.post(`/ordres-mission/${id}/refuser`, { motif_refus: motifRefus.trim() })
             chargerOrdres()
         } catch (err) {
             alert(err.response?.data?.message || 'Erreur lors du refus')
@@ -132,6 +150,48 @@ export default function MesTrajets() {
     return (
         <Layout>
             <div className="space-y-6">
+
+                {/* ✅ Modal refus */}
+                {modalRefus.visible && (
+                    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="bg-red-100 p-2 rounded-xl">
+                                    <XCircle size={20} className="text-red-600" />
+                                </div>
+                                <h3 className="text-lg font-bold text-gray-800">Refuser la mission</h3>
+                            </div>
+                            <p className="text-sm text-gray-500 mb-4">
+                                Veuillez indiquer le motif du refus. Le DDL sera notifié.
+                            </p>
+                            <textarea
+                                value={motifRefus}
+                                onChange={e => { setMotifRefus(e.target.value); setMotifError('') }}
+                                rows={4}
+                                placeholder="Saisissez le motif du refus..."
+                                className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none ${motifError ? 'border-red-400' : 'border-gray-300'}`}
+                            />
+                            {motifError && (
+                                <p className="text-xs text-red-500 mt-1">{motifError}</p>
+                            )}
+                            <div className="flex gap-3 mt-4">
+                                <button
+                                    onClick={fermerModalRefus}
+                                    className="flex-1 border border-gray-300 text-gray-700 font-semibold py-2.5 rounded-xl hover:bg-gray-50 transition text-sm"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    onClick={confirmerRefus}
+                                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-xl transition text-sm"
+                                >
+                                    Confirmer le refus
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">{getTitre()}</h1>
                     <p className="text-gray-500 text-sm mt-1">
@@ -182,7 +242,6 @@ export default function MesTrajets() {
                                                     <p className="text-xs text-gray-400 mt-0.5">{ordre.ddl?.prenom} {ordre.ddl?.nom}</p>
                                                 </div>
                                             </div>
-                                            {/* ✅ Badge dynamique selon statut_chauffeur */}
                                             {estApprouve ? (
                                                 <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-green-100 text-green-700">
                                                     <CheckCircle size={12} /> Approuvé
@@ -200,7 +259,6 @@ export default function MesTrajets() {
                                                 <FileText size={15} /> Voir l'ordre
                                             </button>
 
-                                            {/* ✅ Approuver/Refuser visibles SEULEMENT si pas encore approuvé */}
                                             {!estApprouve && (
                                                 <>
                                                     <button
@@ -213,8 +271,9 @@ export default function MesTrajets() {
                                                             : <ThumbsUp size={16} />}
                                                         Approuver
                                                     </button>
+                                                    {/* ✅ Bouton refus ouvre la modal */}
                                                     <button
-                                                        onClick={() => refuser(ordre.id)}
+                                                        onClick={() => ouvrirModalRefus(ordre.id)}
                                                         disabled={actionLoading === `refuser-${ordre.id}`}
                                                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition disabled:opacity-50"
                                                     >
@@ -226,7 +285,6 @@ export default function MesTrajets() {
                                                 </>
                                             )}
 
-                                            {/* ✅ Marquer exécuté SEULEMENT si approuvé */}
                                             {estApprouve ? (
                                                 <button
                                                     onClick={() => executer(ordre.id)}
@@ -239,10 +297,8 @@ export default function MesTrajets() {
                                                     Marquer exécuté
                                                 </button>
                                             ) : (
-                                                <button
-                                                    disabled
-                                                    className="flex-1 flex items-center justify-center gap-2 bg-gray-200 text-gray-400 py-2.5 rounded-xl text-sm font-semibold cursor-not-allowed min-w-[140px]"
-                                                >
+                                                <button disabled
+                                                    className="flex-1 flex items-center justify-center gap-2 bg-gray-200 text-gray-400 py-2.5 rounded-xl text-sm font-semibold cursor-not-allowed min-w-[140px]">
                                                     <CheckCircle size={16} />
                                                     Approuvez d'abord
                                                 </button>
@@ -279,7 +335,6 @@ export default function MesTrajets() {
                                     </button>
                                 )}
                             </div>
-
                             <div className="space-y-4">
                                 {historique.map(ordre => (
                                     <div key={ordre.id} className={`bg-white rounded-2xl p-5 border shadow-sm transition ${selected.includes(ordre.id) ? 'border-red-200 bg-red-50' : 'border-gray-100'}`}>
@@ -294,7 +349,6 @@ export default function MesTrajets() {
                                                     <p className="text-xs text-gray-400 mt-0.5">{ordre.ddl?.prenom} {ordre.ddl?.nom}</p>
                                                 </div>
                                             </div>
-                                            {/* Badge selon statut dans historique */}
                                             {ordre.statut_chauffeur === 'refuse' ? (
                                                 <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-red-100 text-red-700">
                                                     <XCircle size={12} /> Refusé
