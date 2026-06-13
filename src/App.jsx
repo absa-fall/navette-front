@@ -6,6 +6,8 @@ import Reservation from './pages/Reservation'
 // Auth
 import Login from './pages/Login'
 
+import Inscription from './pages/Inscription'
+
 // DDL
 import DDLDashboard from './pages/ddl/Dashboard'
 import MesNavettes from './pages/ddl/MesNavettes'
@@ -80,6 +82,7 @@ function App() {
                     <Route path="/login" element={<Login />} />
                     <Route path="/reservation" element={<Navigate to="/login" replace />} />
                     <Route path="/validation" element={<PrivateRoute><ValidationNavette /></PrivateRoute>} />
+                    <Route path="/inscription" element={<Inscription />} />
 
                     {/* DDL */}
                     <Route path="/ddl/dashboard" element={<PrivateRoute><DDLDashboard /></PrivateRoute>} />

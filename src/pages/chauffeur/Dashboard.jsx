@@ -157,7 +157,22 @@ export default function ChauffeurDashboard() {
         Voir le QR de mon bus
     </button>
 </div>
-
+{/* Scanner passager */}
+<div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+    <h2 className="text-lg font-semibold text-gray-800 mb-4">
+        Scanner un passager
+    </h2>
+    <p className="text-gray-500 text-sm mb-4">
+        Si le passager n'a pas de connexion, scannez son QR code pour valider sa montée
+    </p>
+    <button
+        onClick={() => navigate('/chauffeur/scanner')}
+        className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition flex items-center gap-2"
+    >
+        <QrCode size={18} />
+        Scanner le QR du passager
+    </button>
+</div>
                 {/* Mes trajets du jour */}
                 <div
                     onClick={() => navigate('/chauffeur/trajets')}

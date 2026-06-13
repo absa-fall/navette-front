@@ -20,7 +20,7 @@ export default function DDLDashboard() {
     const [stats, setStats] = useState({ demandesNavette: 0, voyagesEtudes: 0, enAttente: 0, rejetees: 0 })
     const [notifications, setNotifications] = useState([])
     const [loadingNotifs, setLoadingNotifs] = useState(true)
-    // ✅ Historique notifications
+    //  Historique notifications
     const [selectedNotifs, setSelectedNotifs] = useState([])
     const [deleteNotifsLoading, setDeleteNotifsLoading] = useState(false)
     const [ongletNotif, setOngletNotif] = useState('nonlues')
@@ -68,7 +68,7 @@ export default function DDLDashboard() {
         notifications.filter(n => !n.lu).forEach(n => marquerLu(n.id))
     }
 
-    // ✅ Suppression notifications
+    // Suppression notifications
     const toggleSelectNotif = (id) => {
         setSelectedNotifs(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
     }
@@ -103,7 +103,7 @@ export default function DDLDashboard() {
         <Layout>
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Bonjour, {user?.prenom} 👋</h1>
+                    <h1 className="text-2xl font-bold text-gray-800">Bonjour, {user?.prenom} </h1>
                     <p className="text-gray-500 text-sm mt-1">Bienvenue sur votre espace UADB Mobilité</p>
                 </div>
 

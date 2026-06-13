@@ -44,7 +44,7 @@ const menuParRole = {
     chauffeur: [
         { label: 'Dashboard', icon: LayoutDashboard, path: '/chauffeur/dashboard' },
         { label: 'Mes trajets', icon: Bus, path: '/chauffeur/trajets' },
-        { label: 'Validation', icon: CheckCircle, path: '/validation' },
+        // Validation supprimée
     ],
     sg_vr: [
         { label: 'Dashboard', icon: LayoutDashboard, path: '/sg-vr/dashboard' },
@@ -89,14 +89,11 @@ export default function Layout({ children }) {
         mesDemandesRejetees: 0,
     })
 
-    // === NOUVEAU : Notifications dropdown ===
     const [notifOpen, setNotifOpen] = useState(false)
     const [notifications, setNotifications] = useState([])
 
-    // Calculer le total des notifications non lues
     const totalNotifs = notifications.filter(n => !n.lu).length
 
-    // Charger les notifications détaillées
     useEffect(() => {
         const fetchNotifs = async () => {
             try {
@@ -108,17 +105,14 @@ export default function Layout({ children }) {
         }
 
         fetchNotifs()
-        
-        // Polling toutes les 10 secondes
         const interval = setInterval(fetchNotifs, 10000)
         return () => clearInterval(interval)
     }, [])
 
-    // Marquer une notification comme lue
     const marquerLu = async (id) => {
         try {
             await api.patch(`/notifications/${id}/lu`)
-            setNotifications(prev => prev.map(n => 
+            setNotifications(prev => prev.map(n =>
                 n.id === id ? { ...n, lu: true } : n
             ))
         } catch (error) {
@@ -126,44 +120,33 @@ export default function Layout({ children }) {
         }
     }
 
-    // Marquer toutes comme lues
     const marquerToutLu = async () => {
-    try {
-        await api.patch('/notifications/lu-toutes')
-
-        setNotifications(prev =>
-            prev.map(notif => ({
-                ...notif,
-                lu: true
-            }))
-        )
-    } catch (error) {
-        console.error('Erreur marquer toutes lues :', error)
+        try {
+            await api.patch('/notifications/lu-toutes')
+            setNotifications(prev => prev.map(notif => ({ ...notif, lu: true })))
+        } catch (error) {
+            console.error('Erreur marquer toutes lues :', error)
+        }
     }
-}
-const supprimerNotification = async (id) => {
-    try {
-        await api.delete(`/notifications/${id}`)
 
-        setNotifications(prev =>
-            prev.filter(n => n.id !== id)
-        )
-    } catch (error) {
-        console.error(error)
+    const supprimerNotification = async (id) => {
+        try {
+            await api.delete(`/notifications/${id}`)
+            setNotifications(prev => prev.filter(n => n.id !== id))
+        } catch (error) {
+            console.error(error)
+        }
     }
-}
-const supprimerToutesNotifications = async () => {
-    try {
-        await api.delete('/notifications')
 
-        setNotifications([])
-    } catch (error) {
-        console.error(error)
+    const supprimerToutesNotifications = async () => {
+        try {
+            await api.delete('/notifications/toutes')
+            setNotifications([])
+        } catch (error) {
+            console.error(error)
+        }
     }
-}
-    
 
-    // Fermer le dropdown quand on clique ailleurs
     useEffect(() => {
         const handleClickOutside = (e) => {
             if (notifOpen && !e.target.closest('.notif-dropdown')) {
@@ -173,7 +156,6 @@ const supprimerToutesNotifications = async () => {
         document.addEventListener('mousedown', handleClickOutside)
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [notifOpen])
-    // === FIN NOUVEAU ===
 
     const menu = menuParRole[user?.role] || []
 
@@ -181,19 +163,14 @@ const supprimerToutesNotifications = async () => {
         const fetchNotifications = async () => {
             try {
                 const res = await api.get('/notifications/sidebar')
-                setBadges(prev => ({
-                    ...prev,
-                    ...res.data
-                }))
+                setBadges(prev => ({ ...prev, ...res.data }))
             } catch (error) {
                 console.error(error)
             }
         }
 
         fetchNotifications()
-
         const interval = setInterval(fetchNotifications, 5000)
-
         return () => clearInterval(interval)
     }, [])
 
@@ -236,44 +213,37 @@ const supprimerToutesNotifications = async () => {
                                 <Icon size={18} className="flex-shrink-0" />
                                 {sidebarOpen && (
                                     <>
-                                        <span className="text-sm flex-1">
-                                            {item.label}
-                                        </span>
+                                        <span className="text-sm flex-1">{item.label}</span>
 
-                                        {item.path === '/drh/ordres' &&
-                                            badges.drhOrdres > 0 && (
-                                                <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                                                    {badges.drhOrdres}
-                                                </span>
-                                            )}
+                                        {item.path === '/drh/ordres' && badges.drhOrdres > 0 && (
+                                            <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                                {badges.drhOrdres}
+                                            </span>
+                                        )}
 
-                                        {item.path === '/sg-drh/ordres' &&
-                                            badges.sgDrhOrdres > 0 && (
-                                                <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                                                    {badges.sgDrhOrdres}
-                                                </span>
-                                            )}
+                                        {item.path === '/sg-drh/ordres' && badges.sgDrhOrdres > 0 && (
+                                            <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                                {badges.sgDrhOrdres}
+                                            </span>
+                                        )}
 
-                                        {item.path === '/vice-recteur/voyages' &&
-                                            badges.viceRecteurVoyages > 0 && (
-                                                <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">
-                                                    {badges.viceRecteurVoyages}
-                                                </span>
-                                            )}
+                                        {item.path === '/vice-recteur/voyages' && badges.viceRecteurVoyages > 0 && (
+                                            <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                                {badges.viceRecteurVoyages}
+                                            </span>
+                                        )}
 
-                                        {item.path === '/vice-recteur/rapports' &&
-                                            badges.viceRecteurRapports > 0 && (
-                                                <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
-                                                    {badges.viceRecteurRapports}
-                                                </span>
-                                            )}
+                                        {item.path === '/vice-recteur/rapports' && badges.viceRecteurRapports > 0 && (
+                                            <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                                {badges.viceRecteurRapports}
+                                            </span>
+                                        )}
 
-                                        {item.path === '/chauffeur/trajets' &&
-                                            badges.trajetsAssignes > 0 && (
-                                                <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                                                    {badges.trajetsAssignes}
-                                                </span>
-                                            )}
+                                        {item.path === '/chauffeur/trajets' && badges.enAttente > 0 && (
+                                            <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                                {badges.enAttente}
+                                            </span>
+                                        )}
 
                                         {item.path === '/ddl/navettes' &&
                                             (badges.mesDemandes > 0 || badges.mesDemandesRejetees > 0) && (
@@ -326,11 +296,11 @@ const supprimerToutesNotifications = async () => {
                     >
                         {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
                     </button>
-                    
+
                     <div className="flex items-center gap-4">
-                        {/* === CLOCHE DE NOTIFICATION CORRIGÉE === */}
+                        {/* Cloche notification */}
                         <div className="relative notif-dropdown">
-                            <button 
+                            <button
                                 onClick={() => setNotifOpen(!notifOpen)}
                                 className="relative text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition"
                             >
@@ -342,35 +312,27 @@ const supprimerToutesNotifications = async () => {
                                 )}
                             </button>
 
-                            {/* Dropdown notifications */}
                             {notifOpen && (
                                 <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden">
-                                    
+
                                     <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50">
-    <h3 className="font-semibold text-sm text-gray-800">
-        Notifications
-    </h3>
+                                        <h3 className="font-semibold text-sm text-gray-800">Notifications</h3>
+                                        <div className="flex gap-3">
+                                            {totalNotifs > 0 && (
+                                                <button onClick={marquerToutLu}
+                                                    className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                                                    Tout lire
+                                                </button>
+                                            )}
+                                            {notifications.length > 0 && (
+                                                <button onClick={supprimerToutesNotifications}
+                                                    className="text-xs text-red-600 hover:text-red-800 font-medium">
+                                                    Effacer tout
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
 
-    <div className="flex gap-3">
-        {totalNotifs > 0 && (
-            <button
-                onClick={marquerToutLu}
-                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-            >
-                Tout lire
-            </button>
-        )}
-
-        {notifications.length > 0 && (
-            <button
-                onClick={supprimerToutesNotifications}
-                className="text-xs text-red-600 hover:text-red-800 font-medium"
-            >
-                Effacer tout
-            </button>
-        )}
-    </div>
-</div>
                                     <div className="max-h-80 overflow-y-auto">
                                         {notifications.length === 0 ? (
                                             <div className="p-6 text-center text-gray-400">
@@ -379,35 +341,16 @@ const supprimerToutesNotifications = async () => {
                                             </div>
                                         ) : (
                                             notifications.map(notif => (
-                                                <div 
-                                                    key={notif.id}
-                                                   onClick={() => {
-    if (!notif.lu) {
-        marquerLu(notif.id)
-    }
-
-    setNotifOpen(false)
-
-    if (user?.role === 'ddl') {
-        navigate('/ddl/navettes')
-    }
-
-    if (user?.role === 'chauffeur') {
-        navigate('/chauffeur/trajets')
-    }
-
-    if (user?.role === 'drh') {
-        navigate('/drh/ordres')
-    }
-
-    if (user?.role === 'sg_drh') {
-        navigate('/sg-drh/ordres')
-    }
-
-    if (user?.role === 'vice_recteur') {
-        navigate('/vice-recteur/voyages')
-    }
-}}
+                                                <div key={notif.id}
+                                                    onClick={() => {
+                                                        if (!notif.lu) marquerLu(notif.id)
+                                                        setNotifOpen(false)
+                                                        if (user?.role === 'ddl') navigate('/ddl/navettes')
+                                                        if (user?.role === 'chauffeur') navigate('/chauffeur/trajets')
+                                                        if (user?.role === 'drh') navigate('/drh/ordres')
+                                                        if (user?.role === 'sg_drh') navigate('/sg-drh/ordres')
+                                                        if (user?.role === 'vice_recteur') navigate('/vice-recteur/voyages')
+                                                    }}
                                                     className={`p-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition ${!notif.lu ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`}
                                                 >
                                                     <div className="flex items-start gap-3">
@@ -419,21 +362,15 @@ const supprimerToutesNotifications = async () => {
                                                             <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{notif.message}</p>
                                                             <p className="text-xs text-gray-400 mt-1">
                                                                 {new Date(notif.created_at).toLocaleDateString('fr-FR', {
-                                                                    day: 'numeric',
-                                                                    month: 'short',
-                                                                    hour: '2-digit',
-                                                                    minute: '2-digit'
+                                                                    day: 'numeric', month: 'short',
+                                                                    hour: '2-digit', minute: '2-digit'
                                                                 })}
                                                             </p>
                                                             <button
-    onClick={(e) => {
-        e.stopPropagation()
-        supprimerNotification(notif.id)
-    }}
-    className="text-red-500 hover:text-red-700"
->
-    <Trash2 size={14} />
-</button>
+                                                                onClick={(e) => { e.stopPropagation(); supprimerNotification(notif.id) }}
+                                                                className="text-red-500 hover:text-red-700 mt-1">
+                                                                <Trash2 size={14} />
+                                                            </button>
                                                         </div>
                                                         {!notif.lu && (
                                                             <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1" />
@@ -446,7 +383,6 @@ const supprimerToutesNotifications = async () => {
                                 </div>
                             )}
                         </div>
-                        {/* === FIN CLOCHE === */}
 
                         <div className="flex items-center gap-2">
                             <div className="bg-blue-700 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold">

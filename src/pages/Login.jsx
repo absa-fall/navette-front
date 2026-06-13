@@ -68,6 +68,14 @@ export default function Login() {
                 </div>
             </div>
 
+            <p className="text-center text-sm text-gray-500 mt-4">
+    Pas encore de compte ?{' '}
+    <button onClick={() => navigate('/inscription')}
+        className="text-blue-700 font-semibold hover:underline">
+        S'inscrire
+    </button>
+</p>
+
             {/* Panneau droit */}
             <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-50">
                 <div className="w-full max-w-md">
@@ -84,7 +92,7 @@ export default function Login() {
 
                     {error && (
                         <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-4 mb-6 text-sm flex items-center gap-2">
-                            <span>⚠️</span> {error}
+                            <span> </span> {error}
                         </div>
                     )}
 
