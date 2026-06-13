@@ -192,12 +192,13 @@ export default function SGDashboard() {
         win.print()
     }
 
-    const getStatutBadge = (valideeMontee, valideeDescente) => {
-        if (valideeDescente) return <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">Terminée</span>
-        if (valideeMontee) return <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">En cours</span>
-        return <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">En attente</span>
-    }
-
+  const getStatutBadge = (r) => {
+    if (r.statut === 'terminee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">Terminée</span>
+    if (r.statut === 'en_cours') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">En cours</span>
+    if (r.statut === 'confirmee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">Confirmée</span>
+    if (r.statut === 'refusee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">Refusée</span>
+    return <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">En attente</span>
+}
     const getProfilBadge = (typeProfil) => {
         const colors = {
             'permanent': 'bg-purple-100 text-purple-700',
@@ -208,8 +209,8 @@ export default function SGDashboard() {
         return colors[typeProfil] || 'bg-gray-100 text-gray-700'
     }
 
-    const enCours = reservations.filter(r => !r.validee_descente)
-    const terminées = reservations.filter(r => r.validee_descente)
+    const enCours = reservations.filter(r => r.statut !== 'terminee' && r.statut !== 'refusee')
+const terminées = reservations.filter(r => r.statut === 'terminee')
     const totalRetenues = reservations.reduce((sum, r) => sum + (parseFloat(r.montant_retenue) || 0), 0)
     const listeActive = onglet === 'encours' ? enCours : terminées
     const estHistorique = onglet === 'historique'
@@ -325,7 +326,9 @@ export default function SGDashboard() {
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3">{getStatutBadge(r.validee_montee, r.validee_descente)}</td>
+                                        <td className="px-4 py-3">
+    {getStatutBadge(r)}
+</td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-2">
                                                 <button onClick={() => handleEditMontant(r)} className="text-blue-500 hover:text-blue-700 transition" title="Modifier le montant"><Pencil size={15} /></button>

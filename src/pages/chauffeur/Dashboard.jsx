@@ -2,7 +2,7 @@ import Layout from '../../components/Layout'
 import { useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
-import { Bus, ClipboardList, CheckCircle, Clock, XCircle } from 'lucide-react'
+import { Bus, ClipboardList, CheckCircle, Clock, XCircle, QrCode } from 'lucide-react'
 
 export default function ChauffeurDashboard() {
     const navigate = useNavigate()
@@ -141,6 +141,22 @@ export default function ChauffeurDashboard() {
                         Voir les réservations
                     </button>
                 </div>
+                {/* Mon bus */}
+<div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+    <h2 className="text-lg font-semibold text-gray-800 mb-4">
+        Mon bus
+    </h2>
+    <p className="text-gray-500 text-sm mb-4">
+        Afficher et imprimer le QR code de votre bus
+    </p>
+    <button
+        onClick={() => navigate('/chauffeur/mon-bus')}
+        className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold transition flex items-center gap-2"
+    >
+        <QrCode size={18} />
+        Voir le QR de mon bus
+    </button>
+</div>
 
                 {/* Mes trajets du jour */}
                 <div

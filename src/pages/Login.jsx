@@ -18,17 +18,18 @@ export default function Login() {
         setError('')
         try {
             const user = await login(email, password)
-            switch (user.role) {
-                case 'ddl': navigate('/ddl/dashboard'); break
-                case 'enseignant': navigate('/enseignant/dashboard'); break
-                case 'admin': navigate('/admin/dashboard'); break
-                case 'drh': navigate('/drh/dashboard'); break
-                case 'sg_drh': navigate('/sg-drh/dashboard'); break
-                case 'chauffeur': navigate('/chauffeur/dashboard'); break
-                case 'sg_vr': navigate('/sg-vr/dashboard'); break
-                case 'vice_recteur': navigate('/vice-recteur/dashboard'); break
-                default: navigate('/login'); break
-            }
+           switch (user.role) {
+    case 'ddl': navigate('/ddl/dashboard'); break
+    case 'enseignant': navigate('/enseignant/dashboard'); break
+    case 'admin': navigate('/admin/dashboard'); break
+    case 'drh': navigate('/drh/dashboard'); break
+    case 'sg_drh': navigate('/sg-drh/dashboard'); break
+    case 'chauffeur': navigate('/chauffeur/dashboard'); break
+    case 'sg_vr': navigate('/sg-vr/dashboard'); break
+    case 'vice_recteur': navigate('/vice-recteur/dashboard'); break
+    case 'usager': navigate('/usager/dashboard'); break  // ← ajoute cette ligne
+    default: navigate('/login'); break
+}
         } catch (err) {
             setError(err.response?.data?.message || 'Email ou mot de passe incorrect')
         } finally {

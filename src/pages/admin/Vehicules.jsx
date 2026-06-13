@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
-import { Bus, Plus, Edit, Trash2, X, Check } from 'lucide-react'
+import { Bus, Plus, Edit, Trash2, X, Check, QrCode, Printer } from 'lucide-react'
+import QRCode from 'react-qr-code'
 
 const etatConfig = {
     disponible: 'bg-green-100 text-green-700',
@@ -19,6 +20,7 @@ export default function AdminVehicules() {
     const [vehicules, setVehicules] = useState([])
     const [loading, setLoading] = useState(true)
     const [modal, setModal] = useState(false)
+    const [modalQR, setModalQR] = useState(null)
     const [editVehicule, setEditVehicule] = useState(null)
     const [actionLoading, setActionLoading] = useState(null)
     const [error, setError] = useState('')
@@ -103,6 +105,52 @@ export default function AdminVehicules() {
         }
     }
 
+    const imprimer = (vehicule) => {
+        const html = `
+            <!DOCTYPE html>
+            <html lang="fr">
+            <head>
+                <meta charset="UTF-8">
+                <title>QR Bus ${vehicule.immatriculation}</title>
+                <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body { font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: white; padding: 32px; }
+                    .card { border: 3px solid #1d4ed8; border-radius: 16px; padding: 32px; text-align: center; max-width: 400px; width: 100%; }
+                    .logo { font-size: 22px; font-weight: 800; color: #1d4ed8; margin-bottom: 4px; }
+                    .subtitle { font-size: 13px; color: #6b7280; margin-bottom: 24px; }
+                    .qr { margin: 0 auto 24px; }
+                    .immat { font-size: 20px; font-weight: 700; color: #1a1a2e; margin-bottom: 8px; }
+                    .capacite { font-size: 13px; color: #6b7280; margin-bottom: 16px; }
+                    .instructions { background: #eff6ff; border-radius: 8px; padding: 12px; font-size: 12px; color: #1d4ed8; text-align: left; }
+                    @media print { body { padding: 0; } }
+                </style>
+                <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+            </head>
+            <body>
+                <div class="card">
+                    <div class="logo">UADB Mobilité</div>
+                    <div class="subtitle">Scanner pour valider votre montée</div>
+                    <div class="qr" id="qr"></div>
+                    <div class="immat">${vehicule.immatriculation}</div>
+                    <div class="capacite">Capacité : ${vehicule.capacite} places</div>
+                    <div class="instructions">
+                        📱 Scannez ce QR avec l'application UADB Mobilité pour valider votre présence dans le bus.
+                    </div>
+                </div>
+                <script>
+                    QRCode.toCanvas(document.createElement('canvas'), '${vehicule.qr_code}', { width: 220 }, function(err, canvas) {
+                        if (!err) document.getElementById('qr').appendChild(canvas);
+                        setTimeout(() => window.print(), 500);
+                    });
+                </script>
+            </body>
+            </html>
+        `
+        const win = window.open('', '_blank')
+        win.document.write(html)
+        win.document.close()
+    }
+
     return (
         <Layout>
             <div className="space-y-6">
@@ -168,6 +216,7 @@ export default function AdminVehicules() {
                                     </p>
                                 )}
 
+                                {/* Boutons actions */}
                                 <div className="flex gap-2 mt-4">
                                     <button
                                         onClick={() => ouvrirModal(vehicule)}
@@ -188,13 +237,62 @@ export default function AdminVehicules() {
                                         Supprimer
                                     </button>
                                 </div>
+
+                                {/* Bouton QR */}
+                                {vehicule.qr_code && (
+                                    <button
+                                        onClick={() => setModalQR(vehicule)}
+                                        className="w-full mt-2 flex items-center justify-center gap-1.5 border border-green-200 text-green-700 py-2 rounded-xl text-xs font-semibold hover:bg-green-50 transition"
+                                    >
+                                        <QrCode size={13} />
+                                        Voir QR du bus
+                                    </button>
+                                )}
                             </div>
                         ))}
                     </div>
                 )}
             </div>
 
-            {/* Modal */}
+            {/* Modal QR */}
+            {modalQR && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl text-center">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-bold text-gray-800">
+                                QR — {modalQR.immatriculation}
+                            </h2>
+                            <button onClick={() => setModalQR(null)} className="text-gray-400 hover:text-gray-600">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <p className="text-gray-400 text-sm mb-4">
+                            Imprimez et collez ce QR dans le bus
+                        </p>
+
+                        <div className="flex justify-center mb-4">
+                            <div className="p-4 bg-white border-2 border-gray-200 rounded-2xl">
+                                <QRCode value={modalQR.qr_code} size={180} level="H" />
+                            </div>
+                        </div>
+
+                        <p className="font-mono text-sm font-bold text-gray-600 tracking-widest mb-5">
+                            {modalQR.qr_code}
+                        </p>
+
+                        <button
+                            onClick={() => imprimer(modalQR)}
+                            className="w-full flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white px-6 py-3 rounded-xl font-semibold text-sm transition"
+                        >
+                            <Printer size={16} />
+                            Imprimer le QR
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Ajouter/Modifier */}
             {modal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
@@ -282,7 +380,7 @@ export default function AdminVehicules() {
                                 {actionLoading === 'save' && <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                                 {editVehicule ? 'Modifier' : 'Ajouter'}
                             </button>
-                        </div>
+               ac         </div>
                     </div>
                 </div>
             )}

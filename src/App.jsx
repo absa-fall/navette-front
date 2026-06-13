@@ -36,10 +36,12 @@ import MesTrajets from './pages/chauffeur/MesTrajets'
 import ChauffeurReservations from './pages/chauffeur/Reservations'
 import ScannerPassager from './pages/chauffeur/ScannerPassager'
 
+
 import OrdreMissionPrint from './pages/ordres/OrdreMissionPrint'
 
 import ScannerBus from './pages/usager/ScannerBus'
 import UsagerDashboard from './pages/usager/Dashboard'
+import Reserver from './pages/usager/Reserver'
 
 
 // SG VR
@@ -55,6 +57,8 @@ import RapportsAValider from './pages/vicerecteur/RapportsAValider'
 import AdminDashboard from './pages/admin/Dashboard'
 import AdminUtilisateurs from './pages/admin/Utilisateurs'
 import AdminVehicules from './pages/admin/Vehicules'
+
+import MonBus from './pages/chauffeur/MonBus'
 
 const PrivateRoute = ({ children }) => {
     const { user, loading } = useAuth()
@@ -74,7 +78,7 @@ function App() {
 
                     {/* Public */}
                     <Route path="/login" element={<Login />} />
-                    <Route path="/reservation" element={<Reservation />} />
+                    <Route path="/reservation" element={<Navigate to="/login" replace />} />
                     <Route path="/validation" element={<PrivateRoute><ValidationNavette /></PrivateRoute>} />
 
                     {/* DDL */}
@@ -113,10 +117,12 @@ function App() {
                     <Route path="/chauffeur/dashboard" element={<PrivateRoute><ChauffeurDashboard /></PrivateRoute>} />
                     <Route path="/chauffeur/trajets" element={<PrivateRoute><MesTrajets /></PrivateRoute>} />
                     <Route path="/chauffeur/reservations" element={<PrivateRoute><ChauffeurReservations /></PrivateRoute>} />
-
+<Route path="/chauffeur/mon-bus" element={<PrivateRoute><MonBus /></PrivateRoute>} />
 <Route path="/chauffeur/scanner" element={<PrivateRoute><ScannerPassager /></PrivateRoute>} />
 {/* Usager */}
 <Route path="/usager/dashboard" element={<PrivateRoute><UsagerDashboard /></PrivateRoute>} />
+<Route path="/usager/reserver" element={<PrivateRoute><Reserver /></PrivateRoute>} />
+<Route path="/usager/scanner" element={<PrivateRoute><ScannerBus /></PrivateRoute>} />  {/* ← ajoute ça */}
                     {/* SG VR */}
                     <Route path="/sg-vr/dashboard" element={<PrivateRoute><SGVRDashboard /></PrivateRoute>} />
                     <Route path="/sg-vr/recapitulatifs" element={<PrivateRoute><Recapitulatifs /></PrivateRoute>} />
