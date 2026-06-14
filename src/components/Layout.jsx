@@ -29,9 +29,9 @@ const menuParRole = {
     ],
     enseignant: [
         { label: 'Dashboard', icon: LayoutDashboard, path: '/enseignant/dashboard' },
-        { label: 'Mes voyages', icon: MapPin, path: '/enseignant/voyages' },
+        { label: 'Mes voyages', icon: MapPin, path: '/enseignant/voyages-etudes' },
         { label: 'Mes rapports', icon: FileText, path: '/enseignant/rapports' },
-        { label: 'Validation', icon: CheckCircle, path: '/validation' },
+        { label: 'Réserver navette', icon: Bus, path: '/enseignant/reserver' },
     ],
     drh: [
         { label: 'Dashboard', icon: LayoutDashboard, path: '/drh/dashboard' },
@@ -44,7 +44,6 @@ const menuParRole = {
     chauffeur: [
         { label: 'Dashboard', icon: LayoutDashboard, path: '/chauffeur/dashboard' },
         { label: 'Mes trajets', icon: Bus, path: '/chauffeur/trajets' },
-        // Validation supprimée
     ],
     sg_vr: [
         { label: 'Dashboard', icon: LayoutDashboard, path: '/sg-vr/dashboard' },
@@ -75,16 +74,10 @@ export default function Layout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(true)
     const [badges, setBadges] = useState({
         drhOrdres: 0,
-        drhOrdresApprouves: 0,
-        drhOrdresRejetes: 0,
         sgDrhOrdres: 0,
-        sgDrhSignes: 0,
-        sgDrhTransmis: 0,
         viceRecteurVoyages: 0,
         viceRecteurRapports: 0,
-        trajetsAssignes: 0,
         enAttente: 0,
-        trajetsEffectues: 0,
         mesDemandes: 0,
         mesDemandesRejetees: 0,
     })
@@ -103,7 +96,6 @@ export default function Layout({ children }) {
                 console.error('Erreur notifications:', error)
             }
         }
-
         fetchNotifs()
         const interval = setInterval(fetchNotifs, 10000)
         return () => clearInterval(interval)
@@ -112,9 +104,7 @@ export default function Layout({ children }) {
     const marquerLu = async (id) => {
         try {
             await api.patch(`/notifications/${id}/lu`)
-            setNotifications(prev => prev.map(n =>
-                n.id === id ? { ...n, lu: true } : n
-            ))
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, lu: true } : n))
         } catch (error) {
             console.error(error)
         }
@@ -125,7 +115,7 @@ export default function Layout({ children }) {
             await api.patch('/notifications/lu-toutes')
             setNotifications(prev => prev.map(notif => ({ ...notif, lu: true })))
         } catch (error) {
-            console.error('Erreur marquer toutes lues :', error)
+            console.error(error)
         }
     }
 
@@ -168,7 +158,6 @@ export default function Layout({ children }) {
                 console.error(error)
             }
         }
-
         fetchNotifications()
         const interval = setInterval(fetchNotifications, 5000)
         return () => clearInterval(interval)
@@ -190,9 +179,7 @@ export default function Layout({ children }) {
                     <div className="bg-white/20 p-2 rounded-xl flex-shrink-0">
                         <Bus size={20} className="text-white" />
                     </div>
-                    {sidebarOpen && (
-                        <span className="font-bold text-sm">UADB Mobilité</span>
-                    )}
+                    {sidebarOpen && <span className="font-bold text-sm">UADB Mobilité</span>}
                 </div>
 
                 {/* Menu */}
@@ -220,41 +207,33 @@ export default function Layout({ children }) {
                                                 {badges.drhOrdres}
                                             </span>
                                         )}
-
                                         {item.path === '/sg-drh/ordres' && badges.sgDrhOrdres > 0 && (
                                             <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
                                                 {badges.sgDrhOrdres}
                                             </span>
                                         )}
-
                                         {item.path === '/vice-recteur/voyages' && badges.viceRecteurVoyages > 0 && (
                                             <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">
                                                 {badges.viceRecteurVoyages}
                                             </span>
                                         )}
-
                                         {item.path === '/vice-recteur/rapports' && badges.viceRecteurRapports > 0 && (
                                             <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
                                                 {badges.viceRecteurRapports}
                                             </span>
                                         )}
-
                                         {item.path === '/chauffeur/trajets' && badges.enAttente > 0 && (
                                             <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
                                                 {badges.enAttente}
                                             </span>
                                         )}
-
                                         {item.path === '/ddl/navettes' &&
                                             (badges.mesDemandes > 0 || badges.mesDemandesRejetees > 0) && (
                                                 <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
                                                     {badges.mesDemandes + badges.mesDemandesRejetees}
                                                 </span>
                                             )}
-
-                                        {isActive && (
-                                            <ChevronRight size={14} className="ml-auto" />
-                                        )}
+                                        {isActive && <ChevronRight size={14} className="ml-auto" />}
                                     </>
                                 )}
                             </Link>
@@ -290,15 +269,11 @@ export default function Layout({ children }) {
 
                 {/* Topbar */}
                 <header className="bg-white shadow-sm px-6 py-4 flex items-center justify-between">
-                    <button
-                        onClick={() => setSidebarOpen(!sidebarOpen)}
-                        className="text-gray-500 hover:text-gray-700"
-                    >
+                    <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-gray-500 hover:text-gray-700">
                         {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
                     </button>
 
                     <div className="flex items-center gap-4">
-                        {/* Cloche notification */}
                         <div className="relative notif-dropdown">
                             <button
                                 onClick={() => setNotifOpen(!notifOpen)}
@@ -314,19 +289,16 @@ export default function Layout({ children }) {
 
                             {notifOpen && (
                                 <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden">
-
                                     <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50">
                                         <h3 className="font-semibold text-sm text-gray-800">Notifications</h3>
                                         <div className="flex gap-3">
                                             {totalNotifs > 0 && (
-                                                <button onClick={marquerToutLu}
-                                                    className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                                                <button onClick={marquerToutLu} className="text-xs text-blue-600 hover:text-blue-800 font-medium">
                                                     Tout lire
                                                 </button>
                                             )}
                                             {notifications.length > 0 && (
-                                                <button onClick={supprimerToutesNotifications}
-                                                    className="text-xs text-red-600 hover:text-red-800 font-medium">
+                                                <button onClick={supprimerToutesNotifications} className="text-xs text-red-600 hover:text-red-800 font-medium">
                                                     Effacer tout
                                                 </button>
                                             )}

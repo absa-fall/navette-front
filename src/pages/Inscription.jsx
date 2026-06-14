@@ -23,22 +23,34 @@ export default function Inscription() {
     const [success, setSuccess] = useState(false)
 
     const handleChange = (e) => {
-        setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+        const { name, value } = e.target
+        setForm(prev => ({
+            ...prev,
+            [name]: value,
+            ...(name === 'type_profil' && { statut: '' })
+        }))
     }
 
     const handleSubmit = async (e) => {
-        e.preventDefault()
-        setLoading(true)
-        setError('')
-        try {
-            await api.post('/register', form)
-            setSuccess(true)
-        } catch (err) {
-            setError(err.response?.data?.message || 'Erreur lors de la création du compte')
-        } finally {
-            setLoading(false)
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    try {
+        
+        const data = {
+            ...form,
+            role: form.type_profil === 'PER' && form.statut === 'permanent'
+                ? 'enseignant'
+                : 'usager'
         }
+        await api.post('/register', data)
+        setSuccess(true)
+    } catch (err) {
+        setError(err.response?.data?.message || 'Erreur lors de la création du compte')
+    } finally {
+        setLoading(false)
     }
+}
 
     if (success) {
         return (
@@ -88,7 +100,7 @@ export default function Inscription() {
 
                     {error && (
                         <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-4 mb-5 text-sm">
-                             {error}
+                            {error}
                         </div>
                     )}
 
@@ -180,11 +192,22 @@ export default function Inscription() {
                                     className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     required>
                                     <option value="">Choisir...</option>
-                                    <option value="permanent">Permanent</option>
-                                    <option value="non_permanent">Non permanent</option>
-                                    <option value="contractuel">Contractuel</option>
-                                    <option value="vacataire">Vacataire</option>
+                                    {form.type_profil === 'PER' ? (
+                                        <option value="permanent">Permanent</option>
+                                    ) : (
+                                        <>
+                                            <option value="permanent">Permanent</option>
+                                            <option value="non_permanent">Non permanent</option>
+                                            <option value="contractuel">Contractuel</option>
+                                            <option value="vacataire">Vacataire</option>
+                                        </>
+                                    )}
                                 </select>
+                                {form.type_profil === 'PER' && (
+                                    <p className="text-xs text-blue-600 mt-1">
+                                        Les PER sont automatiquement enregistrés comme Permanent.
+                                    </p>
+                                )}
                             </div>
                         </div>
 

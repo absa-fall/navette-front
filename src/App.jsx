@@ -5,7 +5,6 @@ import Reservation from './pages/Reservation'
 
 // Auth
 import Login from './pages/Login'
-
 import Inscription from './pages/Inscription'
 
 // DDL
@@ -18,11 +17,11 @@ import DemandesEnAttente from './pages/ddl/DemandesEnAttente'
 
 // Enseignant
 import EnseignantDashboard from './pages/enseignant/Dashboard'
-import EnseignantMesVoyages from './pages/enseignant/MesVoyages'
 import EnseignantNouveauVoyage from './pages/enseignant/NouveauVoyage'
 import EnseignantNouveauRapport from './pages/enseignant/NouveauRapport'
 import EnseignantMesRapports from './pages/enseignant/MesRapports'
 import EnseignantResoumettreRapport from './pages/enseignant/ResoumettreRapport'
+import MesVoyagesEtudes from './pages/enseignant/MesVoyagesEtudes'
 
 // DRH
 import DRHDashboard from './pages/drh/Dashboard'
@@ -37,14 +36,14 @@ import ChauffeurDashboard from './pages/chauffeur/Dashboard'
 import MesTrajets from './pages/chauffeur/MesTrajets'
 import ChauffeurReservations from './pages/chauffeur/Reservations'
 import ScannerPassager from './pages/chauffeur/ScannerPassager'
-
+import MonBus from './pages/chauffeur/MonBus'
 
 import OrdreMissionPrint from './pages/ordres/OrdreMissionPrint'
 
+// Usager
 import ScannerBus from './pages/usager/ScannerBus'
 import UsagerDashboard from './pages/usager/Dashboard'
 import Reserver from './pages/usager/Reserver'
-
 
 // SG VR
 import SGVRDashboard from './pages/sgvr/SGDashboard'
@@ -54,13 +53,13 @@ import Recapitulatifs from './pages/sgvr/Recapitulatifs'
 import ViceRecteurDashboard from './pages/vicerecteur/Dashboard'
 import VoyagesATraiter from './pages/vicerecteur/VoyagesATraiter'
 import RapportsAValider from './pages/vicerecteur/RapportsAValider'
+import NouveauVoyageEtude from './pages/vicerecteur/NouveauVoyageEtude'
+import VoyagesEtudes from './pages/vicerecteur/VoyagesEtudes'
 
 // Admin
 import AdminDashboard from './pages/admin/Dashboard'
 import AdminUtilisateurs from './pages/admin/Utilisateurs'
 import AdminVehicules from './pages/admin/Vehicules'
-
-import MonBus from './pages/chauffeur/MonBus'
 
 const PrivateRoute = ({ children }) => {
     const { user, loading } = useAuth()
@@ -94,11 +93,12 @@ function App() {
 
                     {/* Enseignant */}
                     <Route path="/enseignant/dashboard" element={<PrivateRoute><EnseignantDashboard /></PrivateRoute>} />
-                    <Route path="/enseignant/voyages" element={<PrivateRoute><EnseignantMesVoyages /></PrivateRoute>} />
+                    <Route path="/enseignant/voyages-etudes" element={<PrivateRoute><MesVoyagesEtudes /></PrivateRoute>} />
                     <Route path="/enseignant/voyages/nouveau" element={<PrivateRoute><EnseignantNouveauVoyage /></PrivateRoute>} />
                     <Route path="/enseignant/rapports" element={<PrivateRoute><EnseignantMesRapports /></PrivateRoute>} />
                     <Route path="/enseignant/rapports/nouveau/:voyageId" element={<PrivateRoute><EnseignantNouveauRapport /></PrivateRoute>} />
                     <Route path="/enseignant/rapports/resoumettre/:rapportId" element={<PrivateRoute><EnseignantResoumettreRapport /></PrivateRoute>} />
+                    <Route path="/enseignant/reserver" element={<PrivateRoute><Reserver /></PrivateRoute>} />
 
                     {/* DRH */}
                     <Route path="/drh/dashboard" element={<PrivateRoute><DRHDashboard /></PrivateRoute>} />
@@ -107,25 +107,20 @@ function App() {
                     {/* SG DRH */}
                     <Route path="/sg-drh/dashboard" element={<PrivateRoute><SGDRHDashboard /></PrivateRoute>} />
                     <Route path="/sg-drh/ordres" element={<PrivateRoute><SGDRHOrdres /></PrivateRoute>} />
-                    <Route
-                        path="/ordres-mission/:id/print"
-                        element={
-                            <PrivateRoute>
-                                <OrdreMissionPrint />
-                            </PrivateRoute>
-                        }
-                    />
+                    <Route path="/ordres-mission/:id/print" element={<PrivateRoute><OrdreMissionPrint /></PrivateRoute>} />
 
                     {/* Chauffeur */}
                     <Route path="/chauffeur/dashboard" element={<PrivateRoute><ChauffeurDashboard /></PrivateRoute>} />
                     <Route path="/chauffeur/trajets" element={<PrivateRoute><MesTrajets /></PrivateRoute>} />
                     <Route path="/chauffeur/reservations" element={<PrivateRoute><ChauffeurReservations /></PrivateRoute>} />
-<Route path="/chauffeur/mon-bus" element={<PrivateRoute><MonBus /></PrivateRoute>} />
-<Route path="/chauffeur/scanner" element={<PrivateRoute><ScannerPassager /></PrivateRoute>} />
-{/* Usager */}
-<Route path="/usager/dashboard" element={<PrivateRoute><UsagerDashboard /></PrivateRoute>} />
-<Route path="/usager/reserver" element={<PrivateRoute><Reserver /></PrivateRoute>} />
-<Route path="/usager/scanner" element={<PrivateRoute><ScannerBus /></PrivateRoute>} />  {/* ← ajoute ça */}
+                    <Route path="/chauffeur/mon-bus" element={<PrivateRoute><MonBus /></PrivateRoute>} />
+                    <Route path="/chauffeur/scanner" element={<PrivateRoute><ScannerPassager /></PrivateRoute>} />
+
+                    {/* Usager */}
+                    <Route path="/usager/dashboard" element={<PrivateRoute><UsagerDashboard /></PrivateRoute>} />
+                    <Route path="/usager/reserver" element={<PrivateRoute><Reserver /></PrivateRoute>} />
+                    <Route path="/usager/scanner" element={<PrivateRoute><ScannerBus /></PrivateRoute>} />
+
                     {/* SG VR */}
                     <Route path="/sg-vr/dashboard" element={<PrivateRoute><SGVRDashboard /></PrivateRoute>} />
                     <Route path="/sg-vr/recapitulatifs" element={<PrivateRoute><Recapitulatifs /></PrivateRoute>} />
@@ -135,6 +130,8 @@ function App() {
                     <Route path="/vice-recteur/voyages" element={<PrivateRoute><VoyagesATraiter /></PrivateRoute>} />
                     <Route path="/vice-recteur/rapports" element={<PrivateRoute><RapportsAValider /></PrivateRoute>} />
                     <Route path="/vice-recteur/rapports-a-valider" element={<PrivateRoute><RapportsAValider /></PrivateRoute>} />
+                    <Route path="/vice-recteur/voyages-etudes" element={<PrivateRoute><VoyagesEtudes /></PrivateRoute>} />
+                    <Route path="/vice-recteur/voyages-etudes/nouveau" element={<PrivateRoute><NouveauVoyageEtude /></PrivateRoute>} />
 
                     {/* Admin */}
                     <Route path="/admin/dashboard" element={<PrivateRoute><AdminDashboard /></PrivateRoute>} />

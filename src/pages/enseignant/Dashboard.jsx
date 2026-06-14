@@ -19,16 +19,16 @@ export default function EnseignantDashboard() {
 
     useEffect(() => {
         Promise.all([
-            api.get('/voyages'),
+            api.get('/mes-voyages-etudes'),
             api.get('/rapports'),
             api.get('/voyages/eligibilite'),
         ]).then(([voyagesRes, rapportsRes, eligRes]) => {
-            const voyages = voyagesRes.data
+            const beneficiaires = voyagesRes.data
             setStats({
-                voyages: voyages.length,
+                voyages: beneficiaires.length,
                 rapports: rapportsRes.data.length,
-                enAttente: voyages.filter(v => v.statut === 'en_attente').length,
-                approuves: voyages.filter(v => v.statut === 'approuve').length,
+                enAttente: beneficiaires.filter(b => b.statut_justificatif === 'en_attente').length,
+                approuves: beneficiaires.filter(b => b.statut_autorisation === 'approuve').length,
             })
             setEligibilite(eligRes.data)
         }).catch(() => {})
@@ -70,9 +70,9 @@ export default function EnseignantDashboard() {
 
                 {/* Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-                    {/* Card Voyages total */}
-                    <div 
-                        onClick={() => navigate('/enseignant/voyages')}
+
+                    <div
+                        onClick={() => navigate('/enseignant/voyages-etudes')}
                         className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
                     >
                         <div className="bg-blue-100 p-2 rounded-xl w-fit mb-3">
@@ -82,21 +82,19 @@ export default function EnseignantDashboard() {
                         <p className="text-sm text-gray-500 mt-1">Voyages total</p>
                     </div>
 
-                    {/* Card En attente VR */}
-                    <div 
-                        onClick={() => navigate('/enseignant/voyages?statut=en_attente')}
+                    <div
+                        onClick={() => navigate('/enseignant/voyages-etudes')}
                         className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
                     >
                         <div className="bg-orange-100 p-2 rounded-xl w-fit mb-3">
                             <Clock size={20} className="text-orange-700" />
                         </div>
                         <p className="text-2xl font-bold text-gray-800">{stats.enAttente}</p>
-                        <p className="text-sm text-gray-500 mt-1">En attente VR</p>
+                        <p className="text-sm text-gray-500 mt-1">En attente</p>
                     </div>
 
-                    {/* Card Approuvés */}
-                    <div 
-                        onClick={() => navigate('/enseignant/voyages?statut=approuves')}
+                    <div
+                        onClick={() => navigate('/enseignant/voyages-etudes')}
                         className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
                     >
                         <div className="bg-green-100 p-2 rounded-xl w-fit mb-3">
@@ -106,8 +104,7 @@ export default function EnseignantDashboard() {
                         <p className="text-sm text-gray-500 mt-1">Approuvés</p>
                     </div>
 
-                    {/* Card Rapports soumis */}
-                    <div 
+                    <div
                         onClick={() => navigate('/enseignant/rapports')}
                         className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
                     >
@@ -123,8 +120,9 @@ export default function EnseignantDashboard() {
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <h2 className="text-lg font-semibold text-gray-800 mb-4">Actions rapides</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
                         {eligibilite?.eligible && (
-                            <div 
+                            <div
                                 onClick={() => navigate('/enseignant/voyages/nouveau')}
                                 className="flex items-center gap-4 p-4 border-2 border-dashed border-green-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition group cursor-pointer"
                             >
@@ -138,18 +136,32 @@ export default function EnseignantDashboard() {
                             </div>
                         )}
 
-                        <div 
-                            onClick={() => navigate('/enseignant/voyages')}
+                        <div
+                            onClick={() => navigate('/enseignant/voyages-etudes')}
                             className="flex items-center gap-4 p-4 border-2 border-dashed border-blue-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition group cursor-pointer"
                         >
                             <div className="bg-blue-100 p-3 rounded-xl group-hover:bg-blue-200 transition">
-                                <FileText size={22} className="text-blue-700" />
+                                <MapPin size={22} className="text-blue-700" />
                             </div>
                             <div>
-                                <p className="font-semibold text-gray-800">Mes voyages</p>
-                                <p className="text-sm text-gray-500">Voir mes demandes</p>
+                                <p className="font-semibold text-gray-800">Mes voyages d'études</p>
+                                <p className="text-sm text-gray-500">Voir mes sélections et soumettre justificatifs</p>
                             </div>
                         </div>
+
+                        <div
+                            onClick={() => navigate('/enseignant/rapports')}
+                            className="flex items-center gap-4 p-4 border-2 border-dashed border-purple-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition group cursor-pointer"
+                        >
+                            <div className="bg-purple-100 p-3 rounded-xl group-hover:bg-purple-200 transition">
+                                <FileText size={22} className="text-purple-700" />
+                            </div>
+                            <div>
+                                <p className="font-semibold text-gray-800">Mes rapports</p>
+                                <p className="text-sm text-gray-500">Voir et soumettre mes rapports</p>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>

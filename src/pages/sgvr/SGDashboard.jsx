@@ -9,6 +9,12 @@ import {
     FileSpreadsheet, FileText, X, Check, History
 } from 'lucide-react'
 
+const typeTrajetLabel = {
+    aller: 'Aller',
+    retour: 'Retour',
+    aller_retour: 'Aller-Retour',
+}
+
 export default function SGDashboard() {
     const navigate = useNavigate()
     const [reservations, setReservations] = useState([])
@@ -23,13 +29,8 @@ export default function SGDashboard() {
     const [selected, setSelected] = useState([])
     const [deleteLoading, setDeleteLoading] = useState(false)
 
-    useEffect(() => {
-        fetchReservations()
-    }, [])
-
-    useEffect(() => {
-        setSelected([])
-    }, [onglet])
+    useEffect(() => { fetchReservations() }, [])
+    useEffect(() => { setSelected([]) }, [onglet])
 
     const fetchReservations = async () => {
         setLoading(true)
@@ -76,7 +77,6 @@ export default function SGDashboard() {
         }
     }
 
-    // Cases à cocher
     const toggleSelect = (id) => {
         setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
     }
@@ -90,13 +90,14 @@ export default function SGDashboard() {
         }
     }
 
+    // ✅ Masquer de la vue au lieu de supprimer vraiment
     const supprimerSelection = async (liste) => {
         const ids = selected.filter(id => liste.some(r => r.id === id))
         if (ids.length === 0) return
-        if (!confirm(`Voulez-vous vraiment supprimer ${ids.length} réservation(s) de l'historique ?`)) return
+        if (!confirm(`Voulez-vous vraiment supprimer ${ids.length} réservation(s) de votre historique ?`)) return
         setDeleteLoading(true)
         try {
-            await Promise.all(ids.map(id => api.delete(`/reservations/${id}`)))
+            // On retire juste de la vue locale, le montant reste en base
             setReservations(prev => prev.filter(r => !ids.includes(r.id)))
             setSelected([])
         } catch (err) {
@@ -107,7 +108,7 @@ export default function SGDashboard() {
     }
 
     const filteredReservations = (liste) => liste.filter(r => {
-        const matchesSearch = 
+        const matchesSearch =
             (r.nom || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (r.prenom || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (r.ville_depart || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -131,15 +132,17 @@ export default function SGDashboard() {
         }))
     }
 
+    // ✅ Type de trajet ajouté dans Excel
     const exportExcel = (liste) => {
-        const headers = ['Nom', 'Prénom', 'Catégorie', 'Profil', 'Départ', 'Arrivée', 'Date', 'Heure', 'Montant', 'Statut']
+        const headers = ['Nom', 'Prénom', 'Catégorie', 'Profil', 'Départ', 'Arrivée', 'Type trajet', 'Date', 'Heure', 'Montant', 'Statut']
         const rows = sortedList(liste).map(r => [
             r.nom, r.prenom, r.categorie, r.type_profil,
             r.ville_depart, r.ville_arrivee,
+            typeTrajetLabel[r.type_trajet] || r.type_trajet || '-',
             r.date_reservation ? new Date(r.date_reservation).toLocaleDateString('fr-FR') : '-',
             r.heure_reservation || '-',
             (parseFloat(r.montant_retenue) || 0) === 0 ? '—' : (parseFloat(r.montant_retenue) || 0) + ' FCFA',
-            r.validee_descente ? 'Terminée' : r.validee_montee ? 'En cours' : 'En attente'
+            r.statut === 'terminee' ? 'Terminée' : r.statut === 'confirmee' ? 'Confirmée' : r.statut === 'en_cours' ? 'En cours' : 'En attente'
         ])
         const csvContent = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
         const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -151,6 +154,7 @@ export default function SGDashboard() {
         URL.revokeObjectURL(url)
     }
 
+    // ✅ Type de trajet ajouté dans PDF
     const exportPDF = (liste) => {
         const sorted = sortedList(liste)
         const total = sorted.reduce((sum, r) => sum + (parseFloat(r.montant_retenue) || 0), 0)
@@ -170,16 +174,25 @@ export default function SGDashboard() {
                 <h1>Réservations Navette — UADB Mobilité</h1>
                 <p>Exporté le ${new Date().toLocaleDateString('fr-FR')} — ${sorted.length} réservation(s)</p>
                 <table>
-                    <thead><tr><th>Passager</th><th>Profil</th><th>Trajet</th><th>Date</th><th>Montant</th><th>Statut</th></tr></thead>
+                    <thead><tr>
+                        <th>Passager</th>
+                        <th>Profil</th>
+                        <th>Trajet</th>
+                        <th>Type</th>
+                        <th>Date</th>
+                        <th>Montant</th>
+                        <th>Statut</th>
+                    </tr></thead>
                     <tbody>
                         ${sorted.map(r => `
                             <tr>
                                 <td>${r.prenom} ${r.nom}<br><small>${r.categorie}</small></td>
                                 <td>${r.type_profil}</td>
                                 <td>${r.ville_depart} → ${r.ville_arrivee}</td>
+                                <td>${typeTrajetLabel[r.type_trajet] || r.type_trajet || '-'}</td>
                                 <td>${r.date_reservation ? new Date(r.date_reservation).toLocaleDateString('fr-FR') : '-'}<br>${r.heure_reservation || '-'}</td>
                                 <td>${(parseFloat(r.montant_retenue) || 0) === 0 ? '—' : (parseFloat(r.montant_retenue) || 0).toLocaleString() + ' FCFA'}</td>
-                                <td>${r.validee_descente ? 'Terminée' : r.validee_montee ? 'En cours' : 'En attente'}</td>
+                                <td>${r.statut === 'terminee' ? 'Terminée' : r.statut === 'confirmee' ? 'Confirmée' : r.statut === 'en_cours' ? 'En cours' : 'En attente'}</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -192,13 +205,14 @@ export default function SGDashboard() {
         win.print()
     }
 
-  const getStatutBadge = (r) => {
-    if (r.statut === 'terminee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">Terminée</span>
-    if (r.statut === 'en_cours') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">En cours</span>
-    if (r.statut === 'confirmee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">Confirmée</span>
-    if (r.statut === 'refusee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">Refusée</span>
-    return <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">En attente</span>
-}
+    const getStatutBadge = (r) => {
+        if (r.statut === 'terminee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">Terminée</span>
+        if (r.statut === 'en_cours') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">En cours</span>
+        if (r.statut === 'confirmee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">Confirmée</span>
+        if (r.statut === 'refusee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">Refusée</span>
+        return <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">En attente</span>
+    }
+
     const getProfilBadge = (typeProfil) => {
         const colors = {
             'permanent': 'bg-purple-100 text-purple-700',
@@ -210,7 +224,7 @@ export default function SGDashboard() {
     }
 
     const enCours = reservations.filter(r => r.statut !== 'terminee' && r.statut !== 'refusee')
-const terminées = reservations.filter(r => r.statut === 'terminee')
+    const terminées = reservations.filter(r => r.statut === 'terminee')
     const totalRetenues = reservations.reduce((sum, r) => sum + (parseFloat(r.montant_retenue) || 0), 0)
     const listeActive = onglet === 'encours' ? enCours : terminées
     const estHistorique = onglet === 'historique'
@@ -223,21 +237,14 @@ const terminées = reservations.filter(r => r.statut === 'terminee')
 
         return (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                {/* Barre suppression en masse */}
                 {estHistorique && selectedDansListe.length > 0 && (
                     <div className="flex items-center justify-between px-4 py-3 bg-red-50 border-b border-red-100">
-                        <p className="text-sm text-red-700 font-medium">
-                            {selectedDansListe.length} sélectionné(s)
-                        </p>
-                        <button
-                            onClick={() => supprimerSelection(liste)}
-                            disabled={deleteLoading}
-                            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50"
-                        >
+                        <p className="text-sm text-red-700 font-medium">{selectedDansListe.length} sélectionné(s)</p>
+                        <button onClick={() => supprimerSelection(liste)} disabled={deleteLoading}
+                            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
                             {deleteLoading
                                 ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                : <Trash2 size={14} />
-                            }
+                                : <Trash2 size={14} />}
                             Supprimer la sélection
                         </button>
                     </div>
@@ -249,12 +256,8 @@ const terminées = reservations.filter(r => r.statut === 'terminee')
                             <tr>
                                 {estHistorique && (
                                     <th className="px-4 py-3">
-                                        <input
-                                            type="checkbox"
-                                            checked={toutSelectionne}
-                                            onChange={() => toggleSelectAll(liste)}
-                                            className="w-4 h-4 rounded border-gray-300 text-blue-600"
-                                        />
+                                        <input type="checkbox" checked={toutSelectionne} onChange={() => toggleSelectAll(liste)}
+                                            className="w-4 h-4 rounded border-gray-300 text-blue-600" />
                                     </th>
                                 )}
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onClick={() => handleSort('nom')}>
@@ -262,6 +265,7 @@ const terminées = reservations.filter(r => r.statut === 'terminee')
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Profil</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Trajet</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Type</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onClick={() => handleSort('date_reservation')}>
                                     <div className="flex items-center gap-1">Date & Heure {sortConfig.key === 'date_reservation' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
                                 </th>
@@ -272,18 +276,14 @@ const terminées = reservations.filter(r => r.statut === 'terminee')
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {sorted.length === 0 ? (
-                                <tr><td colSpan={estHistorique ? 8 : 7} className="px-4 py-8 text-center text-gray-500">Aucune réservation</td></tr>
+                                <tr><td colSpan={estHistorique ? 9 : 8} className="px-4 py-8 text-center text-gray-500">Aucune réservation</td></tr>
                             ) : (
                                 sorted.map((r) => (
                                     <tr key={r.id} className={`hover:bg-gray-50 transition ${selected.includes(r.id) ? 'bg-red-50' : ''}`}>
                                         {estHistorique && (
                                             <td className="px-4 py-3">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selected.includes(r.id)}
-                                                    onChange={() => toggleSelect(r.id)}
-                                                    className="w-4 h-4 rounded border-gray-300 text-blue-600"
-                                                />
+                                                <input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggleSelect(r.id)}
+                                                    className="w-4 h-4 rounded border-gray-300 text-blue-600" />
                                             </td>
                                         )}
                                         <td className="px-4 py-3">
@@ -306,6 +306,12 @@ const terminées = reservations.filter(r => r.statut === 'terminee')
                                                 {r.ville_depart} <span className="text-gray-400">→</span> {r.ville_arrivee}
                                             </div>
                                         </td>
+                                        {/* ✅ Colonne type trajet */}
+                                        <td className="px-4 py-3">
+                                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                                                {typeTrajetLabel[r.type_trajet] || r.type_trajet || '-'}
+                                            </span>
+                                        </td>
                                         <td className="px-4 py-3">
                                             <div className="text-sm text-gray-700">
                                                 <div className="flex items-center gap-1"><Calendar size={14} className="text-gray-400" />{r.date_reservation ? new Date(r.date_reservation).toLocaleDateString('fr-FR') : '-'}</div>
@@ -326,13 +332,11 @@ const terminées = reservations.filter(r => r.statut === 'terminee')
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3">
-    {getStatutBadge(r)}
-</td>
+                                        <td className="px-4 py-3">{getStatutBadge(r)}</td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-2">
                                                 <button onClick={() => handleEditMontant(r)} className="text-blue-500 hover:text-blue-700 transition" title="Modifier le montant"><Pencil size={15} /></button>
-                                                <button onClick={() => handleDeleteMontant(r.id)} className="text-red-400 hover:text-red-600 transition" title="Supprimer le montant"><Trash2 size={15} /></button>
+                                                <button onClick={() => handleDeleteMontant(r.id)} className="text-red-400 hover:text-red-600 transition" title="Mettre le montant à 0"><Trash2 size={15} /></button>
                                             </div>
                                         </td>
                                     </tr>
@@ -353,7 +357,6 @@ const terminées = reservations.filter(r => r.statut === 'terminee')
     return (
         <Layout>
             <div className="space-y-6">
-
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-800">Tableau de bord SG VR</h1>
@@ -385,11 +388,7 @@ const terminées = reservations.filter(r => r.statut === 'terminee')
 
                 {!error && (
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        {/* Card Total Réservations */}
-                        <div 
-                            onClick={() => setOnglet('encours')}
-                            className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
-                        >
+                        <div onClick={() => setOnglet('encours')} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="bg-blue-100 p-2 rounded-xl"><Bus size={20} className="text-blue-700" /></div>
                                 <span className="text-xs text-gray-400">Total</span>
@@ -397,12 +396,7 @@ const terminées = reservations.filter(r => r.statut === 'terminee')
                             <p className="text-2xl font-bold text-gray-800">{reservations.length}</p>
                             <p className="text-sm text-gray-500 mt-1">Réservations</p>
                         </div>
-
-                        {/* Card En cours */}
-                        <div 
-                            onClick={() => setOnglet('encours')}
-                            className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
-                        >
+                        <div onClick={() => setOnglet('encours')} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="bg-yellow-100 p-2 rounded-xl"><Clock size={20} className="text-yellow-700" /></div>
                                 <span className="text-xs text-gray-400">En cours</span>
@@ -410,12 +404,7 @@ const terminées = reservations.filter(r => r.statut === 'terminee')
                             <p className="text-2xl font-bold text-gray-800">{enCours.length}</p>
                             <p className="text-sm text-gray-500 mt-1">En cours</p>
                         </div>
-
-                        {/* Card Terminées */}
-                        <div 
-                            onClick={() => setOnglet('historique')}
-                            className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
-                        >
+                        <div onClick={() => setOnglet('historique')} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="bg-green-100 p-2 rounded-xl"><BadgeCheck size={20} className="text-green-700" /></div>
                                 <span className="text-xs text-gray-400">Terminées</span>
@@ -423,12 +412,7 @@ const terminées = reservations.filter(r => r.statut === 'terminee')
                             <p className="text-2xl font-bold text-gray-800">{terminées.length}</p>
                             <p className="text-sm text-gray-500 mt-1">Terminées</p>
                         </div>
-
-                        {/* Card Total Retenues */}
-                        <div 
-                            onClick={() => navigate('/sg-vr/recapitulatifs')}
-                            className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
-                        >
+                        <div onClick={() => navigate('/sg-vr/recapitulatifs')} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="bg-purple-100 p-2 rounded-xl"><CreditCard size={20} className="text-purple-700" /></div>
                                 <span className="text-xs text-gray-400">Total</span>

@@ -10,16 +10,25 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         const savedUser = localStorage.getItem('user')
         const savedToken = localStorage.getItem('token')
+
         if (savedUser && savedToken) {
             setUser(JSON.parse(savedUser))
-            // Rafraichir le profil depuis le serveur pour avoir les données a jour
-            api.get('/me').then(res => {
-                const freshUser = res.data.user
-                localStorage.setItem('user', JSON.stringify(freshUser))
-                setUser(freshUser)
-            }).catch(() => {})
+            api.get('/me')
+                .then(res => {
+                    const freshUser = res.data.user
+                    localStorage.setItem('user', JSON.stringify(freshUser))
+                    setUser(freshUser)
+                })
+                .catch((err) => {
+                    console.error('Erreur /me:', err.response?.data || err.message)
+                    localStorage.removeItem('token')
+                    localStorage.removeItem('user')
+                    setUser(null)
+                })
+                .finally(() => setLoading(false)) // ✅ attend la fin de /me
+        } else {
+            setLoading(false) // ✅ pas de token, on arrête directement
         }
-        setLoading(false)
     }, [])
 
     const login = async (email, password) => {
