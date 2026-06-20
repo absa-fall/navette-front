@@ -127,52 +127,33 @@ export default function SGDRHOrdres() {
         }
     }
 
-    const supprimerSelection = async () => {
-        if (selected.length === 0) return
-        if (!confirm(`Voulez-vous vraiment supprimer ${selected.length} ordre(s) de l'historique ?`)) return
-        setDeleteSelectionLoading(true)
-        try {
-            await Promise.all(selected.map(id => api.delete(`/ordres-mission/${id}/historique`)))
-            setHistorique(prev => prev.filter(o => !selected.includes(o.id)))
-            setSelected([])
-        } catch (err) {
-            alert('Erreur lors de la suppression.')
-        } finally {
-            setDeleteSelectionLoading(false)
-        }
+   const supprimerSelection = async () => {
+    if (selected.length === 0) return
+    if (!confirm(`Voulez-vous vraiment supprimer ${selected.length} ordre(s) de l'historique ?`)) return
+    setDeleteSelectionLoading(true)
+    try {
+        await Promise.all(selected.map(id => api.delete(`/ordres-mission/${id}/historique`)))
+        setSelected([])
+        chargerOrdres() // recharge depuis le backend
+    } catch (err) {
+        alert('Erreur lors de la suppression.')
+    } finally {
+        setDeleteSelectionLoading(false)
     }
+}
 
-    const signer = async (id) => {
-        setActionLoading(id)
-        try {
-            const ordre = ordres.find(o => o.id === id)
-            await api.patch(`/ordres-mission/${id}/signer`, {
-                chauffeur_id: ordre?.chauffeur_id
-            })
-            setSignerModal(null)
-            chargerOrdres()
-            setSuccessMsg(`Ordre signé et transmis au chauffeur ${ordre?.chauffeur_prenom} ${ordre?.chauffeur_nom}.`)
-            setTimeout(() => setSuccessMsg(''), 5000)
-        } catch (err) {
-            alert(err.response?.data?.message || 'Erreur')
-        } finally {
-            setActionLoading(null)
-        }
+const supprimerHistorique = async (id) => {
+    if (!confirm("Voulez-vous vraiment supprimer cet ordre de l'historique ?")) return
+    setDeleteLoading(id)
+    try {
+        await api.delete(`/ordres-mission/${id}/historique`)
+        chargerOrdres() // recharge depuis le backend
+    } catch (err) {
+        alert(err.response?.data?.message || 'Erreur')
+    } finally {
+        setDeleteLoading(null)
     }
-
-    const supprimerHistorique = async (id) => {
-        if (!confirm("Voulez-vous vraiment supprimer cet ordre de l'historique ?")) return
-        setDeleteLoading(id)
-        try {
-            await api.delete(`/ordres-mission/${id}/historique`)
-            setHistorique(prev => prev.filter(o => o.id !== id))
-        } catch (err) {
-            alert(err.response?.data?.message || 'Erreur')
-        } finally {
-            setDeleteLoading(null)
-        }
-    }
-
+}
     const voirOrdre = (ordre) => {
         const dateDepart = new Date(ordre.date_depart).toLocaleDateString('fr-FR')
         const dateRetour = ordre.date_retour

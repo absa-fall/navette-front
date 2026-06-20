@@ -14,12 +14,12 @@ const statutConfig = {
 }
 
 const autorisationStatutConfig = {
-    demande_chef_dept:     { label: 'En attente Chef Dép',     color: 'bg-yellow-100 text-yellow-700' },
-    envoye_directeur_ufr:  { label: 'Chez Directeur UFR',      color: 'bg-orange-100 text-orange-700' },
-    envoye_recteur:        { label: 'Chez le Recteur',         color: 'bg-purple-100 text-purple-700' },
-    approuve_recteur:      { label: 'Approuvé Recteur',        color: 'bg-blue-100 text-blue-700' },
-    approuve:              { label: 'Approuvée ✓',             color: 'bg-green-100 text-green-700' },
-    rejete:                { label: 'Rejetée',                 color: 'bg-red-100 text-red-700' },
+    soumise:               { label: 'En attente Chef Dép',   color: 'bg-yellow-100 text-yellow-700' },
+    avis_chef_departement: { label: 'Chez Directeur UFR',    color: 'bg-orange-100 text-orange-700' },
+    avis_directeur_ufr:    { label: 'Chez le Recteur',       color: 'bg-purple-100 text-purple-700' },
+    signee_recteur:        { label: 'Signée par le Recteur', color: 'bg-blue-100 text-blue-700' },
+    transmise_vr:          { label: 'Approuvée ✓',           color: 'bg-green-100 text-green-700' },
+    rejete:                { label: 'Rejetée',               color: 'bg-red-100 text-red-700' },
 }
 
 export default function EnseignantMesRapports() {
@@ -34,6 +34,8 @@ export default function EnseignantMesRapports() {
     const [suppLoading, setSuppLoading]             = useState(null)
     const [confirmSupp, setConfirmSupp]             = useState(null)
     const [selectedRapports, setSelectedRapports]   = useState([])
+    const [selectedVoyages, setSelectedVoyages]     = useState([])
+    const [selectedAutorisations, setSelectedAutorisations] = useState([])
     const [showChoixVoyage, setShowChoixVoyage]     = useState(false)
     const [message, setMessage]                     = useState('')
     const [error, setError]                         = useState('')
@@ -85,6 +87,14 @@ export default function EnseignantMesRapports() {
         setSelectedRapports(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
     }
 
+    const toggleSelectVoyage = (id) => {
+        setSelectedVoyages(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
+    }
+
+    const toggleSelectAutorisation = (id) => {
+        setSelectedAutorisations(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
+    }
+
     const supprimerRapport = async (rapportId) => {
         setSuppLoading(rapportId)
         try {
@@ -115,6 +125,30 @@ export default function EnseignantMesRapports() {
         }
         setRapports(prev => prev.filter(r => r.statut !== 'rejete'))
         showMsg('Historique des rapports rejetés supprimé')
+    }
+
+    // --- Suppression Voyages (masquage) ---
+    const supprimerVoyagesSelection = async () => {
+        if (selectedVoyages.length === 0) return
+        if (!confirm(`Retirer ${selectedVoyages.length} voyage(s) de votre historique ?`)) return
+        for (const id of selectedVoyages) {
+            try { await api.patch(`/voyages-etudes/beneficiaire/${id}/masquer`) } catch {}
+        }
+        setMesVoyages(prev => prev.filter(v => !selectedVoyages.includes(v.id)))
+        setSelectedVoyages([])
+        showMsg(`${selectedVoyages.length} voyage(s) retiré(s) de votre historique`)
+    }
+
+    // --- Suppression Autorisations (vraie suppression) ---
+    const supprimerAutorisationsSelection = async () => {
+        if (selectedAutorisations.length === 0) return
+        if (!confirm(`Supprimer ${selectedAutorisations.length} autorisation(s) ?`)) return
+        for (const id of selectedAutorisations) {
+            try { await api.delete(`/autorisations-absence/${id}`) } catch {}
+        }
+        setAutorisations(prev => prev.filter(a => !selectedAutorisations.includes(a.id)))
+        setSelectedAutorisations([])
+        showMsg(`${selectedAutorisations.length} autorisation(s) supprimée(s)`)
     }
 
     const ouvrirPanelJustificatif = (rapportId) => {
@@ -196,6 +230,18 @@ export default function EnseignantMesRapports() {
                             <button onClick={supprimerTousRejetes}
                                 className="flex items-center gap-2 text-sm text-red-600 border border-red-200 px-3 py-2 rounded-xl hover:bg-red-50 transition">
                                 <Trash2 size={14} /> Supprimer rejetés ({rapportsRejetes.length})
+                            </button>
+                        )}
+                        {activeTab === 'voyages' && selectedVoyages.length > 0 && (
+                            <button onClick={supprimerVoyagesSelection}
+                                className="flex items-center gap-2 text-sm text-red-600 border border-red-200 px-3 py-2 rounded-xl hover:bg-red-50 transition">
+                                <Trash2 size={14} /> Supprimer sélection ({selectedVoyages.length})
+                            </button>
+                        )}
+                        {activeTab === 'autorisations' && selectedAutorisations.length > 0 && (
+                            <button onClick={supprimerAutorisationsSelection}
+                                className="flex items-center gap-2 text-sm text-red-600 border border-red-200 px-3 py-2 rounded-xl hover:bg-red-50 transition">
+                                <Trash2 size={14} /> Supprimer sélection ({selectedAutorisations.length})
                             </button>
                         )}
                         {mesVoyages.length > 0 && (
@@ -497,6 +543,11 @@ export default function EnseignantMesRapports() {
                                             <div key={b.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
                                                 <div className="flex items-start justify-between">
                                                     <div className="flex items-center gap-3">
+                                                        <input type="checkbox"
+                                                            checked={selectedVoyages.includes(b.id)}
+                                                            onChange={() => toggleSelectVoyage(b.id)}
+                                                            className="w-4 h-4 rounded border-gray-300 text-red-600 cursor-pointer"
+                                                        />
                                                         <div className="bg-blue-100 p-3 rounded-xl">
                                                             <MapPin size={20} className="text-blue-700" />
                                                         </div>
@@ -555,6 +606,11 @@ export default function EnseignantMesRapports() {
                                             <div key={a.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                                                 <div className="flex items-start justify-between">
                                                     <div className="flex items-center gap-3">
+                                                        <input type="checkbox"
+                                                            checked={selectedAutorisations.includes(a.id)}
+                                                            onChange={() => toggleSelectAutorisation(a.id)}
+                                                            className="w-4 h-4 rounded border-gray-300 text-red-600 cursor-pointer"
+                                                        />
                                                         <div className="bg-purple-100 p-3 rounded-xl">
                                                             <ShieldCheck size={20} className="text-purple-700" />
                                                         </div>

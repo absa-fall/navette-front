@@ -4,7 +4,8 @@ import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
     Bus, MapPin, FileText, Users, LayoutDashboard, LogOut,
-    Menu, X, ChevronRight, Bell, Trash2, CheckCheck, Camera, CheckCircle
+    Menu, X, ChevronRight, Bell, Trash2, CheckCheck, BarChart2, Camera, 
+    CheckCircle, Clock, XCircle
 } from 'lucide-react'
 const menuParRole = {
     admin: [
@@ -12,20 +13,24 @@ const menuParRole = {
         { label: 'Utilisateurs',  icon: Users,           path: '/admin/utilisateurs' },
         { label: 'Véhicules',     icon: Bus,             path: '/admin/vehicules' },
     ],
-    ddl: [
-        { label: 'Dashboard',    icon: LayoutDashboard, path: '/ddl/dashboard' },
-        { label: 'Mes navettes', icon: Bus,             path: '/ddl/navettes' },
-    ],
+   ddl: [
+    { label: 'Dashboard',          icon: LayoutDashboard, path: '/ddl/dashboard' },
+    { label: 'Mes navettes',       icon: Bus,             path: '/ddl/navettes' },
+    { label: 'En attente',         icon: Clock,           path: '/ddl/en-attente' },
+    { label: 'Demandes rejetées',  icon: XCircle,         path: '/ddl/demandes-rejetees' },
+],
     enseignant: [
         { label: 'Dashboard',        icon: LayoutDashboard, path: '/enseignant/dashboard' },
         { label: 'Mes voyages',      icon: MapPin,          path: '/enseignant/voyages-etudes' },
         { label: 'Mes rapports',     icon: FileText,        path: '/enseignant/rapports' },
         { label: 'Réserver navette', icon: Bus,             path: '/enseignant/reserver' },
     ],
-    drh: [
-        { label: 'Dashboard',          icon: LayoutDashboard, path: '/drh/dashboard' },
-        { label: 'Ordres à approuver', icon: FileText,        path: '/drh/ordres' },
-    ],
+   drh: [
+    { label: 'Dashboard',      icon: LayoutDashboard, path: '/drh/dashboard' },
+    { label: 'En attente',     icon: Clock,           path: '/drh/ordres?statut=en_attente' },
+    { label: 'Approuvés',      icon: CheckCircle,     path: '/drh/ordres?statut=approuve' },
+    { label: 'Rejetés',        icon: XCircle,         path: '/drh/ordres?statut=rejete' },
+],
     sg_drh: [
         { label: 'Dashboard',       icon: LayoutDashboard, path: '/sg-drh/dashboard' },
         { label: 'Ordres à signer', icon: FileText,        path: '/sg-drh/ordres' },
@@ -34,10 +39,11 @@ const menuParRole = {
         { label: 'Dashboard',   icon: LayoutDashboard, path: '/chauffeur/dashboard' },
         { label: 'Mes trajets', icon: Bus,             path: '/chauffeur/trajets' },
     ],
-    sg_vr: [
-        { label: 'Dashboard',      icon: LayoutDashboard, path: '/sg-vr/dashboard' },
-        { label: 'Récapitulatifs', icon: FileText,        path: '/sg-vr/recapitulatifs' },
-    ],
+  sg_vr: [
+    { label: 'Dashboard',      icon: LayoutDashboard, path: '/sg-vr/dashboard?tab=accueil' },
+    { label: 'Récapitulatifs', icon: FileText,        path: '/sg-vr/recapitulatifs' },
+    { label: 'Graphiques',     icon: BarChart2,       path: '/sg-vr/dashboard?tab=graphiques' },
+],
     vice_recteur: [
         { label: 'Dashboard',          icon: LayoutDashboard, path: '/vice-recteur/dashboard' },
         { label: 'Rapports à valider', icon: FileText,        path: '/vice-recteur/rapports' },
@@ -66,7 +72,7 @@ const menuParRole = {
 const roleLabels = {
    admin:            'Administrateur',
    ddl:              'DDL',
-   enseignant:       'Enseignant Permanent',
+   enseignant:       'Enseignant',
    drh:              'DRH',
    sg_drh:           'SG - DRH',
    chauffeur:        'Chauffeur',
@@ -76,6 +82,13 @@ const roleLabels = {
    directeur_ufr:    'Directeur UFR',
    recteur:          'Recteur',
    commission:       'Commission',
+}
+
+const getRoleLabel = (user) => {
+    if (user?.role === 'enseignant' && user?.statut === 'permanent') {
+        return 'Enseignant Permanent'
+    }
+    return roleLabels[user?.role] || ''
 }
 
 const notifNavigation = {
@@ -270,7 +283,7 @@ export default function Layout({ children }) {
                 <nav className="flex-1 p-3 space-y-1">
                     {menu.map((item) => {
                         const Icon     = item.icon
-                        const isActive = location.pathname === item.path
+                       const isActive = (location.pathname + location.search) === item.path
                         return (
                             <Link key={item.path} to={item.path}
                                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
@@ -340,7 +353,7 @@ export default function Layout({ children }) {
                             </div>
                             <div className="overflow-hidden">
                                 <p className="text-sm font-semibold truncate">{user?.prenom} {user?.nom}</p>
-                                <p className="text-xs text-blue-300">{roleLabels[user?.role]}</p>
+                                <p className="text-xs text-blue-300">{getRoleLabel(user)}</p>
                             </div>
                         </div>
                         <button onClick={handleLogout}
@@ -486,7 +499,7 @@ export default function Layout({ children }) {
                                         </div>
                                         <div className="text-center">
                                             <p className="text-white font-semibold">{user?.prenom} {user?.nom}</p>
-                                            <p className="text-blue-200 text-xs mt-0.5">{roleLabels[user?.role]}</p>
+                                            <p className="text-blue-200 text-xs mt-0.5">{getRoleLabel(user)}</p>
                                             {user?.email && <p className="text-blue-300 text-xs mt-0.5">{user?.email}</p>}
                                         </div>
                                     </div>

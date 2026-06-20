@@ -20,6 +20,7 @@ export default function ChefDepartementDashboard() {
     const [selectedVoyages, setSelectedVoyages] = useState([])
     const [selectedJustif, setSelectedJustif]   = useState([])
     const [selectedAuto, setSelectedAuto]       = useState([])
+    const [autorisationsAbsence, setAutorisationsAbsence] = useState([])
 
 
     useEffect(() => {
@@ -30,16 +31,20 @@ export default function ChefDepartementDashboard() {
 
     useEffect(() => { fetchDossiers() }, [])
 
-    const fetchDossiers = async () => {
-        try {
-            const res = await api.get('/voyages-etudes/dossiers-departement')
-            setDossiers(res.data)
-        } catch (err) {
-            console.error(err)
-        } finally {
-            setLoading(false)
-        }
+   const fetchDossiers = async () => {
+    try {
+        const [resDossiers, resAutos] = await Promise.all([
+            api.get('/voyages-etudes/dossiers-departement'),
+            api.get('/autorisations-absence'),
+        ])
+        setDossiers(resDossiers.data)
+        setAutorisationsAbsence(resAutos.data)
+    } catch (err) {
+        console.error(err)
+    } finally {
+        setLoading(false)
     }
+}
 
     const showMsg = (msg, isError = false) => {
         if (isError) setError(msg)
@@ -174,6 +179,21 @@ export default function ChefDepartementDashboard() {
             showMsg(err.response?.data?.message || 'Erreur', true)
         } finally { setActionLoading(null) }
     }
+
+const signerEtTransmettre = async (autorisationId) => {
+    setActionLoading(autorisationId + '_signer')
+    try {
+        await api.patch(`/autorisations-absence/${autorisationId}/avis-chef-departement`, {
+            avis: 'favorable',
+        })
+        showMsg('Autorisation signee et transmise au Directeur UFR')
+        fetchDossiers()
+    } catch (err) {
+        showMsg(err.response?.data?.message || 'Erreur', true)
+    } finally {
+        setActionLoading(null)
+    }
+}
 
     const dossiersJustif       = dossiers.filter(d => !["transmis_vr", "valide"].includes(d.statut_justificatif))
     const dossiersAutorisation = dossiers.filter(d => d.statut_autorisation === 'demande_chef_dept')
@@ -359,164 +379,63 @@ export default function ChefDepartementDashboard() {
                             )
                         )}
 
-                        {/* ===== ONGLET JUSTIFICATIFS ===== */}
-                        {activeTab === 'justificatifs' && (
-                            dossiersJustif.length === 0 ? (
-                                <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
-                                    <FileText size={40} className="mx-auto mb-4 text-gray-300" />
-                                    <h3 className="text-gray-700 font-semibold mb-2">Aucun justificatif</h3>
-                                    <p className="text-gray-400 text-sm">Les justificatifs soumis par les enseignants apparaîtront ici</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    <BarreSelection
-                                        selected={selectedJustif}
-                                        total={dossiersJustif.length}
-                                        onSelectAll={toggleSelectAllJustif}
-                                        onDeleteSelected={supprimerJustifSelectionnes}
-                                        onDeleteAll={supprimerTousJustif}
-                                    />
-                                    {dossiersJustif.map(d => (
-                                        <div key={d.id} className={`bg-white rounded-2xl border shadow-sm p-5 transition ${
-                                            selectedJustif.includes(d.id) ? 'border-blue-300' : 'border-gray-100'
-                                        }`}>
-                                            <div className="flex items-start justify-between mb-4">
-                                                <div className="flex items-center gap-3">
-                                                    <input type="checkbox"
-                                                        checked={selectedJustif.includes(d.id)}
-                                                        onChange={() => toggleSelectJustif(d.id)}
-                                                        className="w-4 h-4 accent-blue-700 cursor-pointer mt-1" />
-                                                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-sm">
-                                                        {d.enseignant?.prenom?.[0]}{d.enseignant?.nom?.[0]}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-semibold text-gray-800">{d.enseignant?.prenom} {d.enseignant?.nom}</p>
-                                                        <p className="text-xs text-gray-500">{d.enseignant?.ufr}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="font-medium text-gray-700 text-sm">{d.voyage?.destination}</p>
-                                                    <p className="text-xs text-gray-500">
-                                                        {new Date(d.voyage?.date_debut).toLocaleDateString('fr-FR')} - {new Date(d.voyage?.date_fin).toLocaleDateString('fr-FR')}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            {d.justificatifs?.length > 0 && (
-                                                <div className="space-y-1 mb-4">
-                                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Fichiers soumis :</p>
-                                                    {d.justificatifs.map(j => (
-                                                        <button key={j.id}
-                                                            onClick={() => window.open(`http://127.0.0.1:8000/storage/${j.fichier_pdf}`, '_blank')}
-                                                            className="flex items-center gap-2 text-sm text-blue-700 hover:underline">
-                                                            <Eye size={14} /> {j.nom_original || 'Fichier PDF'}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
-
-                                            <div className="mb-3">
-                                                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                                                    d.statut_justificatif === 'soumis'      ? 'bg-blue-100 text-blue-700' :
-                                                    d.statut_justificatif === 'transmis_vr' ? 'bg-purple-100 text-purple-700' :
-                                                    d.statut_justificatif === 'valide'      ? 'bg-green-100 text-green-700' :
-                                                    d.statut_justificatif === 'incomplet'   ? 'bg-red-100 text-red-700' :
-                                                    'bg-gray-100 text-gray-600'
-                                                }`}>
-                                                    {d.statut_justificatif === 'soumis'      ? 'Justificatifs soumis' :
-                                                     d.statut_justificatif === 'transmis_vr' ? 'Transmis au VR'       :
-                                                     d.statut_justificatif === 'valide'      ? 'Valide par VR'        :
-                                                     d.statut_justificatif === 'incomplet'   ? 'Incomplet'            :
-                                                     'En attente de justificatifs'}
-                                                </span>
-                                            </div>
-
-                                            {d.statut_justificatif === 'soumis' && (
-                                                <button onClick={() => envoyerAuVR(d.id)}
-                                                    disabled={actionLoading === d.id + '_vr'}
-                                                    className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
-                                                    {actionLoading === d.id + '_vr'
-                                                        ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                        : <Send size={14} />}
-                                                    Transmettre au Vice-Recteur et a la Commission
-                                                </button>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            )
-                        )}
-
                         {/* ===== ONGLET AUTORISATIONS ===== */}
-                        {activeTab === 'autorisations' && (
-                            dossiersAutorisation.length === 0 ? (
-                                <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
-                                    <CheckCircle size={40} className="mx-auto mb-4 text-gray-300" />
-                                    <h3 className="text-gray-700 font-semibold mb-2">Aucune demande</h3>
-                                    <p className="text-gray-400 text-sm">Les demandes d'autorisation d'absence apparaîtront ici</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    <BarreSelection
-                                        selected={selectedAuto}
-                                        total={dossiersAutorisation.length}
-                                        onSelectAll={toggleSelectAllAuto}
-                                        onDeleteSelected={supprimerAutoSelectionnes}
-                                        onDeleteAll={supprimerToutesAuto}
-                                    />
-                                    {dossiersAutorisation.map(d => (
-                                        <div key={d.id} className={`bg-white rounded-2xl border shadow-sm p-5 transition ${
-                                            selectedAuto.includes(d.id) ? 'border-blue-300' : 'border-gray-100'
-                                        }`}>
-                                            <div className="flex items-start justify-between mb-4">
-                                                <div className="flex items-center gap-3">
-                                                    <input type="checkbox"
-                                                        checked={selectedAuto.includes(d.id)}
-                                                        onChange={() => toggleSelectAuto(d.id)}
-                                                        className="w-4 h-4 accent-blue-700 cursor-pointer mt-1" />
-                                                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-700 font-bold text-sm">
-                                                        {d.enseignant?.prenom?.[0]}{d.enseignant?.nom?.[0]}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-semibold text-gray-800">{d.enseignant?.prenom} {d.enseignant?.nom}</p>
-                                                        <p className="text-xs text-gray-500">{d.enseignant?.ufr}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="font-medium text-gray-700 text-sm">{d.voyage?.destination}</p>
-                                                    <p className="text-xs text-gray-500">
-                                                        {new Date(d.voyage?.date_debut).toLocaleDateString('fr-FR')} - {new Date(d.voyage?.date_fin).toLocaleDateString('fr-FR')}
-                                                    </p>
-                                                    <span className="text-xs font-semibold text-green-700">Beneficiaire definitif</span>
-                                                </div>
-                                            </div>
+{activeTab === 'autorisations' && (
+    autorisationsAbsence.length === 0 ? (
+        <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
+            <CheckCircle size={40} className="mx-auto mb-4 text-gray-300" />
+            <h3 className="text-gray-700 font-semibold mb-2">Aucune demande</h3>
+            <p className="text-gray-400 text-sm">Les demandes d'autorisation d'absence apparaîtront ici</p>
+        </div>
+    ) : (
+        <div className="space-y-4">
+            {autorisationsAbsence.map(a => (
+                <div key={a.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-700 font-bold text-sm">
+                                {a.enseignant?.prenom?.[0]}{a.enseignant?.nom?.[0]}
+                            </div>
+                            <div>
+                                <p className="font-semibold text-gray-800">{a.enseignant?.prenom} {a.enseignant?.nom}</p>
+                                <p className="text-xs text-gray-500">{a.numero}</p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <p className="font-medium text-gray-700 text-sm">{a.lieu_deplacement}</p>
+                            <p className="text-xs text-gray-500">
+                                {new Date(a.periode_debut).toLocaleDateString('fr-FR')} - {new Date(a.periode_fin).toLocaleDateString('fr-FR')}
+                            </p>
+                        </div>
+                    </div>
 
-                                            <p className="text-sm text-gray-600 mb-4 bg-gray-50 rounded-xl p-3">
-                                                Cet enseignant demande une autorisation d'absence pour participer au voyage. Vous devez emettre une autorisation de sortie et la transmettre au Directeur UFR.
-                                            </p>
+                    <p className="text-sm text-gray-600 mb-4 bg-gray-50 rounded-xl p-3">
+                        Motif : {a.motif_mission}
+                    </p>
 
-                                            <button onClick={() => autorisationSortie(d.id)}
-                                                disabled={actionLoading === d.id + '_sortie'}
-                                                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
-                                                {actionLoading === d.id + '_sortie'
-                                                    ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                    : <CheckCircle size={14} />}
-                                                Emettre autorisation de sortie → Directeur UFR
-                                            </button>
-                                           
-{d.autorisation_absence && d.autorisation_absence.id && (
-    <button
-        onClick={() => navigate('/autorisation-absence/' + d.autorisation_absence.id + '/document')}
-        className="flex items-center gap-2 border border-blue-700 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm font-semibold transition mt-2"
-    >
-        <Eye size={14} />
-        Voir l'autorisation d'absence
-    </button>
-)}                                   </div>
-                                    ))}
-                                </div>
-                            )
-                        )}
+                    <div className="flex gap-2 flex-wrap">
+                        <button onClick={() => signerEtTransmettre(a.id)}
+                            disabled={actionLoading === a.id + '_signer'}
+                            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
+                            {actionLoading === a.id + '_signer'
+                                ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                : <CheckCircle size={14} />}
+                            Signer l'autorisation → Transmettre au Directeur UFR
+                        </button>
+
+                        <button
+                            onClick={() => navigate('/autorisation-absence/' + a.id + '/document')}
+                            className="flex items-center gap-2 border border-blue-700 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm font-semibold transition"
+                        >
+                            <Eye size={14} />
+                            Voir le document
+                        </button>
+                    </div>
+                </div>
+            ))}
+        </div>
+    )
+)}
                     </>
                 )}
             </div>

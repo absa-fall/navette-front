@@ -12,7 +12,10 @@ export default function ScannerBus() {
     const [scanned, setScanned] = useState(false)
     const scannerRef = useRef(null)
 
-    useEffect(() => {
+    const startScanner = () => {
+        const container = document.getElementById('qr-reader')
+        if (container) container.innerHTML = ''
+
         const scanner = new Html5QrcodeScanner('qr-reader', {
             fps: 10,
             qrbox: { width: 250, height: 250 }
@@ -21,7 +24,7 @@ export default function ScannerBus() {
         scanner.render(async (decodedText) => {
             if (scanned) return
             setScanned(true)
-            scanner.clear()
+            scanner.clear().catch(() => {})
             setLoading(true)
             setError(null)
 
@@ -39,7 +42,19 @@ export default function ScannerBus() {
         }, () => {})
 
         scannerRef.current = scanner
-        return () => scanner.clear().catch(() => {})
+    }
+
+    useEffect(() => {
+        let timer = null
+
+        timer = setTimeout(() => {
+            startScanner()
+        }, 100)
+
+        return () => {
+            clearTimeout(timer)
+            scannerRef.current?.clear().catch(() => {})
+        }
     }, [])
 
     return (

@@ -12,6 +12,13 @@ import {
     Trash2
 } from 'lucide-react'
 
+const LABELS_TRAJET = { aller: 'Aller', retour: 'Retour', aller_retour: 'Aller-retour' }
+
+const getTypeTrajetResume = (p) => {
+    const types = [...new Set((p.trajets || []).map(t => t.type_trajet))]
+    return types.map(t => LABELS_TRAJET[t] || t).join(', ') || '-'
+}
+
 export default function Recapitulatifs() {
 
     const [recaps, setRecaps] = useState([])
@@ -90,8 +97,16 @@ export default function Recapitulatifs() {
             const lignes = [
                 ['RÉCAPITULATIF HEBDOMADAIRE'],
                 [],
-                ['Nom', 'Prénom', 'UFR', 'Type', 'Trajets', 'Montant'],
-                ...detail_par_personne.map(p => [p.nom, p.prenom, p.ufr || '-', p.type_profil || '-', p.nombre_trajets, p.montant_total])
+                ['Nom', 'Prénom', 'UFR', 'Type', 'Type de trajet', 'Trajets', 'Montant'],
+                ...detail_par_personne.map(p => [
+                    p.nom,
+                    p.prenom,
+                    p.ufr || '-',
+                    p.type_profil || '-',
+                    getTypeTrajetResume(p),
+                    p.nombre_trajets,
+                    p.montant_total
+                ])
             ]
             const csvContent = BOM + lignes.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';')).join('\n')
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -113,7 +128,8 @@ export default function Recapitulatifs() {
             const rows = detail_par_personne.map(p => `
                 <tr>
                     <td>${p.nom}</td><td>${p.prenom}</td><td>${p.ufr || '-'}</td>
-                    <td>${p.type_profil || '-'}</td><td style="text-align:center">${p.nombre_trajets}</td>
+                    <td>${p.type_profil || '-'}</td><td>${getTypeTrajetResume(p)}</td>
+                    <td style="text-align:center">${p.nombre_trajets}</td>
                     <td style="text-align:right">${Number(p.montant_total).toLocaleString()} FCFA</td>
                 </tr>`).join('')
             const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
@@ -128,7 +144,7 @@ export default function Recapitulatifs() {
                 </head><body>
                 <h2>Récapitulatif Hebdomadaire</h2>
                 <p>Semaine du ${new Date(recap.semaine_debut).toLocaleDateString('fr-FR')} au ${new Date(recap.semaine_fin).toLocaleDateString('fr-FR')}</p>
-                <table><thead><tr><th>Nom</th><th>Prénom</th><th>UFR</th><th>Type</th><th>Trajets</th><th>Montant</th></tr></thead>
+                <table><thead><tr><th>Nom</th><th>Prénom</th><th>UFR</th><th>Type</th><th>Type de trajet</th><th>Trajets</th><th>Montant</th></tr></thead>
                 <tbody>${rows}</tbody></table>
                 <button class="print-btn" onclick="window.print()">🖨️ Imprimer / PDF</button>
                 </body></html>`

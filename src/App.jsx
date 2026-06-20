@@ -115,8 +115,7 @@ function App() {
                     <Route path="/enseignant/autorisation-absence/:beneficiaireId" element={<PrivateRoute><DemandeAutorisationAbsence /></PrivateRoute>} />
 
                     {/* Voyages Etudes */}
-                    <Route path="/autorisation-absence/:id" element={<PrivateRoute><AutorisationAbsenceDocument /></PrivateRoute>} />
-
+                  <Route path="/autorisation-absence/:id/document" element={<PrivateRoute><AutorisationAbsenceDocument /></PrivateRoute>} />
                     {/* DRH */}
                     <Route path="/drh/dashboard" element={<PrivateRoute><DRHDashboard /></PrivateRoute>} />
                     <Route path="/drh/ordres" element={<PrivateRoute><DRHOrdres /></PrivateRoute>} />

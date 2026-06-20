@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api/axios'
 import Layout from '../../components/Layout'
-import { Bus, CheckCircle, Users, Clock, MapPin, RefreshCw, AlertCircle, XCircle, ArrowRight, ArrowLeft, ArrowLeftRight } from 'lucide-react'
+import { Bus, CheckCircle, Users, Clock, MapPin, RefreshCw, AlertCircle, XCircle, ArrowRight, ArrowLeft, ArrowLeftRight, Trash2 } from 'lucide-react'
 
 const typeTrajetLabel = {
     aller: { label: 'Aller', icon: ArrowRight },
@@ -19,10 +18,11 @@ export default function ChauffeurReservations() {
     const [message, setMessage] = useState('')
     const [messageType, setMessageType] = useState('')
     const [onglet, setOnglet] = useState('attente')
+    const [selected, setSelected] = useState([])
+    const [deleteLoading, setDeleteLoading] = useState(false)
 
-    useEffect(() => {
-        fetchReservations()
-    }, [])
+    useEffect(() => { fetchReservations() }, [])
+    useEffect(() => { setSelected([]) }, [onglet])
 
     const fetchReservations = async () => {
         setLoading(true)
@@ -68,16 +68,49 @@ export default function ChauffeurReservations() {
         }
     }
 
+    const toggleSelect = (id) => {
+        setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
+    }
+
+    const toggleSelectAll = (liste) => {
+        const ids = liste.map(r => r.id)
+        const toutSelectionne = ids.every(id => selected.includes(id))
+        if (toutSelectionne) setSelected(prev => prev.filter(id => !ids.includes(id)))
+        else setSelected(prev => [...new Set([...prev, ...ids])])
+    }
+
+   const supprimerSelection = async (liste) => {
+    const ids = selected.filter(id => liste.some(r => r.id === id))
+    if (ids.length === 0) return
+    if (!confirm(`Supprimer ${ids.length} réservation(s) ?`)) return
+    setDeleteLoading(true)
+    try {
+        for (const id of ids) {
+            await api.delete(`/reservations/${id}`)
+        }
+        setSelected([])
+        showMsg(`${ids.length} réservation(s) supprimée(s)`, 'success')
+        fetchReservations()
+    } catch {
+        showMsg('Erreur lors de la suppression', 'error')
+    } finally {
+        setDeleteLoading(false)
+    }
+}
+
     const enAttente = reservations.filter(r => r.statut === 'en_attente_confirmation')
     const confirmees = reservations.filter(r => r.statut === 'confirmee')
-    const enCours = reservations.filter(r => r.statut === 'en_cours')
+    const enCours   = reservations.filter(r => r.statut === 'en_cours')
     const listeActive = onglet === 'attente' ? enAttente : onglet === 'confirmees' ? confirmees : enCours
+
+    const selectedDansListe = selected.filter(id => listeActive.some(r => r.id === id))
+    const toutSelectionne   = listeActive.length > 0 && listeActive.every(r => selected.includes(r.id))
 
     const getStatutBadge = (statut) => {
         switch (statut) {
             case 'en_attente_confirmation': return <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">En attente</span>
-            case 'confirmee': return <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">Confirmée</span>
-            case 'en_cours': return <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">En cours</span>
+            case 'confirmee':               return <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">Confirmée</span>
+            case 'en_cours':               return <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">En cours</span>
             default: return null
         }
     }
@@ -134,15 +167,49 @@ export default function ChauffeurReservations() {
                     </div>
                 ) : (
                     <div className="space-y-4">
+
+                        {/* Barre sélection */}
+                        <div className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-2.5 shadow-sm">
+                            <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                                <input type="checkbox"
+                                    checked={toutSelectionne}
+                                    onChange={() => toggleSelectAll(listeActive)}
+                                    className="w-4 h-4 accent-blue-700 cursor-pointer" />
+                                {selectedDansListe.length > 0
+                                    ? `${selectedDansListe.length} sélectionné(s)`
+                                    : 'Tout sélectionner'}
+                            </label>
+                            {selectedDansListe.length > 0 && (
+                                <button
+                                    onClick={() => supprimerSelection(listeActive)}
+                                    disabled={deleteLoading}
+                                    className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
+                                    {deleteLoading
+                                        ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        : <Trash2 size={14} />}
+                                    Supprimer ({selectedDansListe.length})
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Cartes */}
                         {listeActive.map(r => {
                             const typeTrajet = typeTrajetLabel[r.type_trajet] || typeTrajetLabel['aller']
                             const TrajetIcon = typeTrajet.icon
                             return (
-                                <div key={r.id} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                                <div key={r.id} className={`bg-white rounded-2xl p-5 border shadow-sm transition ${
+                                    selected.includes(r.id) ? 'border-red-300 bg-red-50' : 'border-gray-100'
+                                }`}>
                                     <div className="flex items-start justify-between mb-3">
-                                        <div>
-                                            <p className="font-bold text-gray-800">{r.prenom} {r.nom}</p>
-                                            <p className="text-xs text-gray-500">{r.ufr} · {r.categorie} · {r.type_profil}</p>
+                                        <div className="flex items-center gap-3">
+                                            <input type="checkbox"
+                                                checked={selected.includes(r.id)}
+                                                onChange={() => toggleSelect(r.id)}
+                                                className="w-4 h-4 accent-blue-700 cursor-pointer mt-1" />
+                                            <div>
+                                                <p className="font-bold text-gray-800">{r.prenom} {r.nom}</p>
+                                                <p className="text-xs text-gray-500">{r.ufr} · {r.categorie} · {r.type_profil}</p>
+                                            </div>
                                         </div>
                                         {getStatutBadge(r.statut)}
                                     </div>
@@ -158,7 +225,6 @@ export default function ChauffeurReservations() {
                                         </div>
                                     </div>
 
-                                    {/* ✅ Montant supprimé — uniquement le type de trajet */}
                                     <div className="flex items-center gap-2 mb-4">
                                         <span className="flex items-center gap-1 bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium">
                                             <TrajetIcon size={12} />

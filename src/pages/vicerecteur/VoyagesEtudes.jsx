@@ -107,6 +107,19 @@ export default function VoyagesEtudes() {
             setActionLoading(null)
         }
     }
+    const envoyerArrete = async (voyageId) => {
+    setActionLoading('arrete_' + voyageId)
+    try {
+        const voyage = voyages.find(v => v.id === voyageId)
+        const arreteRes = await api.get(`/voyages-etudes/${voyageId}/arrete`)
+        await api.post(`/arretes/${arreteRes.data.id}/envoyer-emails`)
+        showMsg('Arrete envoye par email a tous les beneficiaires')
+    } catch (err) {
+        showMsg(err.response?.data?.message || 'Erreur lors de l\'envoi', true)
+    } finally {
+        setActionLoading(null)
+    }
+}
 
     const donnerAvis = async (beneficiaireId, avis) => {
         setActionLoading('avis_' + beneficiaireId + '_' + avis)
@@ -324,17 +337,26 @@ export default function VoyagesEtudes() {
                                                     <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-3">{voyage.description}</p>
                                                 )}
 
-                                                {voyage.arrete_recteur && definitifs.length > 0 && (
-                                                    <button onClick={() => notifierBeneficiaires(voyage.id)}
-                                                        disabled={actionLoading === 'notif_' + voyage.id}
-                                                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
-                                                        {actionLoading === 'notif_' + voyage.id
-                                                            ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                            : <Bell size={14} />}
-                                                        Notifier les {definitifs.length} beneficiaire(s) definitif(s)
-                                                    </button>
-                                                )}
-
+                                               {voyage.arrete_recteur && definitifs.length > 0 && (
+    <div className="flex gap-2 flex-wrap">
+        <button onClick={() => notifierBeneficiaires(voyage.id)}
+            disabled={actionLoading === 'notif_' + voyage.id}
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
+            {actionLoading === 'notif_' + voyage.id
+                ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : <Bell size={14} />}
+            Notifier les {definitifs.length} beneficiaire(s) definitif(s)
+        </button>
+        <button onClick={() => envoyerArrete(voyage.id)}
+            disabled={actionLoading === 'arrete_' + voyage.id}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
+            {actionLoading === 'arrete_' + voyage.id
+                ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : <FileText size={14} />}
+            Envoyer l'arrete par email
+        </button>
+    </div>
+)}
                                                 <h3 className="font-semibold text-gray-700 text-sm">Beneficiaires :</h3>
 
                                                 <div className="space-y-2">
@@ -385,9 +407,9 @@ export default function VoyagesEtudes() {
                                                                         {b.dans_liste_definitive && <CheckCircle size={14} className="text-green-600" />}
                                                                     </div>
                                                                 </div>
-                                                                {b.autorisation_absence_id && (
-                                                                    <div className="mt-2 pt-2 border-t border-gray-200">
-                                                                        <button onClick={(e) => { e.stopPropagation(); navigate(`/autorisation-absence/${b.autorisation_absence_id}`) }}
+                                                                {b.autorisation_absence && b.autorisation_absence.id && (
+    <div className="mt-2 pt-2 border-t border-gray-200">
+        <button onClick={(e) => { e.stopPropagation(); navigate('/autorisation-absence/' + b.autorisation_absence.id + '/document') }}
                                                                             className="flex items-center gap-2 border border-green-600 text-green-600 hover:bg-green-50 px-4 py-2 rounded-xl text-sm font-semibold transition">
                                                                             <Eye size={14} /> Voir l'autorisation d'absence
                                                                         </button>
@@ -559,12 +581,12 @@ export default function VoyagesEtudes() {
                                                 </div>
                                             )}
 
-                                            {d.autorisation_absence_id && (
-                                                <button onClick={() => navigate(`/autorisation-absence/${d.autorisation_absence_id}`)}
-                                                    className="flex items-center gap-2 border border-green-600 text-green-600 hover:bg-green-50 px-4 py-2 rounded-xl text-sm font-semibold transition">
-                                                    <Eye size={14} /> Voir l'autorisation d'absence
-                                                </button>
-                                            )}
+                                         {d.autorisation_absence && d.autorisation_absence.id && (
+    <button onClick={() => navigate('/autorisation-absence/' + d.autorisation_absence.id + '/document')}
+        className="flex items-center gap-2 border border-green-600 text-green-600 hover:bg-green-50 px-4 py-2 rounded-xl text-sm font-semibold transition">
+        <Eye size={14} /> Voir l'autorisation d'absence
+    </button>
+)}
                                         </div>
                                     )
                                 })}

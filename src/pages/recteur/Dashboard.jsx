@@ -18,23 +18,31 @@ export default function RecteurDashboard() {
     const [selectedDefinitifs, setSelectedDefinitifs] = useState([])
     const [selectedSignes, setSelectedSignes]         = useState([])
     const [selectedAuto, setSelectedAuto]             = useState([])
+    const [selectedHistorique, setSelectedHistorique] = useState([])
+    const [autorisationsAbsence, setAutorisationsAbsence] = useState([])
+    const [arreteOuvert, setArreteOuvert] = useState(null)
+    const [arreteForm, setArreteForm]     = useState({
+        numero: '', date_arrete: '', visas: '', montant_billet: '', montant_indemnite: ''
+    })
 
     useEffect(() => {
         const params = new URLSearchParams(location.search)
         const tab = params.get('tab')
-        if (['arretes', 'autorisations', 'historique', 'historique_arretes'].includes(tab)) setActiveTab(tab)
+        if (['arretes', 'autorisations', 'historique', 'historique_arretes', 'autorisations_absence'].includes(tab)) setActiveTab(tab)
     }, [location.search])
 
     useEffect(() => { fetchAll() }, [])
 
     const fetchAll = async () => {
         try {
-            const [voyagesRes, autorisationsRes] = await Promise.all([
+            const [voyagesRes, autorisationsRes, autorisationsAbsenceRes] = await Promise.all([
                 api.get('/voyages-etudes'),
                 api.get('/voyages-etudes/dossiers-departement'),
+                api.get('/autorisations-absence'),
             ])
             setVoyages(voyagesRes.data)
             setAutorisations(autorisationsRes.data)
+            setAutorisationsAbsence(autorisationsAbsenceRes.data)
         } catch (err) {
             console.error(err)
         } finally {
@@ -48,16 +56,18 @@ export default function RecteurDashboard() {
         setTimeout(() => { setMessage(''); setError('') }, 3000)
     }
 
-    const signerArrete = async (voyageId) => {
+    const creerArrete = async (voyageId) => {
+        if (!arreteForm.numero || !arreteForm.date_arrete || !arreteForm.visas || !arreteForm.montant_billet || !arreteForm.montant_indemnite) {
+            showMsg('Veuillez remplir tous les champs', true)
+            return
+        }
         setActionLoading('arrete_' + voyageId)
         try {
-            await api.patch(`/voyages-etudes/${voyageId}/signer-arrete`)
-            showMsg('Arrete signe — le Vice-Recteur a ete notifie')
-            setTimeout(() => {
-                setVoyages(prev => prev.map(v =>
-                    v.id === voyageId ? { ...v, arrete_recteur: true } : v
-                ))
-            }, 1500)
+            await api.post(`/voyages-etudes/${voyageId}/arrete`, arreteForm)
+            showMsg('Arrete redige et signe avec succes')
+            setArreteOuvert(null)
+            setArreteForm({ numero: '', date_arrete: '', visas: '', montant_billet: '', montant_indemnite: '' })
+            fetchAll()
         } catch (err) {
             showMsg(err.response?.data?.message || 'Erreur', true)
         } finally {
@@ -73,6 +83,20 @@ export default function RecteurDashboard() {
             setTimeout(() => {
                 setAutorisations(prev => prev.filter(d => d.id !== beneficiaireId))
             }, 3000)
+        } catch (err) {
+            showMsg(err.response?.data?.message || 'Erreur', true)
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
+    // ===== Signature de l'autorisation d'absence par le Recteur =====
+    const signerAutorisationAbsence = async (autorisationId) => {
+        setActionLoading(autorisationId + '_signer_absence')
+        try {
+            await api.patch(`/autorisations-absence/${autorisationId}/signer-recteur`)
+            showMsg('Autorisation signee et transmise au Vice-Recteur')
+            fetchAll()
         } catch (err) {
             showMsg(err.response?.data?.message || 'Erreur', true)
         } finally {
@@ -100,11 +124,37 @@ export default function RecteurDashboard() {
             showMsg('Suppression effectuée')
         } catch { showMsg('Erreur lors de la suppression', true) }
     }
+    const envoyerEmailAutorisation = async (autorisationId) => {
+    setActionLoading('email_auto_' + autorisationId)
+    try {
+        await api.post('/autorisations-absence/' + autorisationId + '/envoyer-email')
+        showMsg('Autorisation envoyee par email avec succes')
+    } catch (err) {
+        showMsg(err.response?.data?.message || 'Erreur lors de l\'envoi', true)
+    } finally {
+        setActionLoading(null)
+    }
+}
 
-    const definitifs     = voyages.filter(v => v.statut_liste === 'definitive' && !v.arrete_recteur)
-    const signes         = voyages.filter(v => v.arrete_recteur)
-    const autorEnAttente = autorisations.filter(d => d.statut_autorisation === 'envoye_recteur')
-    const autorHistorique = autorisations.filter(d => d.statut_autorisation === 'approuve_recteur')
+    const supprimerHistorique = async (ids) => {
+        if (!confirm(`Supprimer ${ids.length} autorisation(s) de l'historique ?`)) return
+        try {
+            for (const id of ids) await api.delete(`/voyages-etudes/beneficiaire/${id}/dossier`)
+            setAutorisations(prev => prev.filter(d => !ids.includes(d.id)))
+            setSelectedHistorique([])
+            showMsg('Suppression effectuée')
+        } catch { showMsg('Erreur lors de la suppression', true) }
+    }
+
+    const definitifs      = voyages.filter(v => v.statut_liste === 'definitive' && !v.arrete_recteur)
+    const signes           = voyages.filter(v => v.arrete_recteur)
+    const autorEnAttente   = autorisations.filter(d => d.statut_autorisation === 'envoye_recteur')
+    const autorHistorique  = autorisations.filter(d => d.statut_autorisation === 'approuve_recteur')
+
+    // Autorisations d'absence en attente de signature du Recteur (avis favorable du Directeur UFR)
+    const autorisationsAbsenceEnAttente = autorisationsAbsence.filter(a => a.statut === 'avis_directeur_ufr')
+    // Déjà signées par le Recteur (ou plus loin dans le circuit)
+    const autorisationsAbsenceSignees   = autorisationsAbsence.filter(a => ['signee_recteur', 'transmise'].includes(a.statut))
 
     const BarreSelection = ({ selected, total, onSelectAll, onDeleteSelected, onDeleteAll }) => (
         <div className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-2.5 shadow-sm">
@@ -137,10 +187,10 @@ export default function RecteurDashboard() {
             <div className="space-y-6">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Dashboard Recteur</h1>
-                    <p className="text-gray-500 text-sm mt-1">Signature des arretes et autorisations de sortie</p>
+                    <p className="text-gray-500 text-sm mt-1">Signature des arretes et autorisations</p>
                 </div>
 
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-5 gap-4">
                     <div onClick={() => setActiveTab('arretes')}
                         className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-blue-200 hover:shadow-md transition">
                         <div className="bg-orange-100 p-2 rounded-xl w-fit mb-3">
@@ -156,6 +206,14 @@ export default function RecteurDashboard() {
                         </div>
                         <p className="text-2xl font-bold text-gray-800">{autorEnAttente.length}</p>
                         <p className="text-sm text-gray-500 mt-1">Autorisations a approuver</p>
+                    </div>
+                    <div onClick={() => setActiveTab('autorisations_absence')}
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-purple-200 hover:shadow-md transition">
+                        <div className="bg-purple-100 p-2 rounded-xl w-fit mb-3">
+                            <FileText size={20} className="text-purple-700" />
+                        </div>
+                        <p className="text-2xl font-bold text-gray-800">{autorisationsAbsenceEnAttente.length}</p>
+                        <p className="text-sm text-gray-500 mt-1">Absences a signer</p>
                     </div>
                     <div onClick={() => setActiveTab('historique_arretes')}
                         className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-green-200 hover:shadow-md transition">
@@ -179,6 +237,7 @@ export default function RecteurDashboard() {
                     {[
                         { key: 'arretes', label: 'Arretes a signer', count: definitifs.length, color: 'orange' },
                         { key: 'autorisations', label: 'Autorisations de sortie', count: autorEnAttente.length, color: 'blue' },
+                        { key: 'autorisations_absence', label: "Absences a signer", count: autorisationsAbsenceEnAttente.length, color: 'purple' },
                         { key: 'historique_arretes', label: 'Historique arretes signes', count: signes.length, color: 'green' },
                         { key: 'historique', label: 'Historique autorisations', count: autorHistorique.length, color: 'green' },
                     ].map(tab => (
@@ -215,7 +274,6 @@ export default function RecteurDashboard() {
                     </div>
                 ) : (
                     <>
-                        {/* ===== ARRETES A SIGNER ===== */}
                         {activeTab === 'arretes' && (
                             definitifs.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
@@ -276,21 +334,131 @@ export default function RecteurDashboard() {
                                                 ))}
                                             </div>
 
-                                            <button onClick={() => signerArrete(voyage.id)}
-                                                disabled={actionLoading === 'arrete_' + voyage.id}
-                                                className="w-full flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl font-semibold text-sm transition disabled:opacity-50">
-                                                {actionLoading === 'arrete_' + voyage.id
-                                                    ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                    : <FileText size={16} />}
-                                                Signer l'arrete
-                                            </button>
+                                            {arreteOuvert !== voyage.id ? (
+                                                <button onClick={() => setArreteOuvert(voyage.id)}
+                                                    className="w-full flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl font-semibold text-sm transition">
+                                                    <FileText size={16} /> Rediger l'arrete
+                                                </button>
+                                            ) : (
+                                                <div className="space-y-3 bg-gray-50 rounded-xl p-4">
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Numero de l'arrete</label>
+                                                        <input type="text" placeholder="Ex : 157/UAD/R/SG/DRH"
+                                                            value={arreteForm.numero}
+                                                            onChange={e => setArreteForm({ ...arreteForm, numero: e.target.value })}
+                                                            className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Date de l'arrete</label>
+                                                        <input type="date"
+                                                            value={arreteForm.date_arrete}
+                                                            onChange={e => setArreteForm({ ...arreteForm, date_arrete: e.target.value })}
+                                                            className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Visas (lois et decrets, un par ligne)</label>
+                                                        <textarea placeholder="VU la loi n° 81-59 du 09 novembre 1981..."
+                                                            value={arreteForm.visas}
+                                                            onChange={e => setArreteForm({ ...arreteForm, visas: e.target.value })}
+                                                            rows={5}
+                                                            className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <div>
+                                                            <label className="block text-xs font-medium text-gray-600 mb-1">Montant billet (FCFA)</label>
+                                                            <input type="number" placeholder="500000"
+                                                                value={arreteForm.montant_billet}
+                                                                onChange={e => setArreteForm({ ...arreteForm, montant_billet: e.target.value })}
+                                                                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-medium text-gray-600 mb-1">Indemnite forfaitaire (FCFA)</label>
+                                                            <input type="number" placeholder="1000000"
+                                                                value={arreteForm.montant_indemnite}
+                                                                onChange={e => setArreteForm({ ...arreteForm, montant_indemnite: e.target.value })}
+                                                                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => creerArrete(voyage.id)}
+                                                            disabled={actionLoading === 'arrete_' + voyage.id}
+                                                            className="flex-1 flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl font-semibold text-sm transition disabled:opacity-50">
+                                                            {actionLoading === 'arrete_' + voyage.id
+                                                                ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                                : <FileText size={16} />}
+                                                            Signer l'arrete
+                                                        </button>
+                                                        <button onClick={() => setArreteOuvert(null)}
+                                                            className="px-4 py-2.5 border border-gray-300 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50 transition">
+                                                            Annuler
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
                             )
                         )}
 
-                        {/* ===== HISTORIQUE ARRETES ===== */}
+                        {/* ===== ONGLET ABSENCES A SIGNER ===== */}
+                        {activeTab === 'autorisations_absence' && (
+                            autorisationsAbsenceEnAttente.length === 0 ? (
+                                <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
+                                    <FileText size={40} className="mx-auto mb-4 text-gray-300" />
+                                    <h3 className="text-gray-700 font-semibold mb-2">Aucune demande</h3>
+                                    <p className="text-gray-400 text-sm">Les autorisations approuvees par le Directeur UFR apparaitront ici</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {autorisationsAbsenceEnAttente.map(a => (
+                                        <div key={a.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                                            <div className="flex items-start justify-between mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-700 font-bold text-sm">
+                                                        {a.enseignant?.prenom?.[0]}{a.enseignant?.nom?.[0]}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold text-gray-800">{a.enseignant?.prenom} {a.enseignant?.nom}</p>
+                                                        <p className="text-xs text-gray-500">{a.numero}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="font-medium text-gray-700 text-sm">{a.lieu_deplacement}</p>
+                                                    <p className="text-xs text-gray-500">
+                                                        {new Date(a.periode_debut).toLocaleDateString('fr-FR')} - {new Date(a.periode_fin).toLocaleDateString('fr-FR')}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-purple-50 rounded-xl p-3 mb-4">
+                                                <p className="text-sm text-purple-700">
+                                                    Le Directeur UFR a approuve cette demande. Votre signature est requise avant transmission au Vice-Recteur.
+                                                </p>
+                                            </div>
+
+                                            <div className="flex gap-2 flex-wrap">
+                                                <button
+                                                    onClick={() => navigate('/autorisation-absence/' + a.id + '/document')}
+                                                    className="flex items-center gap-2 border border-blue-700 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm font-semibold transition">
+                                                    <Eye size={14} />
+                                                    Voir le document
+                                                </button>
+                                                <button onClick={() => signerAutorisationAbsence(a.id)}
+                                                    disabled={actionLoading === a.id + '_signer_absence'}
+                                                    className="flex items-center gap-2 bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
+                                                    {actionLoading === a.id + '_signer_absence'
+                                                        ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                        : <CheckCircle size={14} />}
+                                                    Signer et transmettre au Vice-Recteur
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )
+                        )}
+
                         {activeTab === 'historique_arretes' && (
                             signes.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
@@ -336,7 +504,6 @@ export default function RecteurDashboard() {
                             )
                         )}
 
-                        {/* ===== AUTORISATIONS ===== */}
                         {activeTab === 'autorisations' && (
                             autorEnAttente.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
@@ -425,7 +592,6 @@ export default function RecteurDashboard() {
                             )
                         )}
 
-                        {/* ===== HISTORIQUE AUTORISATIONS ===== */}
                         {activeTab === 'historique' && (
                             autorHistorique.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
@@ -435,31 +601,52 @@ export default function RecteurDashboard() {
                                 </div>
                             ) : (
                                 <div className="space-y-3">
+                                    <BarreSelection
+                                        selected={selectedHistorique}
+                                        total={autorHistorique.length}
+                                        onSelectAll={() => setSelectedHistorique(
+                                            selectedHistorique.length === autorHistorique.length ? [] : autorHistorique.map(d => d.id)
+                                        )}
+                                        onDeleteSelected={() => supprimerHistorique(selectedHistorique)}
+                                        onDeleteAll={() => supprimerHistorique(autorHistorique.map(d => d.id))}
+                                    />
                                     {autorHistorique.map(d => (
-                                        <div key={d.id} className="bg-green-50 rounded-2xl border border-green-200 p-4 flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-700 font-bold text-sm">
-                                                    {d.enseignant?.prenom?.[0]}{d.enseignant?.nom?.[0]}
-                                                </div>
-                                                <div>
-                                                    <p className="font-semibold text-gray-800">{d.enseignant?.prenom} {d.enseignant?.nom}</p>
-                                                    <p className="text-xs text-gray-500">{d.enseignant?.ufr} — {d.voyage?.destination}</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <span className="flex items-center gap-1 text-xs font-semibold text-green-700">
-                                                    <CheckCircle size={12} /> Approuvée
-                                                </span>
-                                                {d.autorisation_absence && d.autorisation_absence.id && (
-                                                    <button
-                                                        onClick={() => navigate('/autorisation-absence/' + d.autorisation_absence.id + '/document')}
-                                                        className="flex items-center gap-1.5 border border-green-600 text-green-600 hover:bg-green-100 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
-                                                        <Eye size={13} /> Voir
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
+    <div key={d.id} className="bg-green-50 rounded-2xl border border-green-200 p-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-700 font-bold text-sm">
+                {d.enseignant?.prenom?.[0]}{d.enseignant?.nom?.[0]}
+            </div>
+            <div>
+                <p className="font-semibold text-gray-800">{d.enseignant?.prenom} {d.enseignant?.nom}</p>
+                <p className="text-xs text-gray-500">{d.enseignant?.ufr} — {d.voyage?.destination}</p>
+            </div>
+        </div>
+        <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1 text-xs font-semibold text-green-700">
+                <CheckCircle size={12} /> Approuvée
+            </span>
+            {d.autorisation_absence && d.autorisation_absence.id && (
+                <button
+                    onClick={() => navigate('/autorisation-absence/' + d.autorisation_absence.id + '/document')}
+                    className="flex items-center gap-1.5 border border-green-600 text-green-600 hover:bg-green-100 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
+                    <Eye size={13} /> Voir
+                </button>
+            )}
+            {d.autorisation_absence && d.autorisation_absence.id && (
+                <button
+                    onClick={() => envoyerEmailAutorisation(d.autorisation_absence.id)}
+                    disabled={actionLoading === 'email_auto_' + d.autorisation_absence.id}
+                    className="flex items-center gap-1.5 border border-blue-600 text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-xl text-xs font-semibold transition disabled:opacity-50">
+                    {actionLoading === 'email_auto_' + d.autorisation_absence.id
+                        ? <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                        : <Send size={13} />}
+                    Envoyer par email
+                </button>
+            )}
+        </div>
+    </div>
+))}
+                                    
                                 </div>
                             )
                         )}

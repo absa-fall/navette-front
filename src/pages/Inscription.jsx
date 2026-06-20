@@ -52,11 +52,9 @@ export default function Inscription() {
         setError('')
         try {
             const data = {
-                ...form,
-                role: form.type_profil === 'PER' && form.statut === 'permanent'
-                    ? 'enseignant'
-                    : 'usager'
-            }
+    ...form,
+    role: form.type_profil === 'PER' ? 'enseignant' : 'usager'
+}
             await api.post('/register', data)
             setSuccess(true)
         } catch (err) {
@@ -189,23 +187,16 @@ export default function Inscription() {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Statut *</label>
-                                <select name="statut" value={form.statut}
-                                    onChange={handleChange}
-                                    className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    required>
-                                    <option value="">Choisir...</option>
-                                    <option value="permanent">Permanent</option>
-                                    {form.type_profil !== 'PER' && (
-                                        <>
-                                            <option value="non_permanent">Non permanent</option>
-                                            <option value="contractuel">Contractuel</option>
-                                            <option value="vacataire">Vacataire</option>
-                                        </>
-                                    )}
-                                </select>
-                                {form.type_profil === 'PER' && (
-                                    <p className="text-xs text-blue-600 mt-1">Les PER sont automatiquement Permanent.</p>
-                                )}
+                               <select name="statut" value={form.statut}
+    onChange={handleChange}
+    className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+    required>
+    <option value="">Choisir...</option>
+    <option value="permanent">Permanent</option>
+    <option value="non_permanent">Non permanent</option>
+    <option value="contractuel">Contractuel</option>
+    <option value="vacataire">Vacataire</option>
+</select>
                             </div>
                         </div>
 

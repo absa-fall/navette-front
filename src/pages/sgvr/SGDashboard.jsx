@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
+import GraphiquesSGVR from '../../components/GraphiquesSGVR'
 import api from '../../api/axios'
 import { 
     MapPin, CreditCard, Calendar, Clock, 
@@ -25,7 +26,7 @@ export default function SGDashboard() {
     const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' })
     const [editingId, setEditingId] = useState(null)
     const [editMontant, setEditMontant] = useState('')
-    const [onglet, setOnglet] = useState('encours')
+   const [onglet, setOnglet] = useState('historique')
     const [selected, setSelected] = useState([])
     const [deleteLoading, setDeleteLoading] = useState(false)
 
@@ -90,22 +91,21 @@ export default function SGDashboard() {
         }
     }
 
-    // ✅ Masquer de la vue au lieu de supprimer vraiment
     const supprimerSelection = async (liste) => {
-        const ids = selected.filter(id => liste.some(r => r.id === id))
-        if (ids.length === 0) return
-        if (!confirm(`Voulez-vous vraiment supprimer ${ids.length} réservation(s) de votre historique ?`)) return
-        setDeleteLoading(true)
-        try {
-            // On retire juste de la vue locale, le montant reste en base
-            setReservations(prev => prev.filter(r => !ids.includes(r.id)))
-            setSelected([])
-        } catch (err) {
-            alert('Erreur lors de la suppression.')
-        } finally {
-            setDeleteLoading(false)
-        }
+    const ids = selected.filter(id => liste.some(r => r.id === id))
+    if (ids.length === 0) return
+    if (!confirm(`Voulez-vous vraiment supprimer ${ids.length} réservation(s) ? Cette action est définitive.`)) return
+    setDeleteLoading(true)
+    try {
+        await Promise.all(ids.map(id => api.delete(`/reservations/${id}`)))
+        setReservations(prev => prev.filter(r => !ids.includes(r.id)))
+        setSelected([])
+    } catch (err) {
+        alert(err.response?.data?.message || 'Erreur lors de la suppression.')
+    } finally {
+        setDeleteLoading(false)
     }
+}
 
     const filteredReservations = (liste) => liste.filter(r => {
         const matchesSearch =
@@ -228,132 +228,143 @@ export default function SGDashboard() {
     const totalRetenues = reservations.reduce((sum, r) => sum + (parseFloat(r.montant_retenue) || 0), 0)
     const listeActive = onglet === 'encours' ? enCours : terminées
     const estHistorique = onglet === 'historique'
+const renderTableau = (liste) => {
+    const sorted = sortedList(liste)
+    const allIds = sorted.map(r => r.id)
+    const toutSelectionne = allIds.length > 0 && allIds.every(id => selected.includes(id))
+    const selectedDansListe = selected.filter(id => liste.some(r => r.id === id))
 
-    const renderTableau = (liste) => {
-        const sorted = sortedList(liste)
-        const allIds = sorted.map(r => r.id)
-        const toutSelectionne = allIds.length > 0 && allIds.every(id => selected.includes(id))
-        const selectedDansListe = selected.filter(id => liste.some(r => r.id === id))
-
-        return (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                {estHistorique && selectedDansListe.length > 0 && (
-                    <div className="flex items-center justify-between px-4 py-3 bg-red-50 border-b border-red-100">
-                        <p className="text-sm text-red-700 font-medium">{selectedDansListe.length} sélectionné(s)</p>
-                        <button onClick={() => supprimerSelection(liste)} disabled={deleteLoading}
-                            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
-                            {deleteLoading
-                                ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                : <Trash2 size={14} />}
-                            Supprimer la sélection
-                        </button>
-                    </div>
-                )}
-
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-gray-50 border-b border-gray-100">
-                            <tr>
-                                {estHistorique && (
-                                    <th className="px-4 py-3">
-                                        <input type="checkbox" checked={toutSelectionne} onChange={() => toggleSelectAll(liste)}
-                                            className="w-4 h-4 rounded border-gray-300 text-blue-600" />
-                                    </th>
-                                )}
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onClick={() => handleSort('nom')}>
-                                    <div className="flex items-center gap-1">Passager {sortConfig.key === 'nom' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
-                                </th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Profil</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Trajet</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Type</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onClick={() => handleSort('date_reservation')}>
-                                    <div className="flex items-center gap-1">Date & Heure {sortConfig.key === 'date_reservation' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
-                                </th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Montant</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Statut</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {sorted.length === 0 ? (
-                                <tr><td colSpan={estHistorique ? 9 : 8} className="px-4 py-8 text-center text-gray-500">Aucune réservation</td></tr>
-                            ) : (
-                                sorted.map((r) => (
-                                    <tr key={r.id} className={`hover:bg-gray-50 transition ${selected.includes(r.id) ? 'bg-red-50' : ''}`}>
-                                        {estHistorique && (
-                                            <td className="px-4 py-3">
-                                                <input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggleSelect(r.id)}
-                                                    className="w-4 h-4 rounded border-gray-300 text-blue-600" />
-                                            </td>
-                                        )}
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs">
-                                                    {(r.prenom || '').charAt(0)}{(r.nom || '').charAt(0)}
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-gray-800 text-sm">{r.prenom} {r.nom}</p>
-                                                    <p className="text-xs text-gray-500">{r.categorie}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getProfilBadge(r.type_profil)}`}>{r.type_profil}</span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-1 text-sm text-gray-700">
-                                                <MapPin size={14} className="text-blue-500" />
-                                                {r.ville_depart} <span className="text-gray-400">→</span> {r.ville_arrivee}
-                                            </div>
-                                        </td>
-                                        {/* ✅ Colonne type trajet */}
-                                        <td className="px-4 py-3">
-                                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                                                {typeTrajetLabel[r.type_trajet] || r.type_trajet || '-'}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="text-sm text-gray-700">
-                                                <div className="flex items-center gap-1"><Calendar size={14} className="text-gray-400" />{r.date_reservation ? new Date(r.date_reservation).toLocaleDateString('fr-FR') : '-'}</div>
-                                                <div className="flex items-center gap-1 text-gray-500"><Clock size={14} className="text-gray-400" />{r.heure_reservation || '-'}</div>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {editingId === r.id ? (
-                                                <div className="flex items-center gap-1">
-                                                    <input type="number" value={editMontant} onChange={(e) => setEditMontant(e.target.value)}
-                                                        className="w-24 border border-blue-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                                                    <button onClick={() => handleSaveMontant(r.id)} className="text-green-600 hover:text-green-800"><Check size={16} /></button>
-                                                    <button onClick={() => setEditingId(null)} className="text-red-400 hover:text-red-600"><X size={16} /></button>
-                                                </div>
-                                            ) : (
-                                                <span className="text-blue-700 font-bold text-sm">
-                                                    {(parseFloat(r.montant_retenue) || 0) === 0 ? '—' : (parseFloat(r.montant_retenue) || 0).toLocaleString() + ' FCFA'}
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3">{getStatutBadge(r)}</td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={() => handleEditMontant(r)} className="text-blue-500 hover:text-blue-700 transition" title="Modifier le montant"><Pencil size={15} /></button>
-                                                <button onClick={() => handleDeleteMontant(r.id)} className="text-red-400 hover:text-red-600 transition" title="Mettre le montant à 0"><Trash2 size={15} /></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+    return (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            {selectedDansListe.length > 0 && (
+                <div className="flex items-center justify-between px-4 py-3 bg-red-50 border-b border-red-100">
+                    <p className="text-sm text-red-700 font-medium">{selectedDansListe.length} sélectionné(s)</p>
+                    <button onClick={() => supprimerSelection(liste)} disabled={deleteLoading}
+                        className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
+                        {deleteLoading
+                            ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            : <Trash2 size={14} />}
+                        Supprimer la sélection
+                    </button>
                 </div>
-                {liste.length > 0 && (
-                    <div className="p-4 border-t border-gray-100 text-center text-sm text-gray-500">
-                        {sorted.length} réservation(s) affichée(s) sur {liste.length} au total
-                    </div>
-                )}
-            </div>
-        )
-    }
+            )}
 
+            <div className="overflow-x-auto">
+                <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-100">
+                        <tr>
+                            <th className="px-4 py-3">
+                                <input type="checkbox" checked={toutSelectionne} onChange={() => toggleSelectAll(liste)}
+                                    className="w-4 h-4 rounded border-gray-300 text-blue-600" />
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onClick={() => handleSort('nom')}>
+                                <div className="flex items-center gap-1">
+                                    Passager {sortConfig.key === 'nom' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                                </div>
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Profil</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Trajet</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Type</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:bg-gray-100" onClick={() => handleSort('date_reservation')}>
+                                <div className="flex items-center gap-1">
+                                    Date & Heure {sortConfig.key === 'date_reservation' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                                </div>
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Montant</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Statut</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                        {sorted.length === 0 ? (
+                            <tr>
+                                <td colSpan={9} className="px-4 py-8 text-center text-gray-500">Aucune réservation</td>
+                            </tr>
+                        ) : (
+                            sorted.map((r) => (
+                                <tr key={r.id} className={`hover:bg-gray-50 transition ${selected.includes(r.id) ? 'bg-red-50' : ''}`}>
+                                    <td className="px-4 py-3">
+                                        <input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggleSelect(r.id)}
+                                            className="w-4 h-4 rounded border-gray-300 text-blue-600" />
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs">
+                                                {(r.prenom || '').charAt(0)}{(r.nom || '').charAt(0)}
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-gray-800 text-sm">{r.prenom} {r.nom}</p>
+                                                <p className="text-xs text-gray-500">{r.categorie}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getProfilBadge(r.type_profil)}`}>
+                                            {r.type_profil}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-center gap-1 text-sm text-gray-700">
+                                            <MapPin size={14} className="text-blue-500" />
+                                            {r.ville_depart} <span className="text-gray-400">→</span> {r.ville_arrivee}
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                                            {typeTrajetLabel[r.type_trajet] || r.type_trajet || '-'}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <div className="text-sm text-gray-700">
+                                            <div className="flex items-center gap-1">
+                                                <Calendar size={14} className="text-gray-400" />
+                                                {r.date_reservation ? new Date(r.date_reservation).toLocaleDateString('fr-FR') : '-'}
+                                            </div>
+                                            <div className="flex items-center gap-1 text-gray-500">
+                                                <Clock size={14} className="text-gray-400" />
+                                                {r.heure_reservation || '-'}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        {editingId === r.id ? (
+                                            <div className="flex items-center gap-1">
+                                                <input type="number" value={editMontant} onChange={(e) => setEditMontant(e.target.value)}
+                                                    className="w-24 border border-blue-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                                <button onClick={() => handleSaveMontant(r.id)} className="text-green-600 hover:text-green-800"><Check size={16} /></button>
+                                                <button onClick={() => setEditingId(null)} className="text-red-400 hover:text-red-600"><X size={16} /></button>
+                                            </div>
+                                        ) : (
+                                            <span className="text-blue-700 font-bold text-sm">
+                                                {(parseFloat(r.montant_retenue) || 0) === 0 ? '—' : (parseFloat(r.montant_retenue) || 0).toLocaleString() + ' FCFA'}
+                                            </span>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-3">{getStatutBadge(r)}</td>
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => handleEditMontant(r)} className="text-blue-500 hover:text-blue-700 transition" title="Modifier le montant">
+                                                <Pencil size={15} />
+                                            </button>
+                                            <button onClick={() => handleDeleteMontant(r.id)} className="text-red-400 hover:text-red-600 transition" title="Mettre le montant à 0">
+                                                <Trash2 size={15} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+            {liste.length > 0 && (
+                <div className="p-4 border-t border-gray-100 text-center text-sm text-gray-500">
+                    {sorted.length} réservation(s) affichée(s) sur {liste.length} au total
+                </div>
+            )}
+        </div>
+    )
+}
     return (
         <Layout>
             <div className="space-y-6">
@@ -362,18 +373,7 @@ export default function SGDashboard() {
                         <h1 className="text-2xl font-bold text-gray-800">Tableau de bord SG VR</h1>
                         <p className="text-gray-500 text-sm mt-1">Gestion des réservations navette</p>
                     </div>
-                    {!error && reservations.length > 0 && (
-                        <div className="flex gap-2">
-                            <button onClick={() => exportExcel(listeActive)}
-                                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition">
-                                <FileSpreadsheet size={16} /> Excel
-                            </button>
-                            <button onClick={() => exportPDF(listeActive)}
-                                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition">
-                                <FileText size={16} /> PDF
-                            </button>
-                        </div>
-                    )}
+                   
                 </div>
 
                 {error && (
@@ -422,20 +422,21 @@ export default function SGDashboard() {
                         </div>
                     </div>
                 )}
+                <GraphiquesSGVR reservations={reservations} />
 
                 {!error && (
-                    <div className="flex gap-2 border-b border-gray-200">
-                        <button onClick={() => setOnglet('encours')}
-                            className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition ${onglet === 'encours' ? 'border-blue-700 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-                            En cours ({enCours.length})
-                        </button>
-                        <button onClick={() => setOnglet('historique')}
-                            className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center gap-2 ${onglet === 'historique' ? 'border-blue-700 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-                            <History size={15} />
-                            Historique ({terminées.length})
-                        </button>
-                    </div>
-                )}
+    <div className="flex gap-2 border-b border-gray-200">
+        <button onClick={() => setOnglet('historique')}
+            className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center gap-2 ${onglet === 'historique' ? 'border-blue-700 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            <History size={15} />
+            Historique ({terminées.length})
+        </button>
+        <button onClick={() => setOnglet('encours')}
+            className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition ${onglet === 'encours' ? 'border-blue-700 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            En cours ({enCours.length})
+        </button>
+    </div>
+)}
 
                 {!error && reservations.length > 0 && (
                     <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">

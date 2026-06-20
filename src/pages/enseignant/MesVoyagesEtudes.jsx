@@ -297,16 +297,16 @@ const demanderAutorisation = async (beneficiaireId) => {
                                                 </div>
                                             )}
 
-                                            {/* Voir / Imprimer l'autorisation */}
-                                            {b.autorisation_absence && (
-                                                <button
-                                                    onClick={() => navigate(`/autorisation-absence/${b.autorisation_absence.id}`)}
-                                                    className="w-full flex items-center justify-center gap-2 border border-blue-200 text-blue-700 py-2.5 rounded-xl font-semibold text-sm hover:bg-blue-50 transition"
-                                                >
-                                                    <Eye size={16} />
-                                                    Voir l'autorisation d'absence ({b.autorisation_absence.numero})
-                                                </button>
-                                            )}
+                                           {/* Voir / Imprimer l'autorisation */}
+{b.autorisation_absence && (
+    <button
+       onClick={() => navigate(`/autorisation-absence/${b.autorisation_absence.id}/document`)}
+        className="w-full flex items-center justify-center gap-2 border border-blue-200 text-blue-700 py-2.5 rounded-xl font-semibold text-sm hover:bg-blue-50 transition"
+    >
+        <Eye size={16} />
+        Voir l'autorisation d'absence ({b.autorisation_absence.numero})
+    </button>
+)}
 
                                             {/* Bloqué : arrêté pas encore signé */}
                                             {b.dans_liste_definitive && !arreteSigné && b.statut_justificatif === 'valide' && (

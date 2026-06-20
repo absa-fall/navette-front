@@ -108,7 +108,7 @@ export default function DDLDashboard() {
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <div onClick={() => navigate('/ddl/navettes')} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition">
                         <div className="flex items-center justify-between mb-3">
                             <div className="bg-blue-100 p-2 rounded-xl"><Bus size={20} className="text-blue-700" /></div>
@@ -117,14 +117,7 @@ export default function DDLDashboard() {
                         <p className="text-2xl font-bold text-gray-800">{stats.demandesNavette}</p>
                         <p className="text-sm text-gray-500 mt-1">Demandes navette</p>
                     </div>
-                    <div onClick={() => navigate('/ddl/voyages')} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="bg-green-100 p-2 rounded-xl"><MapPin size={20} className="text-green-700" /></div>
-                            <span className="text-xs text-gray-400">Total</span>
-                        </div>
-                        <p className="text-2xl font-bold text-gray-800">{stats.voyagesEtudes}</p>
-                        <p className="text-sm text-gray-500 mt-1">Voyages d'études</p>
-                    </div>
+                    
                     <div onClick={() => navigate('/ddl/en-attente')} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition">
                         <div className="flex items-center justify-between mb-3">
                             <div className="bg-orange-100 p-2 rounded-xl"><Clock size={20} className="text-orange-700" /></div>
@@ -154,13 +147,7 @@ export default function DDLDashboard() {
                                 <p className="text-sm text-gray-500">Soumettre un ordre de mission</p>
                             </div>
                         </a>
-                        <a href="/ddl/voyages/nouveau" className="flex items-center gap-4 p-4 border-2 border-dashed border-green-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition group">
-                            <div className="bg-green-100 p-3 rounded-xl group-hover:bg-green-200 transition"><MapPin size={22} className="text-green-700" /></div>
-                            <div>
-                                <p className="font-semibold text-gray-800">Voyage d'études</p>
-                                <p className="text-sm text-gray-500">Soumettre une demande</p>
-                            </div>
-                        </a>
+                       
                     </div>
                 </div>
 
