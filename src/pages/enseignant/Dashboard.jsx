@@ -1,8 +1,9 @@
 import Layout from '../../components/Layout'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { MapPin, FileText, Clock, CheckCircle, AlertTriangle } from 'lucide-react'
+
 import { useState, useEffect } from 'react'
+import { MapPin, FileText, Clock, CheckCircle, AlertTriangle, Bus } from 'lucide-react'
 import api from '../../api/axios'
 
 export default function EnseignantDashboard() {
@@ -42,7 +43,7 @@ export default function EnseignantDashboard() {
                 {/* Header */}
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">
-                        Bonjour, {user?.prenom} 👋
+                        Bonjour, {user?.prenom} 
                     </h1>
                     <p className="text-gray-500 text-sm mt-1">
                         Espace enseignant — {user?.ufr}
@@ -149,18 +150,44 @@ export default function EnseignantDashboard() {
                             </div>
                         </div>
 
-                        <div
-                            onClick={() => navigate('/enseignant/rapports')}
-                            className="flex items-center gap-4 p-4 border-2 border-dashed border-purple-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition group cursor-pointer"
-                        >
-                            <div className="bg-purple-100 p-3 rounded-xl group-hover:bg-purple-200 transition">
-                                <FileText size={22} className="text-purple-700" />
-                            </div>
-                            <div>
-                                <p className="font-semibold text-gray-800">Mes rapports</p>
-                                <p className="text-sm text-gray-500">Voir et soumettre mes rapports</p>
-                            </div>
-                        </div>
+                      <div
+    onClick={() => navigate('/enseignant/rapports')}
+    className="flex items-center gap-4 p-4 border-2 border-dashed border-purple-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition group cursor-pointer"
+>
+    <div className="bg-purple-100 p-3 rounded-xl group-hover:bg-purple-200 transition">
+        <FileText size={22} className="text-purple-700" />
+    </div>
+    <div>
+        <p className="font-semibold text-gray-800">Mes rapports</p>
+        <p className="text-sm text-gray-500">Voir et soumettre mes rapports</p>
+    </div>
+</div>
+
+<div
+    onClick={() => navigate('/enseignant/mes-reservations')}
+    className="flex items-center gap-4 p-4 border-2 border-dashed border-indigo-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition group cursor-pointer"
+>
+    <div className="bg-indigo-100 p-3 rounded-xl group-hover:bg-indigo-200 transition">
+        <Bus size={22} className="text-indigo-700" />
+    </div>
+    <div>
+        <p className="font-semibold text-gray-800">Mes réservations</p>
+        <p className="text-sm text-gray-500">Voir mes QR codes navette</p>
+    </div>
+</div>
+
+<div
+    onClick={() => navigate('/enseignant/scanner')}
+    className="flex items-center gap-4 p-4 border-2 border-dashed border-green-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition group cursor-pointer"
+>
+    <div className="bg-green-100 p-3 rounded-xl group-hover:bg-green-200 transition">
+        <Bus size={22} className="text-green-700" />
+    </div>
+    <div>
+        <p className="font-semibold text-gray-800">Scanner le bus</p>
+        <p className="text-sm text-gray-500">Scanner le QR code du bus</p>
+    </div>
+</div>
 
                     </div>
                 </div>

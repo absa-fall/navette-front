@@ -1,172 +1,256 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import api from '../api/axios'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
-    Bus,
-    MapPin,
-    FileText,
-    Users,
-    LayoutDashboard,
-    LogOut,
-    Menu,
-    X,
-    ChevronRight,
-    Bell,
-    CheckCircle,
-    Trash2
+    Bus, MapPin, FileText, Users, LayoutDashboard, LogOut,
+    Menu, X, ChevronRight, Bell, Trash2, CheckCheck, Camera, CheckCircle
 } from 'lucide-react'
-
 const menuParRole = {
     admin: [
-        { label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
-        { label: 'Utilisateurs', icon: Users, path: '/admin/utilisateurs' },
-        { label: 'Véhicules', icon: Bus, path: '/admin/vehicules' },
+        { label: 'Dashboard',     icon: LayoutDashboard, path: '/admin/dashboard' },
+        { label: 'Utilisateurs',  icon: Users,           path: '/admin/utilisateurs' },
+        { label: 'Véhicules',     icon: Bus,             path: '/admin/vehicules' },
     ],
     ddl: [
-        { label: 'Dashboard', icon: LayoutDashboard, path: '/ddl/dashboard' },
-        { label: 'Mes navettes', icon: Bus, path: '/ddl/navettes' },
+        { label: 'Dashboard',    icon: LayoutDashboard, path: '/ddl/dashboard' },
+        { label: 'Mes navettes', icon: Bus,             path: '/ddl/navettes' },
     ],
     enseignant: [
-        { label: 'Dashboard', icon: LayoutDashboard, path: '/enseignant/dashboard' },
-        { label: 'Mes voyages', icon: MapPin, path: '/enseignant/voyages-etudes' },
-        { label: 'Mes rapports', icon: FileText, path: '/enseignant/rapports' },
-        { label: 'Réserver navette', icon: Bus, path: '/enseignant/reserver' },
+        { label: 'Dashboard',        icon: LayoutDashboard, path: '/enseignant/dashboard' },
+        { label: 'Mes voyages',      icon: MapPin,          path: '/enseignant/voyages-etudes' },
+        { label: 'Mes rapports',     icon: FileText,        path: '/enseignant/rapports' },
+        { label: 'Réserver navette', icon: Bus,             path: '/enseignant/reserver' },
     ],
     drh: [
-        { label: 'Dashboard', icon: LayoutDashboard, path: '/drh/dashboard' },
-        { label: 'Ordres à approuver', icon: FileText, path: '/drh/ordres' },
+        { label: 'Dashboard',          icon: LayoutDashboard, path: '/drh/dashboard' },
+        { label: 'Ordres à approuver', icon: FileText,        path: '/drh/ordres' },
     ],
     sg_drh: [
-        { label: 'Dashboard', icon: LayoutDashboard, path: '/sg-drh/dashboard' },
-        { label: 'Ordres à signer', icon: FileText, path: '/sg-drh/ordres' },
+        { label: 'Dashboard',       icon: LayoutDashboard, path: '/sg-drh/dashboard' },
+        { label: 'Ordres à signer', icon: FileText,        path: '/sg-drh/ordres' },
     ],
     chauffeur: [
-        { label: 'Dashboard', icon: LayoutDashboard, path: '/chauffeur/dashboard' },
-        { label: 'Mes trajets', icon: Bus, path: '/chauffeur/trajets' },
+        { label: 'Dashboard',   icon: LayoutDashboard, path: '/chauffeur/dashboard' },
+        { label: 'Mes trajets', icon: Bus,             path: '/chauffeur/trajets' },
     ],
     sg_vr: [
-        { label: 'Dashboard', icon: LayoutDashboard, path: '/sg-vr/dashboard' },
-        { label: 'Récapitulatifs', icon: FileText, path: '/sg-vr/recapitulatifs' },
+        { label: 'Dashboard',      icon: LayoutDashboard, path: '/sg-vr/dashboard' },
+        { label: 'Récapitulatifs', icon: FileText,        path: '/sg-vr/recapitulatifs' },
     ],
     vice_recteur: [
-        { label: 'Dashboard', icon: LayoutDashboard, path: '/vice-recteur/dashboard' },
-        { label: 'Voyages à traiter', icon: MapPin, path: '/vice-recteur/voyages' },
-        { label: 'Rapports à valider', icon: FileText, path: '/vice-recteur/rapports' },
+        { label: 'Dashboard',          icon: LayoutDashboard, path: '/vice-recteur/dashboard' },
+        { label: 'Rapports à valider', icon: FileText,        path: '/vice-recteur/rapports' },
+        { label: "Voyages d'etudes",   icon: MapPin,          path: '/vice-recteur/voyages-etudes' },
+    ],
+    chef_departement: [
+        { label: 'Dashboard',               icon: LayoutDashboard, path: '/chef-departement/dashboard' },
+        { label: 'Nouvelles listes',        icon: Bell,            path: '/chef-departement/dashboard?tab=listes' },
+        { label: 'Justificatifs reçus',     icon: FileText,        path: '/chef-departement/dashboard?tab=justificatifs' },
+        { label: "Demandes d'autorisation", icon: CheckCircle,     path: '/chef-departement/dashboard?tab=autorisations' },
+    ],
+    directeur_ufr: [
+    { label: 'Dashboard',          icon: LayoutDashboard, path: '/directeur-ufr/dashboard' },
+    { label: 'En attente',         icon: FileText,        path: '/directeur-ufr/dashboard?tab=attente' },
+    { label: 'Transmis au Recteur', icon: CheckCircle,    path: '/directeur-ufr/dashboard?tab=transmis' },
+],
+   recteur: [
+    { label: 'Dashboard',               icon: LayoutDashboard, path: '/recteur/dashboard' },
+    { label: 'Arretes à signer',        icon: FileText,        path: '/recteur/dashboard?tab=arretes' },
+    { label: 'Autorisations de sortie', icon: CheckCircle,     path: '/recteur/dashboard?tab=autorisations' },
+],
+    commission: [
+        { label: 'Dashboard', icon: LayoutDashboard, path: '/commission/dashboard' },
     ],
 }
-
 const roleLabels = {
-    admin: 'Administrateur',
-    ddl: 'Demandeur',
-    enseignant: 'Enseignant PER',
-    drh: 'DRH',
-    sg_drh: 'SG - DRH',
-    chauffeur: 'Chauffeur',
-    sg_vr: 'SG - Vice-Recteur',
-    vice_recteur: 'Vice-Recteur',
+   admin:            'Administrateur',
+   ddl:              'DDL',
+   enseignant:       'Enseignant Permanent',
+   drh:              'DRH',
+   sg_drh:           'SG - DRH',
+   chauffeur:        'Chauffeur',
+   sg_vr:            'SG - Vice-Recteur',
+   vice_recteur:     'Vice-Recteur',
+   chef_departement: 'Chef de Département',
+   directeur_ufr:    'Directeur UFR',
+   recteur:          'Recteur',
+   commission:       'Commission',
+}
+
+const notifNavigation = {
+    ddl:              '/ddl/navettes',
+    chauffeur:        '/chauffeur/trajets',
+    drh:              '/drh/ordres',
+    sg_drh:           '/sg-drh/ordres',
+    vice_recteur:     '/vice-recteur/voyages-etudes',
+    chef_departement: '/chef-departement/dashboard',
+    directeur_ufr:    '/directeur-ufr/dashboard',
+    recteur:          '/recteur/dashboard',
+    commission:       '/commission/dashboard',
+    enseignant:       '/enseignant/voyages-etudes',
+}
+
+// Composant avatar réutilisable
+function AvatarImg({ avatar, prenom, nom, size = 'md', className = '' }) {
+    const sizes = {
+        sm: 'w-8 h-8 text-xs',
+        md: 'w-9 h-9 text-sm',
+        lg: 'w-16 h-16 text-xl',
+    }
+    const initials = `${prenom?.[0] ?? ''}${nom?.[0] ?? ''}`
+
+    if (avatar) {
+        return (
+            <img
+                src={avatar}
+                alt="avatar"
+                className={`${sizes[size]} rounded-full object-cover flex-shrink-0 ${className}`}
+            />
+        )
+    }
+    return (
+        <div className={`${sizes[size]} rounded-full flex items-center justify-center font-bold flex-shrink-0 bg-white/20 text-white ${className}`}>
+            {initials}
+        </div>
+    )
 }
 
 export default function Layout({ children }) {
     const { user, logout } = useAuth()
-    const navigate = useNavigate()
-    const location = useLocation()
-    const [sidebarOpen, setSidebarOpen] = useState(true)
-    const [badges, setBadges] = useState({
-        drhOrdres: 0,
-        sgDrhOrdres: 0,
-        viceRecteurVoyages: 0,
-        viceRecteurRapports: 0,
-        enAttente: 0,
-        mesDemandes: 0,
-        mesDemandesRejetees: 0,
-    })
+    const navigate  = useNavigate()
+    const location  = useLocation()
+    const fileInputRef = useRef(null)
 
-    const [notifOpen, setNotifOpen] = useState(false)
+    const [sidebarOpen, setSidebarOpen]     = useState(true)
+    const [avatar, setAvatar]               = useState(null)
+    const [profileOpen, setProfileOpen]     = useState(false)
+    const [uploading, setUploading]         = useState(false)
+    const [uploadMsg, setUploadMsg]         = useState('')
+    const [badges, setBadges]               = useState({
+        drhOrdres: 0, sgDrhOrdres: 0,
+        viceRecteurVoyages: 0, viceRecteurRapports: 0,
+        enAttente: 0, mesDemandes: 0, mesDemandesRejetees: 0,
+    })
+    const [notifOpen, setNotifOpen]         = useState(false)
     const [notifications, setNotifications] = useState([])
 
     const totalNotifs = notifications.filter(n => !n.lu).length
+    const totalLues   = notifications.filter(n => n.lu).length
+
+    // Charger avatar au démarrage
+    useEffect(() => {
+        const fetchMe = async () => {
+            try {
+                const res = await api.get('/profile/me')
+                if (res.data.avatar) setAvatar(res.data.avatar)
+            } catch {}
+        }
+        fetchMe()
+    }, [])
 
     useEffect(() => {
         const fetchNotifs = async () => {
             try {
                 const res = await api.get('/notifications')
                 setNotifications(res.data)
-            } catch (error) {
-                console.error('Erreur notifications:', error)
-            }
+            } catch {}
         }
         fetchNotifs()
         const interval = setInterval(fetchNotifs, 10000)
         return () => clearInterval(interval)
     }, [])
 
+    useEffect(() => {
+        const fetchSidebar = async () => {
+            try {
+                const res = await api.get('/notifications/sidebar')
+                setBadges(prev => ({ ...prev, ...res.data }))
+            } catch {}
+        }
+        fetchSidebar()
+        const interval = setInterval(fetchSidebar, 5000)
+        return () => clearInterval(interval)
+    }, [])
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (notifOpen && !e.target.closest('.notif-dropdown')) setNotifOpen(false)
+            if (profileOpen && !e.target.closest('.profile-dropdown')) setProfileOpen(false)
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [notifOpen, profileOpen])
+
+    const handleAvatarChange = async (e) => {
+        const file = e.target.files[0]
+        if (!file) return
+        setUploading(true)
+        setUploadMsg('')
+        try {
+            const formData = new FormData()
+            formData.append('avatar', file)
+            const res = await api.post('/profile/avatar', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            })
+            setAvatar(res.data.avatar)
+            setUploadMsg('Photo mise à jour !')
+        } catch {
+            setUploadMsg('Erreur lors de l\'upload.')
+        } finally {
+            setUploading(false)
+        }
+    }
+
     const marquerLu = async (id) => {
         try {
             await api.patch(`/notifications/${id}/lu`)
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, lu: true } : n))
-        } catch (error) {
-            console.error(error)
-        }
+        } catch {}
     }
 
     const marquerToutLu = async () => {
         try {
             await api.patch('/notifications/lu-toutes')
-            setNotifications(prev => prev.map(notif => ({ ...notif, lu: true })))
-        } catch (error) {
-            console.error(error)
-        }
+            setNotifications(prev => prev.map(n => ({ ...n, lu: true })))
+        } catch {}
     }
 
     const supprimerNotification = async (id) => {
         try {
             await api.delete(`/notifications/${id}`)
             setNotifications(prev => prev.filter(n => n.id !== id))
-        } catch (error) {
-            console.error(error)
-        }
+        } catch {}
     }
 
-    const supprimerToutesNotifications = async () => {
+    const supprimerLues = async () => {
+        const lues = notifications.filter(n => n.lu)
+        for (const n of lues) {
+            try { await api.delete(`/notifications/${n.id}`) } catch {}
+        }
+        setNotifications(prev => prev.filter(n => !n.lu))
+    }
+
+    const supprimerToutes = async () => {
         try {
             await api.delete('/notifications/toutes')
             setNotifications([])
-        } catch (error) {
-            console.error(error)
-        }
+        } catch {}
     }
 
-    useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (notifOpen && !e.target.closest('.notif-dropdown')) {
-                setNotifOpen(false)
-            }
-        }
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [notifOpen])
-
-    const menu = menuParRole[user?.role] || []
-
-    useEffect(() => {
-        const fetchNotifications = async () => {
-            try {
-                const res = await api.get('/notifications/sidebar')
-                setBadges(prev => ({ ...prev, ...res.data }))
-            } catch (error) {
-                console.error(error)
-            }
-        }
-        fetchNotifications()
-        const interval = setInterval(fetchNotifications, 5000)
-        return () => clearInterval(interval)
-    }, [])
+    const handleNotifClick = (notif) => {
+        if (!notif.lu) marquerLu(notif.id)
+        setNotifOpen(false)
+        const dest = notifNavigation[user?.role]
+        if (dest) navigate(dest)
+    }
 
     const handleLogout = async () => {
         await logout()
         navigate('/login')
     }
+
+    const menu = menuParRole[user?.role] || []
 
     return (
         <div className="min-h-screen flex bg-gray-100">
@@ -185,12 +269,10 @@ export default function Layout({ children }) {
                 {/* Menu */}
                 <nav className="flex-1 p-3 space-y-1">
                     {menu.map((item) => {
-                        const Icon = item.icon
+                        const Icon     = item.icon
                         const isActive = location.pathname === item.path
                         return (
-                            <Link
-                                key={item.path}
-                                to={item.path}
+                            <Link key={item.path} to={item.path}
                                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
                                     isActive
                                         ? 'bg-white text-blue-900 font-semibold'
@@ -201,38 +283,24 @@ export default function Layout({ children }) {
                                 {sidebarOpen && (
                                     <>
                                         <span className="text-sm flex-1">{item.label}</span>
-
                                         {item.path === '/drh/ordres' && badges.drhOrdres > 0 && (
-                                            <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                                                {badges.drhOrdres}
-                                            </span>
+                                            <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{badges.drhOrdres}</span>
                                         )}
                                         {item.path === '/sg-drh/ordres' && badges.sgDrhOrdres > 0 && (
-                                            <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                                                {badges.sgDrhOrdres}
-                                            </span>
+                                            <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{badges.sgDrhOrdres}</span>
                                         )}
                                         {item.path === '/vice-recteur/voyages' && badges.viceRecteurVoyages > 0 && (
-                                            <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">
-                                                {badges.viceRecteurVoyages}
-                                            </span>
+                                            <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">{badges.viceRecteurVoyages}</span>
                                         )}
                                         {item.path === '/vice-recteur/rapports' && badges.viceRecteurRapports > 0 && (
-                                            <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
-                                                {badges.viceRecteurRapports}
-                                            </span>
+                                            <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">{badges.viceRecteurRapports}</span>
                                         )}
                                         {item.path === '/chauffeur/trajets' && badges.enAttente > 0 && (
-                                            <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                                                {badges.enAttente}
-                                            </span>
+                                            <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{badges.enAttente}</span>
                                         )}
-                                        {item.path === '/ddl/navettes' &&
-                                            (badges.mesDemandes > 0 || badges.mesDemandesRejetees > 0) && (
-                                                <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                                                    {badges.mesDemandes + badges.mesDemandesRejetees}
-                                                </span>
-                                            )}
+                                        {item.path === '/ddl/navettes' && (badges.mesDemandes + badges.mesDemandesRejetees) > 0 && (
+                                            <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{badges.mesDemandes + badges.mesDemandesRejetees}</span>
+                                        )}
                                         {isActive && <ChevronRight size={14} className="ml-auto" />}
                                     </>
                                 )}
@@ -241,24 +309,43 @@ export default function Layout({ children }) {
                     })}
                 </nav>
 
-                {/* User info */}
+                {/* Suppression notifs bas sidebar */}
+                {sidebarOpen && notifications.length > 0 && (
+                    <div className="px-3 pb-2 space-y-1">
+                        {totalLues > 0 && (
+                            <button onClick={supprimerLues}
+                                className="w-full flex items-center gap-2 text-blue-300 hover:text-white text-xs px-2 py-1.5 rounded-lg hover:bg-blue-800 transition">
+                                <Trash2 size={13} />
+                                Supprimer lues ({totalLues})
+                            </button>
+                        )}
+                        <button onClick={supprimerToutes}
+                            className="w-full flex items-center gap-2 text-blue-300 hover:text-red-300 text-xs px-2 py-1.5 rounded-lg hover:bg-blue-800 transition">
+                            <Trash2 size={13} />
+                            Supprimer tout ({notifications.length})
+                        </button>
+                    </div>
+                )}
+
+                {/* User info sidebar */}
                 {sidebarOpen && (
                     <div className="p-4 border-t border-blue-800">
                         <div className="flex items-center gap-3 mb-3">
-                            <div className="bg-white/20 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold">
-                                {user?.prenom?.[0]}{user?.nom?.[0]}
+                            {/* Avatar cliquable dans sidebar */}
+                            <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                                <AvatarImg avatar={avatar} prenom={user?.prenom} nom={user?.nom} size="md" />
+                                <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                                    <Camera size={12} className="text-white" />
+                                </div>
                             </div>
                             <div className="overflow-hidden">
                                 <p className="text-sm font-semibold truncate">{user?.prenom} {user?.nom}</p>
                                 <p className="text-xs text-blue-300">{roleLabels[user?.role]}</p>
                             </div>
                         </div>
-                        <button
-                            onClick={handleLogout}
-                            className="w-full flex items-center gap-2 text-blue-300 hover:text-white text-sm px-2 py-2 rounded-lg hover:bg-blue-800 transition"
-                        >
-                            <LogOut size={16} />
-                            Se déconnecter
+                        <button onClick={handleLogout}
+                            className="w-full flex items-center gap-2 text-blue-300 hover:text-white text-sm px-2 py-2 rounded-lg hover:bg-blue-800 transition">
+                            <LogOut size={16} /> Se déconnecter
                         </button>
                     </div>
                 )}
@@ -274,11 +361,11 @@ export default function Layout({ children }) {
                     </button>
 
                     <div className="flex items-center gap-4">
+
+                        {/* Cloche notifications */}
                         <div className="relative notif-dropdown">
-                            <button
-                                onClick={() => setNotifOpen(!notifOpen)}
-                                className="relative text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition"
-                            >
+                            <button onClick={() => setNotifOpen(!notifOpen)}
+                                className="relative text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition">
                                 <Bell size={20} />
                                 {totalNotifs > 0 && (
                                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold animate-pulse">
@@ -290,22 +377,32 @@ export default function Layout({ children }) {
                             {notifOpen && (
                                 <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden">
                                     <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50">
-                                        <h3 className="font-semibold text-sm text-gray-800">Notifications</h3>
-                                        <div className="flex gap-3">
+                                        <h3 className="font-semibold text-sm text-gray-800">
+                                            Notifications {totalNotifs > 0 && <span className="text-red-500">({totalNotifs})</span>}
+                                        </h3>
+                                        <div className="flex gap-2">
                                             {totalNotifs > 0 && (
-                                                <button onClick={marquerToutLu} className="text-xs text-blue-600 hover:text-blue-800 font-medium">
-                                                    Tout lire
+                                                <button onClick={marquerToutLu}
+                                                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium">
+                                                    <CheckCheck size={12} /> Tout lire
+                                                </button>
+                                            )}
+                                            {totalLues > 0 && (
+                                                <button onClick={supprimerLues}
+                                                    className="text-xs text-orange-600 hover:text-orange-800 font-medium">
+                                                    Effacer lues
                                                 </button>
                                             )}
                                             {notifications.length > 0 && (
-                                                <button onClick={supprimerToutesNotifications} className="text-xs text-red-600 hover:text-red-800 font-medium">
-                                                    Effacer tout
+                                                <button onClick={supprimerToutes}
+                                                    className="text-xs text-red-600 hover:text-red-800 font-medium">
+                                                    Tout effacer
                                                 </button>
                                             )}
                                         </div>
                                     </div>
 
-                                    <div className="max-h-80 overflow-y-auto">
+                                    <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
                                         {notifications.length === 0 ? (
                                             <div className="p-6 text-center text-gray-400">
                                                 <Bell size={32} className="mx-auto mb-2 opacity-30" />
@@ -314,16 +411,8 @@ export default function Layout({ children }) {
                                         ) : (
                                             notifications.map(notif => (
                                                 <div key={notif.id}
-                                                    onClick={() => {
-                                                        if (!notif.lu) marquerLu(notif.id)
-                                                        setNotifOpen(false)
-                                                        if (user?.role === 'ddl') navigate('/ddl/navettes')
-                                                        if (user?.role === 'chauffeur') navigate('/chauffeur/trajets')
-                                                        if (user?.role === 'drh') navigate('/drh/ordres')
-                                                        if (user?.role === 'sg_drh') navigate('/sg-drh/ordres')
-                                                        if (user?.role === 'vice_recteur') navigate('/vice-recteur/voyages')
-                                                    }}
-                                                    className={`p-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition ${!notif.lu ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`}
+                                                    onClick={() => handleNotifClick(notif)}
+                                                    className={`p-4 cursor-pointer hover:bg-gray-50 transition ${!notif.lu ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`}
                                                 >
                                                     <div className="flex items-start gap-3">
                                                         <div className={`p-2 rounded-lg flex-shrink-0 ${!notif.lu ? 'bg-blue-100' : 'bg-gray-100'}`}>
@@ -338,15 +427,15 @@ export default function Layout({ children }) {
                                                                     hour: '2-digit', minute: '2-digit'
                                                                 })}
                                                             </p>
+                                                        </div>
+                                                        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                                            {!notif.lu && <div className="w-2 h-2 bg-blue-500 rounded-full" />}
                                                             <button
-                                                                onClick={(e) => { e.stopPropagation(); supprimerNotification(notif.id) }}
-                                                                className="text-red-500 hover:text-red-700 mt-1">
-                                                                <Trash2 size={14} />
+                                                                onClick={e => { e.stopPropagation(); supprimerNotification(notif.id) }}
+                                                                className="text-gray-300 hover:text-red-500 transition">
+                                                                <Trash2 size={13} />
                                                             </button>
                                                         </div>
-                                                        {!notif.lu && (
-                                                            <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1" />
-                                                        )}
                                                     </div>
                                                 </div>
                                             ))
@@ -356,13 +445,78 @@ export default function Layout({ children }) {
                             )}
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <div className="bg-blue-700 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                                {user?.prenom?.[0]}{user?.nom?.[0]}
-                            </div>
-                            <span className="text-sm font-medium text-gray-700">
-                                {user?.prenom} {user?.nom}
-                            </span>
+                        {/* Avatar topbar — cliquable → dropdown profil */}
+                        <div className="relative profile-dropdown">
+                            <button onClick={() => setProfileOpen(!profileOpen)}
+                                className="flex items-center gap-2 hover:bg-gray-100 px-2 py-1 rounded-lg transition">
+                                <div className="relative">
+                                    {avatar ? (
+                                        <img src={avatar} alt="avatar"
+                                            className="w-8 h-8 rounded-full object-cover border-2 border-blue-200" />
+                                    ) : (
+                                        <div className="bg-blue-700 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                            {user?.prenom?.[0]}{user?.nom?.[0]}
+                                        </div>
+                                    )}
+                                </div>
+                                <span className="text-sm font-medium text-gray-700">
+                                    {user?.prenom} {user?.nom}
+                                </span>
+                            </button>
+
+                            {/* Dropdown profil */}
+                            {profileOpen && (
+                                <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden">
+                                    {/* Header */}
+                                    <div className="bg-blue-900 p-5 flex flex-col items-center gap-3">
+                                        <div className="relative group">
+                                            {avatar ? (
+                                                <img src={avatar} alt="avatar"
+                                                    className="w-16 h-16 rounded-full object-cover border-4 border-white/30" />
+                                            ) : (
+                                                <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-white text-2xl font-bold border-4 border-white/30">
+                                                    {user?.prenom?.[0]}{user?.nom?.[0]}
+                                                </div>
+                                            )}
+                                            <button
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                                                <Camera size={16} className="text-white" />
+                                            </button>
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-white font-semibold">{user?.prenom} {user?.nom}</p>
+                                            <p className="text-blue-200 text-xs mt-0.5">{roleLabels[user?.role]}</p>
+                                            {user?.email && <p className="text-blue-300 text-xs mt-0.5">{user?.email}</p>}
+                                        </div>
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="p-3 space-y-1">
+                                        <button
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={uploading}
+                                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 text-sm text-gray-700 transition">
+                                            <Camera size={16} className="text-blue-600" />
+                                            {uploading ? 'Envoi en cours...' : 'Changer la photo de profil'}
+                                        </button>
+
+                                        {uploadMsg && (
+                                            <p className={`text-xs px-3 py-1 rounded ${uploadMsg.includes('Erreur') ? 'text-red-500 bg-red-50' : 'text-green-600 bg-green-50'}`}>
+                                                {uploadMsg}
+                                            </p>
+                                        )}
+
+                                        <div className="border-t border-gray-100 my-1" />
+
+                                        <button onClick={handleLogout}
+                                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-50 text-sm text-red-600 transition">
+                                            <LogOut size={16} />
+                                            Se déconnecter
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </header>
@@ -372,6 +526,15 @@ export default function Layout({ children }) {
                     {children}
                 </main>
             </div>
+
+            {/* Input file caché */}
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleAvatarChange}
+            />
         </div>
     )
 }

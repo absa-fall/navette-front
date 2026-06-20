@@ -14,6 +14,9 @@ const roleLabels = {
     admin: 'Administrateur',
     enseignant: 'Enseignant',
     usager: 'Usager Navette',
+     chef_departement: 'Chef de Departement',   
+    directeur_ufr: 'Directeur UFR',             
+    recteur: 'Recteur',
 }
 
 const roleColors = {
@@ -26,6 +29,9 @@ const roleColors = {
     admin: 'bg-gray-100 text-gray-700',
     enseignant: 'bg-green-100 text-green-700',
     usager: 'bg-teal-100 text-teal-700',
+    chef_departement: 'bg-cyan-100 text-cyan-700',   
+    directeur_ufr: 'bg-lime-100 text-lime-700',       
+    recteur: 'bg-rose-100 text-rose-700',
 }
 
 // Rôles qui ont besoin de type_profil, statut, ufr

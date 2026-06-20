@@ -40,16 +40,20 @@ export default function NouvelleNavette() {
         }).catch(() => {})
     }, [])
 
-    const handleChauffeurChange = (e) => {
-        const chauffeurId = e.target.value
-        const selectedChauffeur = chauffeurs.find(c => c.id === parseInt(chauffeurId))
-        setForm(prev => ({
-            ...prev,
-            chauffeur_id: chauffeurId,
-            chauffeur_nom: selectedChauffeur?.nom || '',
-            chauffeur_prenom: selectedChauffeur?.prenom || '',
-        }))
-    }
+   
+   
+const handleChauffeurChange = (e) => {
+    const chauffeurId = e.target.value
+    const selectedChauffeur = chauffeurs.find(c => c.id === parseInt(chauffeurId))
+    setForm(prev => ({
+        ...prev,
+        chauffeur_id: chauffeurId,
+        chauffeur_nom: selectedChauffeur?.nom || '',
+        chauffeur_prenom: selectedChauffeur?.prenom || '',
+        nationalite: selectedChauffeur?.nationalite || 'Sénégalaise',
+        grade_fonction: selectedChauffeur?.grade_fonction || 'Chauffeur',
+    }))
+} 
 
     const handleVehiculeChange = (e) => {
         const vehiculeId = e.target.value

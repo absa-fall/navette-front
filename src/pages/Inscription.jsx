@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
-import { Bus, User, Mail, Lock, Building2, BadgeCheck, Eye, EyeOff } from 'lucide-react'
+import { Bus, User, Mail, Lock, Building2, BadgeCheck, Eye, EyeOff, Calendar, BookOpen } from 'lucide-react'
+
+const DEPARTEMENTS_PAR_UFR = {
+    SATIC: ['SA', 'TIC'],
+    SDD: [],
+    ECOMIJ: [],
+    ISFAR: [],
+}
 
 export default function Inscription() {
     const navigate = useNavigate()
@@ -13,8 +20,10 @@ export default function Inscription() {
         type_profil: '',
         statut: '',
         ufr: '',
+        departement: '',
         matricule: '',
         tel: '',
+        date_embauche: '',
         role: 'usager',
     })
     const [showPassword, setShowPassword] = useState(false)
@@ -22,35 +31,40 @@ export default function Inscription() {
     const [error, setError] = useState('')
     const [success, setSuccess] = useState(false)
 
+    const estPermanent = form.statut === 'permanent'
+    const departementsDisponibles = DEPARTEMENTS_PAR_UFR[form.ufr] || []
+
     const handleChange = (e) => {
         const { name, value } = e.target
         setForm(prev => ({
             ...prev,
             [name]: value,
-            ...(name === 'type_profil' && { statut: '' })
+            // Reset departement si UFR change
+            ...(name === 'ufr' && { departement: '' }),
+            // Reset statut si type_profil change
+            ...(name === 'type_profil' && { statut: '', date_embauche: '', departement: '' }),
         }))
     }
 
     const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    try {
-        
-        const data = {
-            ...form,
-            role: form.type_profil === 'PER' && form.statut === 'permanent'
-                ? 'enseignant'
-                : 'usager'
+        e.preventDefault()
+        setLoading(true)
+        setError('')
+        try {
+            const data = {
+                ...form,
+                role: form.type_profil === 'PER' && form.statut === 'permanent'
+                    ? 'enseignant'
+                    : 'usager'
+            }
+            await api.post('/register', data)
+            setSuccess(true)
+        } catch (err) {
+            setError(err.response?.data?.message || 'Erreur lors de la création du compte')
+        } finally {
+            setLoading(false)
         }
-        await api.post('/register', data)
-        setSuccess(true)
-    } catch (err) {
-        setError(err.response?.data?.message || 'Erreur lors de la création du compte')
-    } finally {
-        setLoading(false)
     }
-}
 
     if (success) {
         return (
@@ -108,9 +122,7 @@ export default function Inscription() {
                         {/* Nom et Prénom */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Prénom *
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Prénom *</label>
                                 <div className="relative">
                                     <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                     <input type="text" name="prenom" value={form.prenom}
@@ -120,9 +132,7 @@ export default function Inscription() {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Nom *
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
                                 <div className="relative">
                                     <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                     <input type="text" name="nom" value={form.nom}
@@ -135,9 +145,7 @@ export default function Inscription() {
 
                         {/* Email */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Email *
-                            </label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
                             <div className="relative">
                                 <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input type="email" name="email" value={form.email}
@@ -149,9 +157,7 @@ export default function Inscription() {
 
                         {/* Mot de passe */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Mot de passe *
-                            </label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe *</label>
                             <div className="relative">
                                 <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input type={showPassword ? 'text' : 'password'}
@@ -170,9 +176,7 @@ export default function Inscription() {
                         {/* Type profil et Statut */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Type profil *
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Type profil *</label>
                                 <select name="type_profil" value={form.type_profil}
                                     onChange={handleChange}
                                     className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -184,19 +188,15 @@ export default function Inscription() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Statut *
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Statut *</label>
                                 <select name="statut" value={form.statut}
                                     onChange={handleChange}
                                     className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     required>
                                     <option value="">Choisir...</option>
-                                    {form.type_profil === 'PER' ? (
-                                        <option value="permanent">Permanent</option>
-                                    ) : (
+                                    <option value="permanent">Permanent</option>
+                                    {form.type_profil !== 'PER' && (
                                         <>
-                                            <option value="permanent">Permanent</option>
                                             <option value="non_permanent">Non permanent</option>
                                             <option value="contractuel">Contractuel</option>
                                             <option value="vacataire">Vacataire</option>
@@ -204,18 +204,14 @@ export default function Inscription() {
                                     )}
                                 </select>
                                 {form.type_profil === 'PER' && (
-                                    <p className="text-xs text-blue-600 mt-1">
-                                        Les PER sont automatiquement enregistrés comme Permanent.
-                                    </p>
+                                    <p className="text-xs text-blue-600 mt-1">Les PER sont automatiquement Permanent.</p>
                                 )}
                             </div>
                         </div>
 
                         {/* UFR */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                UFR *
-                            </label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">UFR *</label>
                             <div className="relative">
                                 <Building2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <select name="ufr" value={form.ufr}
@@ -231,27 +227,65 @@ export default function Inscription() {
                             </div>
                         </div>
 
+                        {/* Département — uniquement si permanent et UFR avec départements connus */}
+                        {estPermanent && form.ufr && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Département {departementsDisponibles.length > 0 ? '*' : ''}
+                                </label>
+                                <div className="relative">
+                                    <BookOpen size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    {departementsDisponibles.length > 0 ? (
+                                        <select name="departement" value={form.departement}
+                                            onChange={handleChange}
+                                            className="w-full border border-gray-300 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            required>
+                                            <option value="">Sélectionnez votre département</option>
+                                            {departementsDisponibles.map(d => (
+                                                <option key={d} value={d}>{d}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <input type="text" name="departement" value={form.departement}
+                                            onChange={handleChange}
+                                            className="w-full border border-gray-300 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Ex: Mathématiques, Physique..." />
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Matricule et Tel */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Matricule
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Matricule</label>
                                 <input type="text" name="matricule" value={form.matricule}
                                     onChange={handleChange}
                                     className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     placeholder="Optionnel" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Téléphone
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
                                 <input type="text" name="tel" value={form.tel}
                                     onChange={handleChange}
                                     className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     placeholder="77 000 00 00" />
                             </div>
                         </div>
+
+                        {/* Date d'embauche — uniquement si permanent */}
+                        {estPermanent && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Date d'embauche *</label>
+                                <div className="relative">
+                                    <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <input type="date" name="date_embauche" value={form.date_embauche}
+                                        onChange={handleChange}
+                                        className="w-full border border-gray-300 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        required />
+                                </div>
+                            </div>
+                        )}
 
                         <button type="submit" disabled={loading}
                             className="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">

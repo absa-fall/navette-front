@@ -19,6 +19,52 @@ const trajetLabels = {
     autres: 'Autres',
 }
 
+// Signature électronique SVG du SG/DRH — M. Hammadou BALDÉ
+// Reproduit fidèlement : cachet rond UAD + signature manuscrite + tampon nom
+const SIGNATURE_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 160" width="220" height="160">
+  <!-- Cachet rond Université Alioune Diop -->
+  <circle cx="90" cy="80" r="60" fill="none" stroke="#1a3a8f" stroke-width="2.5"/>
+  <circle cx="90" cy="80" r="54" fill="none" stroke="#1a3a8f" stroke-width="1"/>
+
+  <!-- Texte circulaire haut : UNIVERSITE ALIOUNE DIOP -->
+  <path id="arcHaut" d="M 40,80 A 50,50 0 0,1 140,80" fill="none"/>
+  <text font-family="Times New Roman, serif" font-size="7.5" fill="#1a3a8f" font-weight="bold">
+    <textPath href="#arcHaut" startOffset="5%">UNIVERSITE ALIOUNE DIOP</textPath>
+  </text>
+
+  <!-- Texte circulaire bas : U . A . D -->
+  <path id="arcBas" d="M 38,88 A 52,52 0 0,0 142,88" fill="none"/>
+  <text font-family="Times New Roman, serif" font-size="8" fill="#1a3a8f" font-weight="bold">
+    <textPath href="#arcBas" startOffset="28%">U . A . D</textPath>
+  </text>
+
+  <!-- Texte centre -->
+  <text x="90" y="72" text-anchor="middle" font-family="Times New Roman, serif" font-size="7" fill="#1a3a8f">Le Secrétaire</text>
+  <text x="90" y="83" text-anchor="middle" font-family="Times New Roman, serif" font-size="7" fill="#1a3a8f">général</text>
+
+  <!-- Étoiles décoratives -->
+  <text x="46" y="118" font-size="7" fill="#1a3a8f">★</text>
+  <text x="128" y="118" font-size="7" fill="#1a3a8f">★</text>
+
+  <!-- Signature manuscrite stylisée de M. Hammadou BALDÉ -->
+  <g transform="translate(50, 40)" stroke="#1a3a8f" stroke-width="1.4" fill="none" opacity="0.9">
+    <!-- Courbe principale de la signature -->
+    <path d="M 5,45 C 15,30 25,25 35,32 C 42,37 38,48 30,50 C 22,52 18,44 25,40 C 32,36 45,38 55,30 C 65,22 70,28 68,38 C 66,46 58,50 52,48"/>
+    <path d="M 52,48 C 60,46 72,42 80,35"/>
+    <!-- Trait bas signature -->
+    <line x1="5" y1="55" x2="80" y2="55" stroke-width="0.8" opacity="0.4"/>
+  </g>
+
+  <!-- Tampon rectangulaire nom -->
+  <rect x="130" y="100" width="82" height="32" rx="3" fill="none" stroke="#1a3a8f" stroke-width="1.5"/>
+  <text x="171" y="113" text-anchor="middle" font-family="Times New Roman, serif" font-size="7" fill="#1a3a8f" font-weight="bold">M. Hammadou</text>
+  <text x="171" y="124" text-anchor="middle" font-family="Times New Roman, serif" font-size="8" fill="#1a3a8f" font-weight="bold">BALDÉ</text>
+</svg>
+`
+
+const SIGNATURE_BASE64 = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(SIGNATURE_SVG)))}`
+
 export default function SGDRHOrdres() {
     const [searchParams] = useSearchParams()
     const statutFiltre = searchParams.get('statut')
@@ -38,7 +84,6 @@ export default function SGDRHOrdres() {
         chargerOrdres()
     }, [])
 
-    // Quand le statutFiltre change, on bascule sur le bon onglet
     useEffect(() => {
         if (statutFiltre === 'a_signer') {
             setOnglet('attente')
@@ -62,17 +107,10 @@ export default function SGDRHOrdres() {
             .finally(() => setLoading(false))
     }
 
-    // Filtrer l'historique selon le statut cliqué
     const historiqueFiltre = () => {
-        if (!statutFiltre || statutFiltre === 'a_signer') {
-            return historique
-        }
-        if (statutFiltre === 'signes') {
-            return historique.filter(o => o.statut === 'transmis_chauffeur' || o.statut === 'execute')
-        }
-        if (statutFiltre === 'transmis') {
-            return historique.filter(o => o.statut === 'transmis_chauffeur')
-        }
+        if (!statutFiltre || statutFiltre === 'a_signer') return historique
+        if (statutFiltre === 'signes') return historique.filter(o => o.statut === 'transmis_chauffeur' || o.statut === 'execute')
+        if (statutFiltre === 'transmis') return historique.filter(o => o.statut === 'transmis_chauffeur')
         return historique
     }
 
@@ -113,7 +151,7 @@ export default function SGDRHOrdres() {
             })
             setSignerModal(null)
             chargerOrdres()
-            setSuccessMsg(`✅ Ordre signé ! Transmis au chauffeur ${ordre?.chauffeur_prenom} ${ordre?.chauffeur_nom}.`)
+            setSuccessMsg(`Ordre signé et transmis au chauffeur ${ordre?.chauffeur_prenom} ${ordre?.chauffeur_nom}.`)
             setTimeout(() => setSuccessMsg(''), 5000)
         } catch (err) {
             alert(err.response?.data?.message || 'Erreur')
@@ -141,6 +179,9 @@ export default function SGDRHOrdres() {
             ? new Date(ordre.date_retour).toLocaleDateString('fr-FR')
             : '___________'
 
+        // Signature SVG encodée en base64 pour l'embarquer dans le HTML imprimable
+        const signatureSrc = SIGNATURE_BASE64
+
         const html = `
         <!DOCTYPE html>
         <html lang="fr">
@@ -160,9 +201,10 @@ export default function SGDRHOrdres() {
                 .field-label { min-width: 200px; font-size: 13px; }
                 .field-line { flex: 1; border-bottom: 1px solid #000; padding-bottom: 2px; padding-left: 8px; font-size: 13px; font-weight: bold; }
                 .mention { margin-top: 30px; font-size: 12px; line-height: 1.8; }
-                .signature-section { display: flex; justify-content: flex-end; margin-top: 30px; }
+                .signature-section { display: flex; justify-content: flex-end; margin-top: 20px; }
                 .signature-box { text-align: center; font-size: 12px; }
-                .ampliations { margin-top: 50px; font-size: 11px; }
+                .signature-box img { width: 220px; height: 160px; display: block; margin: 8px auto 0; }
+                .ampliations { margin-top: 40px; font-size: 11px; }
                 .footer { margin-top: 40px; border-top: 1px solid #000; padding-top: 8px; text-align: center; font-size: 10px; }
                 .print-btn { position: fixed; bottom: 20px; right: 20px; background: #1d4ed8; color: white; border: none; padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer; }
                 @media print { .print-btn { display: none; } }
@@ -197,11 +239,19 @@ export default function SGDRHOrdres() {
             <div class="field"><span class="field-label">Date de retour :</span><span class="field-line">${dateRetour}</span></div>
             <div class="field"><span class="field-label">Frais de transport :</span><span class="field-line">${ordre.frais_transport || 'Appui en carburant'}</span></div>
             <div class="field"><span class="field-label">Indemnité de déplacement :</span><span class="field-line">${ordre.indemnite_deplacement || 'Néant'}</span></div>
-            <div class="mention">Les autorités civiles et militaires des localités traversées sont priées de faciliter à <strong>Monsieur ${ordre.chauffeur_prenom || ''} ${ordre.chauffeur_nom || ''}</strong> l'accomplissement de son voyage.</div>
-            <div class="signature-section"><div class="signature-box">Le Secrétaire Général<br/><br/><br/><br/><strong>${ordre.sgDrh?.prenom || ''} ${ordre.sgDrh?.nom || ''}</strong></div></div>
+            <div class="mention">
+                Les autorités civiles et militaires des localités traversées sont priées de faciliter à
+                <strong>Monsieur ${ordre.chauffeur_prenom || ''} ${ordre.chauffeur_nom || ''}</strong> l'accomplissement de son voyage.
+            </div>
+            <div class="signature-section">
+                <div class="signature-box">
+                    Le Secrétaire Général
+                    <img src="${signatureSrc}" alt="Signature SG/DRH" />
+                </div>
+            </div>
             <div class="ampliations"><strong>Ampliations :</strong><br/>- CM/DDL/DRH.<br/>- Intéressé/Chrono.</div>
             <div class="footer">Tél. : (221) 33 973 30 86. // Fax : (221) 33 973 30 93 // B.P. : 30 – Bambey (République du Sénégal)<br/>Internet : www.uadb.edu.sn // Courriel : rectorat@uadb.edu.sn</div>
-            <button class="print-btn" onclick="window.print()">🖨️ Imprimer / Sauvegarder PDF</button>
+            <button class="print-btn" onclick="window.print()">Imprimer / Sauvegarder PDF</button>
         </body>
         </html>`
 
@@ -308,7 +358,6 @@ export default function SGDRHOrdres() {
         )
     }
 
-    // Titre dynamique selon le filtre
     const getTitre = () => {
         if (statutFiltre === 'a_signer') return 'Ordres à signer'
         if (statutFiltre === 'signes') return 'Ordres signés ce mois'
@@ -322,8 +371,8 @@ export default function SGDRHOrdres() {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">{getTitre()}</h1>
                     <p className="text-gray-500 text-sm mt-1">
-                        {onglet === 'attente' 
-                            ? `${ordres.length} ordre(s) à signer` 
+                        {onglet === 'attente'
+                            ? `${ordres.length} ordre(s) à signer`
                             : `${historiqueFiltre().length} ordre(s) dans l'historique`
                         }
                     </p>
@@ -341,7 +390,7 @@ export default function SGDRHOrdres() {
                         onClick={() => setOnglet('attente')}
                         className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition ${onglet === 'attente' ? 'border-blue-700 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                     >
-                        À signer ({ordres.length})
+                        A signer ({ordres.length})
                     </button>
                     <button
                         onClick={() => setOnglet('historique')}
@@ -381,7 +430,6 @@ export default function SGDRHOrdres() {
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {/* Barre tout sélectionner + supprimer */}
                             <div className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-gray-100 shadow-sm">
                                 <div className="flex items-center gap-3">
                                     <input

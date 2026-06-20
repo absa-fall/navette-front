@@ -2,38 +2,35 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
-import { MapPin, FileText, Upload, CheckCircle, Clock, AlertCircle, ArrowLeft } from 'lucide-react'
-
-const statutJustificatifConfig = {
-    en_attente: { label: 'En attente', color: 'bg-gray-100 text-gray-600' },
-    soumis: { label: 'Soumis', color: 'bg-blue-100 text-blue-700' },
-    valide: { label: 'Valide', color: 'bg-green-100 text-green-700' },
-    incomplet: { label: 'Incomplet', color: 'bg-red-100 text-red-700' },
+import { MapPin, FileText, Upload, CheckCircle, Clock, AlertCircle, X, Lock, Eye } from 'lucide-react'
+const statutJustifConfig = {
+    en_attente:  { label: 'En attente',      color: 'bg-gray-100 text-gray-600' },
+    soumis:      { label: 'Soumis au chef',  color: 'bg-blue-100 text-blue-700' },
+    transmis_vr: { label: 'Transmis au VR',  color: 'bg-purple-100 text-purple-700' },
+    valide:      { label: 'Valide',           color: 'bg-green-100 text-green-700' },
+    incomplet:   { label: 'Incomplet',        color: 'bg-red-100 text-red-700' },
 }
 
 const statutAutorisationConfig = {
-    non_demande: { label: 'Non demande', color: 'bg-gray-100 text-gray-600' },
-    demande_chef_dept: { label: 'Demande au chef dept', color: 'bg-yellow-100 text-yellow-700' },
-    autorisation_sortie_chef: { label: 'Autorisation sortie chef', color: 'bg-orange-100 text-orange-700' },
-    envoye_directeur_ufr: { label: 'Envoye directeur UFR', color: 'bg-blue-100 text-blue-700' },
-    envoye_vr: { label: 'Envoye VR', color: 'bg-purple-100 text-purple-700' },
-    approuve: { label: 'Approuve', color: 'bg-green-100 text-green-700' },
+    non_demande:          { label: 'Non demande',          color: 'bg-gray-100 text-gray-600' },
+    demande_chef_dept:    { label: 'En attente chef dept', color: 'bg-yellow-100 text-yellow-700' },
+    envoye_directeur_ufr: { label: 'Chez directeur UFR',  color: 'bg-blue-100 text-blue-700' },
+    envoye_recteur:       { label: 'Chez le Recteur',      color: 'bg-indigo-100 text-indigo-700' },
+    approuve_recteur:     { label: 'Approuve par Recteur', color: 'bg-green-100 text-green-700' },
 }
 
 export default function MesVoyagesEtudes() {
     const navigate = useNavigate()
     const [beneficiaires, setBeneficiaires] = useState([])
-    const [loading, setLoading] = useState(true)
-    const [expanded, setExpanded] = useState(null)
-    const [fichier, setFichier] = useState(null)
+    const [loading, setLoading]             = useState(true)
+    const [expanded, setExpanded]           = useState(null)
+    const [fichiers, setFichiers]           = useState([])
     const [uploadLoading, setUploadLoading] = useState(null)
-    const [actionLoading, setActionLoading] = useState(null)
-    const [message, setMessage] = useState('')
-    const [error, setError] = useState('')
 
-    useEffect(() => {
-        fetchVoyages()
-    }, [])
+    const [message, setMessage]             = useState('')
+    const [error, setError]                 = useState('')
+
+    useEffect(() => { fetchVoyages() }, [])
 
     const fetchVoyages = async () => {
         try {
@@ -49,44 +46,56 @@ export default function MesVoyagesEtudes() {
     const showMsg = (msg, isError = false) => {
         if (isError) setError(msg)
         else setMessage(msg)
-        setTimeout(() => { setMessage(''); setError('') }, 3000)
+        setTimeout(() => { setMessage(''); setError('') }, 4000)
+    }
+
+    const handleFichiersChange = (e) => {
+        const nouveaux = Array.from(e.target.files)
+        const total = [...fichiers, ...nouveaux]
+        if (total.length > 5) {
+            showMsg('Maximum 5 fichiers autorises', true)
+            return
+        }
+        setFichiers(total)
+    }
+
+    const retirerFichier = (index) => {
+        setFichiers(prev => prev.filter((_, i) => i !== index))
     }
 
     const soumettreJustificatifs = async (beneficiaireId) => {
-        if (!fichier) {
-            showMsg('Veuillez selectionner un fichier PDF', true)
+        if (fichiers.length === 0) {
+            showMsg('Veuillez selectionner au moins un fichier PDF', true)
             return
         }
         setUploadLoading(beneficiaireId)
         try {
             const formData = new FormData()
-            formData.append('justificatif_pdf', fichier)
-            await api.post(`/voyages-etudes/${beneficiaireId}/justificatifs`, formData, {
+            fichiers.forEach(f => formData.append('justificatifs[]', f))
+            await api.post(`/voyages-etudes/beneficiaire/${beneficiaireId}/justificatifs`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             })
-            showMsg('Justificatifs soumis avec succes')
-            setFichier(null)
+            showMsg('Justificatifs soumis avec succes au Chef de Departement')
+            setFichiers([])
             fetchVoyages()
         } catch (err) {
-            showMsg(err.response?.data?.message || 'Erreur', true)
+            showMsg(err.response?.data?.message || 'Erreur lors de la soumission', true)
         } finally {
             setUploadLoading(null)
         }
     }
-
-    const demanderAutorisation = async (beneficiaireId) => {
-        setActionLoading(beneficiaireId)
-        try {
-            await api.patch(`/voyages-etudes/beneficiaire/${beneficiaireId}/demander-autorisation`)
-            showMsg('Demande envoyee au Chef de Departement')
-            fetchVoyages()
-        } catch (err) {
-            showMsg(err.response?.data?.message || 'Erreur', true)
-        } finally {
-            setActionLoading(null)
-        }
+const demanderAutorisation = async (beneficiaireId) => {
+    setActionLoading(beneficiaireId)
+    try {
+        await api.patch(`/voyages-etudes/beneficiaire/${beneficiaireId}/demander-autorisation`)
+        showMsg('Demande d\'autorisation envoyee au Chef de Departement')
+        fetchVoyages()
+    } catch (err) {
+        showMsg(err.response?.data?.message || 'Erreur', true)
+    } finally {
+        setActionLoading(null)
     }
-
+}
     return (
         <Layout>
             <div className="space-y-6">
@@ -100,7 +109,6 @@ export default function MesVoyagesEtudes() {
                         <CheckCircle size={16} /> {message}
                     </div>
                 )}
-
                 {error && (
                     <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-4 text-sm flex items-center gap-2">
                         <AlertCircle size={16} /> {error}
@@ -120,9 +128,17 @@ export default function MesVoyagesEtudes() {
                 ) : (
                     <div className="space-y-4">
                         {beneficiaires.map(b => {
-                            const justif = statutJustificatifConfig[b.statut_justificatif] || statutJustificatifConfig['en_attente']
+                            const justif       = statutJustifConfig[b.statut_justificatif] || statutJustifConfig['en_attente']
                             const autorisation = statutAutorisationConfig[b.statut_autorisation] || statutAutorisationConfig['non_demande']
-                            const isExpanded = expanded === b.id
+                            const isExpanded   = expanded === b.id
+
+                            // Conditions
+                            const peutSoumettre = ['en_attente', 'incomplet'].includes(b.statut_justificatif)
+                            const arreteSigné   = b.voyage?.arrete_recteur
+                            const peutDemanderAutorisation =
+                                b.dans_liste_definitive &&
+                                arreteSigné &&
+                                (!b.statut_autorisation || b.statut_autorisation === 'non_demande')
 
                             return (
                                 <div key={b.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -145,11 +161,11 @@ export default function MesVoyagesEtudes() {
                                             </div>
                                             <div className="flex flex-col items-end gap-1">
                                                 <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${justif.color}`}>
-                                                    Justif: {justif.label}
+                                                    {justif.label}
                                                 </span>
                                                 {b.dans_liste_definitive && (
-                                                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-green-700">
-                                                        Liste definitive
+                                                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-green-700 flex items-center gap-1">
+                                                        <CheckCircle size={10} /> Liste definitive
                                                     </span>
                                                 )}
                                             </div>
@@ -159,7 +175,6 @@ export default function MesVoyagesEtudes() {
                                     {/* Détails */}
                                     {isExpanded && (
                                         <div className="border-t border-gray-100 p-5 space-y-4">
-                                            {/* Description voyage */}
                                             {b.voyage?.description && (
                                                 <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-3">{b.voyage.description}</p>
                                             )}
@@ -172,51 +187,133 @@ export default function MesVoyagesEtudes() {
                                                 </span>
                                             </div>
 
+                                            {/* Arrete signé */}
+                                            {b.dans_liste_definitive && (
+                                                <div className={`flex items-center gap-2 text-sm p-3 rounded-xl ${
+                                                    arreteSigné
+                                                        ? 'bg-green-50 border border-green-200 text-green-700'
+                                                        : 'bg-yellow-50 border border-yellow-200 text-yellow-700'
+                                                }`}>
+                                                    {arreteSigné ? <CheckCircle size={16} /> : <Clock size={16} />}
+                                                    {arreteSigné
+                                                        ? 'L\'arrete a ete signe par le Recteur'
+                                                        : 'En attente de la signature de l\'arrete par le Recteur'
+                                                    }
+                                                </div>
+                                            )}
+
+                                            {/* Justificatifs déjà soumis */}
+                                            {b.justificatifs?.length > 0 && (
+                                                <div className="space-y-2">
+                                                    <p className="text-sm font-medium text-gray-700">Justificatifs soumis :</p>
+                                                    <div className="space-y-1">
+                                                        {b.justificatifs.map(j => (
+                                                            <div key={j.id} className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
+                                                                <FileText size={14} className="text-blue-600" />
+                                                                {j.nom_original || 'Fichier PDF'}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             {/* Soumettre justificatifs */}
-                                            {b.statut_justificatif === 'en_attente' || b.statut_justificatif === 'incomplet' ? (
+                                            {peutSoumettre && (
                                                 <div className="space-y-3">
-                                                    <p className="text-sm font-medium text-gray-700">Soumettre vos justificatifs (PDF) :</p>
+                                                    <p className="text-sm font-medium text-gray-700">
+                                                        {b.statut_justificatif === 'incomplet'
+                                                            ? 'Votre dossier est incomplet. Soumettez les justificatifs manquants :'
+                                                            : 'Soumettez vos justificatifs au Chef de Departement (rapport dernier voyage + autres pieces, 1 a 5 PDF) :'
+                                                        }
+                                                    </p>
+                                                    {b.statut_justificatif === 'incomplet' && (
+                                                        <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2 text-sm text-red-700">
+                                                            <AlertCircle size={14} /> Dossier juge incomplet par le VR ou sa commission
+                                                        </div>
+                                                    )}
                                                     <input
                                                         type="file"
                                                         accept=".pdf"
-                                                        onChange={e => setFichier(e.target.files[0])}
+                                                        multiple
+                                                        onChange={handleFichiersChange}
                                                         className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none"
                                                     />
+                                                    {fichiers.length > 0 && (
+                                                        <div className="space-y-1">
+                                                            {fichiers.map((f, i) => (
+                                                                <div key={i} className="flex items-center justify-between text-sm bg-blue-50 rounded-lg px-3 py-2">
+                                                                    <span className="flex items-center gap-2 text-blue-700 truncate">
+                                                                        <FileText size={14} /> {f.name}
+                                                                    </span>
+                                                                    <button onClick={() => retirerFichier(i)} className="text-gray-400 hover:text-red-500">
+                                                                        <X size={14} />
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                     <button
                                                         onClick={() => soumettreJustificatifs(b.id)}
-                                                        disabled={uploadLoading === b.id || !fichier}
+                                                        disabled={uploadLoading === b.id || fichiers.length === 0}
                                                         className="w-full flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl font-semibold text-sm transition disabled:opacity-50"
                                                     >
                                                         {uploadLoading === b.id
                                                             ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                                             : <Upload size={16} />
                                                         }
-                                                        Soumettre les justificatifs
+                                                        Soumettre au Chef de Departement
                                                     </button>
                                                 </div>
-                                            ) : null}
-
-                                            {/* Demander autorisation absence */}
-                                            {b.dans_liste_definitive && b.statut_autorisation === 'non_demande' && (
-                                                <button
-                                                    onClick={() => demanderAutorisation(b.id)}
-                                                    disabled={actionLoading === b.id}
-                                                    className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl font-semibold text-sm transition disabled:opacity-50"
-                                                >
-                                                    {actionLoading === b.id
-                                                        ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                        : <FileText size={16} />
-                                                    }
-                                                    Demander autorisation d'absence
-                                                </button>
                                             )}
 
-                                            {/* Autorisation approuvee */}
-                                            {b.statut_autorisation === 'approuve' && (
+                                            {/* Demander autorisation d'absence */}
+                                           {peutDemanderAutorisation && (
+    <button
+        onClick={() => navigate(`/enseignant/autorisation-absence/${b.id}`)}
+        className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl font-semibold text-sm transition"
+    >
+        <FileText size={16} />
+        Demander autorisation d'absence
+    </button>
+)}
+
+                                            {/* Autorisation en cours de traitement */}
+                                            {b.dans_liste_definitive && arreteSigné && b.statut_autorisation && b.statut_autorisation !== 'non_demande' && b.statut_autorisation !== 'approuve_recteur' && (
+                                                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+                                                    <Clock size={20} className="text-blue-600" />
+                                                    <p className="text-sm text-blue-700">
+                                                        Votre demande d'autorisation est en cours de traitement.
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* Autorisation approuvée */}
+                                            {b.statut_autorisation === 'approuve_recteur' && (
                                                 <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
                                                     <CheckCircle size={20} className="text-green-600" />
                                                     <p className="text-sm text-green-700 font-medium">
-                                                        Votre autorisation de sortie a ete approuvee !
+                                                        Votre autorisation de sortie a ete approuvee par le Recteur !
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* Voir / Imprimer l'autorisation */}
+                                            {b.autorisation_absence && (
+                                                <button
+                                                    onClick={() => navigate(`/autorisation-absence/${b.autorisation_absence.id}`)}
+                                                    className="w-full flex items-center justify-center gap-2 border border-blue-200 text-blue-700 py-2.5 rounded-xl font-semibold text-sm hover:bg-blue-50 transition"
+                                                >
+                                                    <Eye size={16} />
+                                                    Voir l'autorisation d'absence ({b.autorisation_absence.numero})
+                                                </button>
+                                            )}
+
+                                            {/* Bloqué : arrêté pas encore signé */}
+                                            {b.dans_liste_definitive && !arreteSigné && b.statut_justificatif === 'valide' && (
+                                                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center gap-3">
+                                                    <Lock size={16} className="text-gray-400" />
+                                                    <p className="text-sm text-gray-500">
+                                                        La demande d'autorisation sera disponible apres la signature de l'arrete par le Recteur.
                                                     </p>
                                                 </div>
                                             )}

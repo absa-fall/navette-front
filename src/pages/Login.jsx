@@ -27,7 +27,11 @@ export default function Login() {
     case 'chauffeur': navigate('/chauffeur/dashboard'); break
     case 'sg_vr': navigate('/sg-vr/dashboard'); break
     case 'vice_recteur': navigate('/vice-recteur/dashboard'); break
-    case 'usager': navigate('/usager/dashboard'); break  // ← ajoute cette ligne
+    case 'usager': navigate('/usager/dashboard'); break 
+    case 'chef_departement': navigate('/chef-departement/dashboard'); break
+case 'directeur_ufr': navigate('/directeur-ufr/dashboard'); break
+case 'recteur': navigate('/recteur/dashboard'); break
+case 'commission': navigate('/commission/dashboard'); break
     default: navigate('/login'); break
 }
         } catch (err) {
