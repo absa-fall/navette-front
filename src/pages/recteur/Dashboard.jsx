@@ -17,8 +17,6 @@ export default function RecteurDashboard() {
 
     const [selectedDefinitifs, setSelectedDefinitifs] = useState([])
     const [selectedSignes, setSelectedSignes]         = useState([])
-    const [selectedAuto, setSelectedAuto]             = useState([])
-    const [selectedHistorique, setSelectedHistorique] = useState([])
     const [autorisationsAbsence, setAutorisationsAbsence] = useState([])
     const [arreteOuvert, setArreteOuvert] = useState(null)
     const [arreteForm, setArreteForm]     = useState({
@@ -75,27 +73,14 @@ export default function RecteurDashboard() {
         }
     }
 
-    const approuverAutorisation = async (beneficiaireId) => {
-        setActionLoading('autorisation_' + beneficiaireId)
-        try {
-            await api.patch(`/voyages-etudes/beneficiaire/${beneficiaireId}/approuver-autorisation-recteur`)
-            showMsg('Autorisation de sortie approuvee')
-            setTimeout(() => {
-                setAutorisations(prev => prev.filter(d => d.id !== beneficiaireId))
-            }, 3000)
-        } catch (err) {
-            showMsg(err.response?.data?.message || 'Erreur', true)
-        } finally {
-            setActionLoading(null)
-        }
-    }
+  
 
     // ===== Signature de l'autorisation d'absence par le Recteur =====
     const signerAutorisationAbsence = async (autorisationId) => {
         setActionLoading(autorisationId + '_signer_absence')
         try {
             await api.patch(`/autorisations-absence/${autorisationId}/signer-recteur`)
-            showMsg('Autorisation signee et transmise au Vice-Recteur')
+            showMsg('Autorisation signee et transmise a l\'enseignant')
             fetchAll()
         } catch (err) {
             showMsg(err.response?.data?.message || 'Erreur', true)
@@ -115,15 +100,7 @@ export default function RecteurDashboard() {
         } catch { showMsg('Erreur lors de la suppression', true) }
     }
 
-    const supprimerAutorisations = async (ids) => {
-        if (!confirm(`Supprimer ${ids.length} autorisation(s) ?`)) return
-        try {
-            for (const id of ids) await api.delete(`/voyages-etudes/beneficiaire/${id}/dossier`)
-            setAutorisations(prev => prev.filter(d => !ids.includes(d.id)))
-            setSelectedAuto([])
-            showMsg('Suppression effectuée')
-        } catch { showMsg('Erreur lors de la suppression', true) }
-    }
+  
     const envoyerEmailAutorisation = async (autorisationId) => {
     setActionLoading('email_auto_' + autorisationId)
     try {
@@ -136,20 +113,10 @@ export default function RecteurDashboard() {
     }
 }
 
-    const supprimerHistorique = async (ids) => {
-        if (!confirm(`Supprimer ${ids.length} autorisation(s) de l'historique ?`)) return
-        try {
-            for (const id of ids) await api.delete(`/voyages-etudes/beneficiaire/${id}/dossier`)
-            setAutorisations(prev => prev.filter(d => !ids.includes(d.id)))
-            setSelectedHistorique([])
-            showMsg('Suppression effectuée')
-        } catch { showMsg('Erreur lors de la suppression', true) }
-    }
 
     const definitifs      = voyages.filter(v => v.statut_liste === 'definitive' && !v.arrete_recteur)
     const signes           = voyages.filter(v => v.arrete_recteur)
-    const autorEnAttente   = autorisations.filter(d => d.statut_autorisation === 'envoye_recteur')
-    const autorHistorique  = autorisations.filter(d => d.statut_autorisation === 'approuve_recteur')
+   
 
     // Autorisations d'absence en attente de signature du Recteur (avis favorable du Directeur UFR)
     const autorisationsAbsenceEnAttente = autorisationsAbsence.filter(a => a.statut === 'avis_directeur_ufr')
@@ -190,7 +157,7 @@ export default function RecteurDashboard() {
                     <p className="text-gray-500 text-sm mt-1">Signature des arretes et autorisations</p>
                 </div>
 
-                <div className="grid grid-cols-5 gap-4">
+                <div className="grid grid-cols-4 gap-4">
                     <div onClick={() => setActiveTab('arretes')}
                         className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-blue-200 hover:shadow-md transition">
                         <div className="bg-orange-100 p-2 rounded-xl w-fit mb-3">
@@ -199,14 +166,7 @@ export default function RecteurDashboard() {
                         <p className="text-2xl font-bold text-gray-800">{definitifs.length}</p>
                         <p className="text-sm text-gray-500 mt-1">Arretes a signer</p>
                     </div>
-                    <div onClick={() => setActiveTab('autorisations')}
-                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-blue-200 hover:shadow-md transition">
-                        <div className="bg-blue-100 p-2 rounded-xl w-fit mb-3">
-                            <Send size={20} className="text-blue-700" />
-                        </div>
-                        <p className="text-2xl font-bold text-gray-800">{autorEnAttente.length}</p>
-                        <p className="text-sm text-gray-500 mt-1">Autorisations a approuver</p>
-                    </div>
+                    
                     <div onClick={() => setActiveTab('autorisations_absence')}
                         className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-purple-200 hover:shadow-md transition">
                         <div className="bg-purple-100 p-2 rounded-xl w-fit mb-3">
@@ -223,24 +183,24 @@ export default function RecteurDashboard() {
                         <p className="text-2xl font-bold text-gray-800">{signes.length}</p>
                         <p className="text-sm text-gray-500 mt-1">Arretes signes</p>
                     </div>
-                    <div onClick={() => setActiveTab('historique')}
-                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-green-200 hover:shadow-md transition">
-                        <div className="bg-green-100 p-2 rounded-xl w-fit mb-3">
-                            <History size={20} className="text-green-700" />
-                        </div>
-                        <p className="text-2xl font-bold text-gray-800">{autorHistorique.length}</p>
-                        <p className="text-sm text-gray-500 mt-1">Historique autorisations</p>
-                    </div>
+                  
+<div onClick={() => setActiveTab('historique_absences')}
+    className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-purple-200 hover:shadow-md transition">
+    <div className="bg-purple-100 p-2 rounded-xl w-fit mb-3">
+        <History size={20} className="text-purple-700" />
+    </div>
+    <p className="text-2xl font-bold text-gray-800">{autorisationsAbsenceSignees.length}</p>
+    <p className="text-sm text-gray-500 mt-1">Absences signees</p>
+</div>
                 </div>
 
                 <div className="flex gap-2 border-b border-gray-200 flex-wrap">
-                    {[
-                        { key: 'arretes', label: 'Arretes a signer', count: definitifs.length, color: 'orange' },
-                        { key: 'autorisations', label: 'Autorisations de sortie', count: autorEnAttente.length, color: 'blue' },
-                        { key: 'autorisations_absence', label: "Absences a signer", count: autorisationsAbsenceEnAttente.length, color: 'purple' },
-                        { key: 'historique_arretes', label: 'Historique arretes signes', count: signes.length, color: 'green' },
-                        { key: 'historique', label: 'Historique autorisations', count: autorHistorique.length, color: 'green' },
-                    ].map(tab => (
+                 {[
+    { key: 'arretes', label: 'Arretes a signer', count: definitifs.length, color: 'orange' },
+    { key: 'autorisations_absence', label: "Absences a signer", count: autorisationsAbsenceEnAttente.length, color: 'purple' },
+    { key: 'historique_arretes', label: 'Historique arretes signes', count: signes.length, color: 'green' },
+    { key: 'historique_absences', label: 'Historique absences', count: autorisationsAbsenceSignees.length, color: 'purple' },
+].map(tab => (
                         <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                             className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center gap-2 ${
                                 activeTab === tab.key
@@ -439,214 +399,108 @@ export default function RecteurDashboard() {
 
                                             <div className="flex gap-2 flex-wrap">
                                                 <button
-                                                    onClick={() => navigate('/autorisation-absence/' + a.id + '/document')}
+                                                    onClick={() => navigate('/autorisation-absence/' + a.id)}
                                                     className="flex items-center gap-2 border border-blue-700 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm font-semibold transition">
                                                     <Eye size={14} />
                                                     Voir le document
                                                 </button>
-                                                <button onClick={() => signerAutorisationAbsence(a.id)}
-                                                    disabled={actionLoading === a.id + '_signer_absence'}
-                                                    className="flex items-center gap-2 bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
-                                                    {actionLoading === a.id + '_signer_absence'
-                                                        ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                        : <CheckCircle size={14} />}
-                                                    Signer et transmettre au Vice-Recteur
-                                                </button>
+                                               <button onClick={() => signerAutorisationAbsence(a.id)}
+    disabled={actionLoading === a.id + '_signer_absence'}
+    className="flex items-center gap-2 bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
+    {actionLoading === a.id + '_signer_absence'
+        ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        : <CheckCircle size={14} />}
+    Signer et transmettre a l'enseignant
+</button>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             )
                         )}
-
-                        {activeTab === 'historique_arretes' && (
-                            signes.length === 0 ? (
+{activeTab === 'historique_arretes' && (
+    signes.length === 0 ? (
+        <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
+            <History size={40} className="mx-auto mb-4 text-gray-300" />
+            <h3 className="text-gray-700 font-semibold mb-2">Aucun arrete signe</h3>
+            <p className="text-gray-400 text-sm">Les arretes que vous signez apparaitront ici</p>
+        </div>
+    ) : (
+        <div className="space-y-3">
+            <BarreSelection
+                selected={selectedSignes}
+                total={signes.length}
+                onSelectAll={() => setSelectedSignes(
+                    selectedSignes.length === signes.length ? [] : signes.map(v => v.id)
+                )}
+                onDeleteSelected={() => supprimerVoyages(selectedSignes)}
+                onDeleteAll={() => supprimerVoyages(signes.map(v => v.id))}
+            />
+            {signes.map(voyage => (
+                <div key={voyage.id} className={`rounded-2xl p-4 flex items-center justify-between border transition ${
+                    selectedSignes.includes(voyage.id) ? 'bg-green-50 border-blue-300' : 'bg-green-50 border-green-200'
+                }`}>
+                    <div className="flex items-center gap-3">
+                        <input type="checkbox"
+                            checked={selectedSignes.includes(voyage.id)}
+                            onChange={() => setSelectedSignes(prev =>
+                                prev.includes(voyage.id) ? prev.filter(i => i !== voyage.id) : [...prev, voyage.id]
+                            )}
+                            className="w-4 h-4 accent-blue-700 cursor-pointer" />
+                        <div>
+                            <p className="font-medium text-gray-800">{voyage.destination}</p>
+                            <p className="text-xs text-gray-500">
+                                {new Date(voyage.date_debut).toLocaleDateString('fr-FR')} - {new Date(voyage.date_fin).toLocaleDateString('fr-FR')} · {voyage.beneficiaires?.filter(b => b.dans_liste_definitive).length} beneficiaire(s)
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1 text-xs font-semibold text-green-700">
+                            <CheckCircle size={14} /> Signe
+                        </span>
+                        <button
+                            onClick={() => navigate(`/voyages-etudes/${voyage.id}/arrete`)}
+                            className="flex items-center gap-1.5 border border-green-600 text-green-600 hover:bg-green-100 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
+                            <Eye size={13} /> Voir l'arrete
+                        </button>
+                    </div>
+                </div>
+            ))}
+        </div>
+    )
+)}
+                        {activeTab === 'historique_absences' && (
+                            autorisationsAbsenceSignees.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                                     <History size={40} className="mx-auto mb-4 text-gray-300" />
-                                    <h3 className="text-gray-700 font-semibold mb-2">Aucun arrete signe</h3>
-                                    <p className="text-gray-400 text-sm">Les arretes que vous signez apparaitront ici</p>
+                                    <h3 className="text-gray-700 font-semibold mb-2">Aucun historique</h3>
+                                    <p className="text-gray-400 text-sm">Les autorisations d'absence signees apparaitront ici</p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
-                                    <BarreSelection
-                                        selected={selectedSignes}
-                                        total={signes.length}
-                                        onSelectAll={() => setSelectedSignes(
-                                            selectedSignes.length === signes.length ? [] : signes.map(v => v.id)
-                                        )}
-                                        onDeleteSelected={() => supprimerVoyages(selectedSignes)}
-                                        onDeleteAll={() => supprimerVoyages(signes.map(v => v.id))}
-                                    />
-                                    {signes.map(voyage => (
-                                        <div key={voyage.id} className={`rounded-2xl p-4 flex items-center justify-between border transition ${
-                                            selectedSignes.includes(voyage.id) ? 'bg-green-50 border-blue-300' : 'bg-green-50 border-green-200'
-                                        }`}>
+                                    {autorisationsAbsenceSignees.map(a => (
+                                        <div key={a.id} className="bg-purple-50 rounded-2xl border border-purple-200 p-4 flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                <input type="checkbox"
-                                                    checked={selectedSignes.includes(voyage.id)}
-                                                    onChange={() => setSelectedSignes(prev =>
-                                                        prev.includes(voyage.id) ? prev.filter(i => i !== voyage.id) : [...prev, voyage.id]
-                                                    )}
-                                                    className="w-4 h-4 accent-blue-700 cursor-pointer" />
+                                                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-700 font-bold text-sm">
+                                                    {a.enseignant?.prenom?.[0]}{a.enseignant?.nom?.[0]}
+                                                </div>
                                                 <div>
-                                                    <p className="font-medium text-gray-800">{voyage.destination}</p>
-                                                    <p className="text-xs text-gray-500">
-                                                        {new Date(voyage.date_debut).toLocaleDateString('fr-FR')} - {new Date(voyage.date_fin).toLocaleDateString('fr-FR')} · {voyage.beneficiaires?.filter(b => b.dans_liste_definitive).length} beneficiaire(s)
-                                                    </p>
+                                                    <p className="font-semibold text-gray-800">{a.enseignant?.prenom} {a.enseignant?.nom}</p>
+                                                    <p className="text-xs text-gray-500">{a.numero} — {a.lieu_deplacement}</p>
                                                 </div>
                                             </div>
-                                            <span className="flex items-center gap-1 text-xs font-semibold text-green-700">
-                                                <CheckCircle size={14} /> Signe
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )
-                        )}
-
-                        {activeTab === 'autorisations' && (
-                            autorEnAttente.length === 0 ? (
-                                <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
-                                    <CheckCircle size={40} className="mx-auto mb-4 text-gray-300" />
-                                    <h3 className="text-gray-700 font-semibold mb-2">Aucune autorisation</h3>
-                                    <p className="text-gray-400 text-sm">Les autorisations de sortie apparaitront ici</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    <BarreSelection
-                                        selected={selectedAuto}
-                                        total={autorEnAttente.length}
-                                        onSelectAll={() => setSelectedAuto(
-                                            selectedAuto.length === autorEnAttente.length ? [] : autorEnAttente.map(d => d.id)
-                                        )}
-                                        onDeleteSelected={() => supprimerAutorisations(selectedAuto)}
-                                        onDeleteAll={() => supprimerAutorisations(autorEnAttente.map(d => d.id))}
-                                    />
-                                    {autorEnAttente.map(d => (
-                                        <div key={d.id} className={`bg-white rounded-2xl border shadow-sm p-5 transition ${
-                                            selectedAuto.includes(d.id) ? 'border-blue-300' : 'border-gray-100'
-                                        }`}>
-                                            <div className="flex items-start justify-between mb-4">
-                                                <div className="flex items-center gap-3">
-                                                    <input type="checkbox"
-                                                        checked={selectedAuto.includes(d.id)}
-                                                        onChange={() => setSelectedAuto(prev =>
-                                                            prev.includes(d.id) ? prev.filter(i => i !== d.id) : [...prev, d.id]
-                                                        )}
-                                                        className="w-4 h-4 accent-blue-700 cursor-pointer mt-1" />
-                                                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-sm">
-                                                        {d.enseignant?.prenom?.[0]}{d.enseignant?.nom?.[0]}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-semibold text-gray-800">{d.enseignant?.prenom} {d.enseignant?.nom}</p>
-                                                        <p className="text-xs text-gray-500">{d.enseignant?.ufr}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="font-medium text-gray-700 text-sm">{d.voyage?.destination}</p>
-                                                    <p className="text-xs text-gray-500">
-                                                        {new Date(d.voyage?.date_debut).toLocaleDateString('fr-FR')} - {new Date(d.voyage?.date_fin).toLocaleDateString('fr-FR')}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            {d.justificatifs?.length > 0 && (
-                                                <div className="space-y-1 mb-4">
-                                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Justificatifs :</p>
-                                                    {d.justificatifs.map(j => (
-                                                        <button key={j.id}
-                                                            onClick={() => window.open(`http://127.0.0.1:8000/storage/${j.fichier_pdf}`, '_blank')}
-                                                            className="flex items-center gap-2 text-sm text-blue-700 hover:underline">
-                                                            <Eye size={14} /> {j.nom_original || 'Fichier PDF'}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
-
-                                            <div className="bg-blue-50 rounded-xl p-3 mb-4">
-                                                <p className="text-sm text-blue-700">
-                                                    Autorisation de sortie transmise par le Directeur UFR. Votre approbation est requise.
-                                                </p>
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                {d.autorisation_absence && d.autorisation_absence.id && (
-                                                    <button
-                                                        onClick={() => navigate('/autorisation-absence/' + d.autorisation_absence.id + '/document')}
-                                                        className="w-full flex items-center justify-center gap-2 border border-blue-700 text-blue-700 hover:bg-blue-50 py-2.5 rounded-xl font-semibold text-sm transition">
-                                                        <Eye size={16} /> Voir le document
-                                                    </button>
-                                                )}
-                                                <button onClick={() => approuverAutorisation(d.id)}
-                                                    disabled={actionLoading === 'autorisation_' + d.id}
-                                                    className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl font-semibold text-sm transition disabled:opacity-50">
-                                                    {actionLoading === 'autorisation_' + d.id
-                                                        ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                        : <CheckCircle size={16} />}
-                                                    Approuver l'autorisation de sortie
+                                            <div className="flex items-center gap-3">
+                                                <span className="flex items-center gap-1 text-xs font-semibold text-purple-700">
+                                                    <CheckCircle size={12} /> Signee et transmise
+                                                </span>
+                                                <button
+                                                    onClick={() => navigate('/autorisation-absence/' + a.id)}
+                                                    className="flex items-center gap-1.5 border border-purple-600 text-purple-600 hover:bg-purple-100 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
+                                                    <Eye size={13} /> Voir
                                                 </button>
                                             </div>
                                         </div>
                                     ))}
-                                </div>
-                            )
-                        )}
-
-                        {activeTab === 'historique' && (
-                            autorHistorique.length === 0 ? (
-                                <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
-                                    <CheckCircle size={40} className="mx-auto mb-4 text-gray-300" />
-                                    <h3 className="text-gray-700 font-semibold mb-2">Aucun historique</h3>
-                                    <p className="text-gray-400 text-sm">Les autorisations approuvées apparaîtront ici</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    <BarreSelection
-                                        selected={selectedHistorique}
-                                        total={autorHistorique.length}
-                                        onSelectAll={() => setSelectedHistorique(
-                                            selectedHistorique.length === autorHistorique.length ? [] : autorHistorique.map(d => d.id)
-                                        )}
-                                        onDeleteSelected={() => supprimerHistorique(selectedHistorique)}
-                                        onDeleteAll={() => supprimerHistorique(autorHistorique.map(d => d.id))}
-                                    />
-                                    {autorHistorique.map(d => (
-    <div key={d.id} className="bg-green-50 rounded-2xl border border-green-200 p-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-700 font-bold text-sm">
-                {d.enseignant?.prenom?.[0]}{d.enseignant?.nom?.[0]}
-            </div>
-            <div>
-                <p className="font-semibold text-gray-800">{d.enseignant?.prenom} {d.enseignant?.nom}</p>
-                <p className="text-xs text-gray-500">{d.enseignant?.ufr} — {d.voyage?.destination}</p>
-            </div>
-        </div>
-        <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1 text-xs font-semibold text-green-700">
-                <CheckCircle size={12} /> Approuvée
-            </span>
-            {d.autorisation_absence && d.autorisation_absence.id && (
-                <button
-                    onClick={() => navigate('/autorisation-absence/' + d.autorisation_absence.id + '/document')}
-                    className="flex items-center gap-1.5 border border-green-600 text-green-600 hover:bg-green-100 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
-                    <Eye size={13} /> Voir
-                </button>
-            )}
-            {d.autorisation_absence && d.autorisation_absence.id && (
-                <button
-                    onClick={() => envoyerEmailAutorisation(d.autorisation_absence.id)}
-                    disabled={actionLoading === 'email_auto_' + d.autorisation_absence.id}
-                    className="flex items-center gap-1.5 border border-blue-600 text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-xl text-xs font-semibold transition disabled:opacity-50">
-                    {actionLoading === 'email_auto_' + d.autorisation_absence.id
-                        ? <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                        : <Send size={13} />}
-                    Envoyer par email
-                </button>
-            )}
-        </div>
-    </div>
-))}
-                                    
                                 </div>
                             )
                         )}

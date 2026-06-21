@@ -19,12 +19,11 @@ const menuParRole = {
     { label: 'En attente',         icon: Clock,           path: '/ddl/en-attente' },
     { label: 'Demandes rejetées',  icon: XCircle,         path: '/ddl/demandes-rejetees' },
 ],
-    enseignant: [
-        { label: 'Dashboard',        icon: LayoutDashboard, path: '/enseignant/dashboard' },
-        { label: 'Mes voyages',      icon: MapPin,          path: '/enseignant/voyages-etudes' },
-        { label: 'Mes rapports',     icon: FileText,        path: '/enseignant/rapports' },
-        { label: 'Réserver navette', icon: Bus,             path: '/enseignant/reserver' },
-    ],
+   enseignant: [
+    { label: 'Dashboard',        icon: LayoutDashboard, path: '/enseignant/dashboard' },
+    { label: 'Mes voyages',      icon: MapPin,          path: '/enseignant/voyages-etudes' },
+    { label: 'Réserver navette', icon: Bus,             path: '/enseignant/reserver' },
+],
    drh: [
     { label: 'Dashboard',      icon: LayoutDashboard, path: '/drh/dashboard' },
     { label: 'En attente',     icon: Clock,           path: '/drh/ordres?statut=en_attente' },

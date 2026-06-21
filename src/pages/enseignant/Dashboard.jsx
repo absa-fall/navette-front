@@ -70,7 +70,7 @@ export default function EnseignantDashboard() {
                 )}
 
                 {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
                     <div
                         onClick={() => navigate('/enseignant/voyages-etudes')}
@@ -105,16 +105,7 @@ export default function EnseignantDashboard() {
                         <p className="text-sm text-gray-500 mt-1">Approuvés</p>
                     </div>
 
-                    <div
-                        onClick={() => navigate('/enseignant/rapports')}
-                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
-                    >
-                        <div className="bg-purple-100 p-2 rounded-xl w-fit mb-3">
-                            <FileText size={20} className="text-purple-700" />
-                        </div>
-                        <p className="text-2xl font-bold text-gray-800">{stats.rapports}</p>
-                        <p className="text-sm text-gray-500 mt-1">Rapports soumis</p>
-                    </div>
+                  
                 </div>
 
                 {/* Actions rapides */}
@@ -122,20 +113,7 @@ export default function EnseignantDashboard() {
                     <h2 className="text-lg font-semibold text-gray-800 mb-4">Actions rapides</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                        {eligibilite?.eligible && (
-                            <div
-                                onClick={() => navigate('/enseignant/voyages/nouveau')}
-                                className="flex items-center gap-4 p-4 border-2 border-dashed border-green-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition group cursor-pointer"
-                            >
-                                <div className="bg-green-100 p-3 rounded-xl group-hover:bg-green-200 transition">
-                                    <MapPin size={22} className="text-green-700" />
-                                </div>
-                                <div>
-                                    <p className="font-semibold text-gray-800">Nouveau voyage</p>
-                                    <p className="text-sm text-gray-500">Soumettre au Vice-Recteur</p>
-                                </div>
-                            </div>
-                        )}
+                    
 
                         <div
                             onClick={() => navigate('/enseignant/voyages-etudes')}
@@ -149,19 +127,6 @@ export default function EnseignantDashboard() {
                                 <p className="text-sm text-gray-500">Voir mes sélections et soumettre justificatifs</p>
                             </div>
                         </div>
-
-                      <div
-    onClick={() => navigate('/enseignant/rapports')}
-    className="flex items-center gap-4 p-4 border-2 border-dashed border-purple-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition group cursor-pointer"
->
-    <div className="bg-purple-100 p-3 rounded-xl group-hover:bg-purple-200 transition">
-        <FileText size={22} className="text-purple-700" />
-    </div>
-    <div>
-        <p className="font-semibold text-gray-800">Mes rapports</p>
-        <p className="text-sm text-gray-500">Voir et soumettre mes rapports</p>
-    </div>
-</div>
 
 <div
     onClick={() => navigate('/enseignant/mes-reservations')}

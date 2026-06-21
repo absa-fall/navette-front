@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
 import { useNavigate } from 'react-router-dom'
-import { FileText, CheckCircle, AlertCircle, Send, Eye, Bell, Users, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
+import { FileText, CheckCircle, AlertCircle, Send, Eye, Bell, Users, ChevronDown, ChevronUp, Trash2, History } from 'lucide-react'
 
 export default function ChefDepartementDashboard() {
     const navigate = useNavigate()
@@ -20,13 +20,14 @@ export default function ChefDepartementDashboard() {
     const [selectedVoyages, setSelectedVoyages] = useState([])
     const [selectedJustif, setSelectedJustif]   = useState([])
     const [selectedAuto, setSelectedAuto]       = useState([])
+    const [selectedHistorique, setSelectedHistorique] = useState([])
     const [autorisationsAbsence, setAutorisationsAbsence] = useState([])
 
 
     useEffect(() => {
         const params = new URLSearchParams(location.search)
         const tab = params.get('tab')
-        if (['listes', 'justificatifs', 'autorisations'].includes(tab)) setActiveTab(tab)
+        if (['listes', 'justificatifs', 'autorisations', 'historique'].includes(tab)) setActiveTab(tab)
     }, [location.search])
 
     useEffect(() => { fetchDossiers() }, [])
@@ -121,7 +122,7 @@ export default function ChefDepartementDashboard() {
         } catch { showMsg('Erreur lors de la suppression', true) }
     }
 
-    // ===== SÉLECTION AUTORISATIONS =====
+    // ===== SÉLECTION AUTORISATIONS (en attente) =====
     const toggleSelectAuto = (id) =>
         setSelectedAuto(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
 
@@ -148,6 +149,33 @@ export default function ChefDepartementDashboard() {
         } catch { showMsg('Erreur lors de la suppression', true) }
     }
 
+    // ===== SÉLECTION HISTORIQUE (autorisations d'absence déjà signées par moi) =====
+    const toggleSelectHistorique = (id) =>
+        setSelectedHistorique(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
+
+    const toggleSelectAllHistorique = () =>
+        setSelectedHistorique(selectedHistorique.length === historiqueAutorisations.length ? [] : historiqueAutorisations.map(a => a.id))
+
+    const supprimerHistoriqueSelectionnes = async () => {
+        if (!confirm(`Supprimer ${selectedHistorique.length} element(s) de l'historique ?`)) return
+        try {
+            for (const id of selectedHistorique) await api.delete(`/autorisations-absence/${id}`)
+            showMsg('Suppression effectuée')
+            setSelectedHistorique([])
+            fetchDossiers()
+        } catch { showMsg('Erreur lors de la suppression', true) }
+    }
+
+    const supprimerTouHistorique = async () => {
+        if (!confirm('Vider tout l\'historique ?')) return
+        try {
+            for (const a of historiqueAutorisations) await api.delete(`/autorisations-absence/${a.id}`)
+            showMsg('Historique vide')
+            setSelectedHistorique([])
+            fetchDossiers()
+        } catch { showMsg('Erreur lors de la suppression', true) }
+    }
+
     const notifierEnseignants = async (voyageId) => {
         setActionLoading('notif_' + voyageId)
         try {
@@ -169,16 +197,7 @@ export default function ChefDepartementDashboard() {
         } finally { setActionLoading(null) }
     }
 
-    const autorisationSortie = async (id) => {
-        setActionLoading(id + '_sortie')
-        try {
-            await api.patch(`/voyages-etudes/beneficiaire/${id}/autorisation-sortie`)
-            showMsg('Autorisation de sortie envoyee au Directeur UFR')
-            fetchDossiers()
-        } catch (err) {
-            showMsg(err.response?.data?.message || 'Erreur', true)
-        } finally { setActionLoading(null) }
-    }
+    
 
 const signerEtTransmettre = async (autorisationId) => {
     setActionLoading(autorisationId + '_signer')
@@ -196,8 +215,11 @@ const signerEtTransmettre = async (autorisationId) => {
 }
 
     const dossiersJustif       = dossiers.filter(d => !["transmis_vr", "valide"].includes(d.statut_justificatif))
-    const dossiersAutorisation = dossiers.filter(d => d.statut_autorisation === 'demande_chef_dept')
     const voyagesUniques       = [...new Map(dossiers.map(d => [d.voyage?.id, d.voyage])).values()].filter(Boolean)
+
+    // Demandes d'autorisation d'absence : en attente de mon avis vs déjà traitées par moi
+    const autorisationsEnAttente = autorisationsAbsence.filter(a => a.statut === 'soumise')
+    const historiqueAutorisations = autorisationsAbsence.filter(a => a.avis_chef_departement !== null)
 
     // Barre sélection réutilisable
     const BarreSelection = ({ selected, total, onSelectAll, onDeleteSelected, onDeleteAll, label }) => (
@@ -235,11 +257,12 @@ const signerEtTransmettre = async (autorisationId) => {
                 </div>
 
                 {/* Onglets */}
-                <div className="flex gap-2 border-b border-gray-200">
+                <div className="flex gap-2 border-b border-gray-200 flex-wrap">
                     {[
                         { key: 'listes', label: 'Nouvelles listes', icon: <Bell size={14} />, count: voyagesUniques.length, color: 'blue' },
                         { key: 'justificatifs', label: 'Justificatifs reçus', icon: null, count: dossiersJustif.length, color: 'blue' },
-                        { key: 'autorisations', label: "Demandes d'autorisation", icon: null, count: dossiersAutorisation.length, color: 'green' },
+                        { key: 'autorisations', label: "Demandes d'autorisation", icon: null, count: autorisationsEnAttente.length, color: 'green' },
+                        { key: 'historique', label: 'Historique', icon: <History size={14} />, count: historiqueAutorisations.length, color: 'gray' },
                     ].map(tab => (
                         <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                             className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center gap-2 ${
@@ -379,63 +402,189 @@ const signerEtTransmettre = async (autorisationId) => {
                             )
                         )}
 
-                        {/* ===== ONGLET AUTORISATIONS ===== */}
-{activeTab === 'autorisations' && (
-    autorisationsAbsence.length === 0 ? (
-        <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
-            <CheckCircle size={40} className="mx-auto mb-4 text-gray-300" />
-            <h3 className="text-gray-700 font-semibold mb-2">Aucune demande</h3>
-            <p className="text-gray-400 text-sm">Les demandes d'autorisation d'absence apparaîtront ici</p>
-        </div>
-    ) : (
-        <div className="space-y-4">
-            {autorisationsAbsence.map(a => (
-                <div key={a.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                    <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-700 font-bold text-sm">
-                                {a.enseignant?.prenom?.[0]}{a.enseignant?.nom?.[0]}
-                            </div>
-                            <div>
-                                <p className="font-semibold text-gray-800">{a.enseignant?.prenom} {a.enseignant?.nom}</p>
-                                <p className="text-xs text-gray-500">{a.numero}</p>
-                            </div>
-                        </div>
-                        <div className="text-right">
-                            <p className="font-medium text-gray-700 text-sm">{a.lieu_deplacement}</p>
-                            <p className="text-xs text-gray-500">
-                                {new Date(a.periode_debut).toLocaleDateString('fr-FR')} - {new Date(a.periode_fin).toLocaleDateString('fr-FR')}
-                            </p>
-                        </div>
-                    </div>
+                        {/* ===== ONGLET JUSTIFICATIFS REÇUS ===== */}
+                        {activeTab === 'justificatifs' && (
+                            dossiersJustif.length === 0 ? (
+                                <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
+                                    <FileText size={40} className="mx-auto mb-4 text-gray-300" />
+                                    <h3 className="text-gray-700 font-semibold mb-2">Aucun justificatif</h3>
+                                    <p className="text-gray-400 text-sm">Les justificatifs soumis par les enseignants apparaîtront ici</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    <BarreSelection
+                                        selected={selectedJustif}
+                                        total={dossiersJustif.length}
+                                        onSelectAll={toggleSelectAllJustif}
+                                        onDeleteSelected={supprimerJustifSelectionnes}
+                                        onDeleteAll={supprimerTousJustif}
+                                    />
+                                    {dossiersJustif.map(d => (
+                                        <div key={d.id} className={`bg-white rounded-2xl border shadow-sm p-5 transition ${
+                                            selectedJustif.includes(d.id) ? 'border-blue-300' : 'border-gray-100'
+                                        }`}>
+                                            <div className="flex items-start justify-between mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <input type="checkbox"
+                                                        checked={selectedJustif.includes(d.id)}
+                                                        onChange={() => toggleSelectJustif(d.id)}
+                                                        className="w-4 h-4 accent-blue-700 cursor-pointer mt-1" />
+                                                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-sm">
+                                                        {d.enseignant?.prenom?.[0]}{d.enseignant?.nom?.[0]}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold text-gray-800">{d.enseignant?.prenom} {d.enseignant?.nom}</p>
+                                                        <p className="text-xs text-gray-500">{d.enseignant?.ufr}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="font-medium text-gray-700 text-sm">{d.voyage?.destination}</p>
+                                                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                                                        d.statut_justificatif === 'soumis' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
+                                                    }`}>
+                                                        {d.statut_justificatif === 'soumis' ? 'Soumis' : 'En attente'}
+                                                    </span>
+                                                </div>
+                                            </div>
 
-                    <p className="text-sm text-gray-600 mb-4 bg-gray-50 rounded-xl p-3">
-                        Motif : {a.motif_mission}
-                    </p>
+                                            {d.justificatifs?.length > 0 ? (
+                                                <div className="space-y-1 mb-4">
+                                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Fichiers :</p>
+                                                    {d.justificatifs.map(j => (
+                                                        <button key={j.id}
+                                                            onClick={() => window.open(`http://127.0.0.1:8000/storage/${j.fichier_pdf}`, '_blank')}
+                                                            className="flex items-center gap-2 text-sm text-blue-700 hover:underline">
+                                                            <Eye size={14} /> {j.nom_original || 'Fichier PDF'}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm text-gray-400 mb-4">Aucun justificatif soumis pour le moment</p>
+                                            )}
 
-                    <div className="flex gap-2 flex-wrap">
-                        <button onClick={() => signerEtTransmettre(a.id)}
-                            disabled={actionLoading === a.id + '_signer'}
-                            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
-                            {actionLoading === a.id + '_signer'
-                                ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                : <CheckCircle size={14} />}
-                            Signer l'autorisation → Transmettre au Directeur UFR
-                        </button>
+                                            <button onClick={() => envoyerAuVR(d.id)}
+                                                disabled={actionLoading === d.id + '_vr' || d.statut_justificatif !== 'soumis'}
+                                                className="w-full flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl font-semibold text-sm transition disabled:opacity-50">
+                                                {actionLoading === d.id + '_vr'
+                                                    ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                    : <Send size={16} />}
+                                                Transmettre au Vice-Recteur et Commission
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )
+                        )}
 
-                        <button
-                            onClick={() => navigate('/autorisation-absence/' + a.id + '/document')}
-                            className="flex items-center gap-2 border border-blue-700 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm font-semibold transition"
-                        >
-                            <Eye size={14} />
-                            Voir le document
-                        </button>
-                    </div>
-                </div>
-            ))}
-        </div>
-    )
-)}
+                        {/* ===== ONGLET AUTORISATIONS (en attente de mon avis) ===== */}
+                        {activeTab === 'autorisations' && (
+                            autorisationsEnAttente.length === 0 ? (
+                                <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
+                                    <CheckCircle size={40} className="mx-auto mb-4 text-gray-300" />
+                                    <h3 className="text-gray-700 font-semibold mb-2">Aucune demande</h3>
+                                    <p className="text-gray-400 text-sm">Les demandes d'autorisation d'absence apparaîtront ici</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {autorisationsEnAttente.map(a => (
+                                        <div key={a.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                                            <div className="flex items-start justify-between mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-700 font-bold text-sm">
+                                                        {a.enseignant?.prenom?.[0]}{a.enseignant?.nom?.[0]}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold text-gray-800">{a.enseignant?.prenom} {a.enseignant?.nom}</p>
+                                                        <p className="text-xs text-gray-500">{a.numero}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="font-medium text-gray-700 text-sm">{a.lieu_deplacement}</p>
+                                                    <p className="text-xs text-gray-500">
+                                                        {new Date(a.periode_debut).toLocaleDateString('fr-FR')} - {new Date(a.periode_fin).toLocaleDateString('fr-FR')}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <p className="text-sm text-gray-600 mb-4 bg-gray-50 rounded-xl p-3">
+                                                Motif : {a.motif_mission}
+                                            </p>
+
+                                            <div className="flex gap-2 flex-wrap">
+                                                <button onClick={() => signerEtTransmettre(a.id)}
+                                                    disabled={actionLoading === a.id + '_signer'}
+                                                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
+                                                    {actionLoading === a.id + '_signer'
+                                                        ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                        : <CheckCircle size={14} />}
+                                                    Signer l'autorisation → Transmettre au Directeur UFR
+                                                </button>
+
+                                                <button
+                                                   onClick={() => navigate('/autorisation-absence/' + a.id)}
+                                                    className="flex items-center gap-2 border border-blue-700 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm font-semibold transition"
+                                                >
+                                                    <Eye size={14} />
+                                                    Voir le document
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )
+                        )}
+
+                        {/* ===== ONGLET HISTORIQUE (autorisations deja signees par moi) ===== */}
+                        {activeTab === 'historique' && (
+                            historiqueAutorisations.length === 0 ? (
+                                <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
+                                    <History size={40} className="mx-auto mb-4 text-gray-300" />
+                                    <h3 className="text-gray-700 font-semibold mb-2">Aucun historique</h3>
+                                    <p className="text-gray-400 text-sm">Les demandes que vous avez signees apparaitront ici</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    <BarreSelection
+                                        selected={selectedHistorique}
+                                        total={historiqueAutorisations.length}
+                                        onSelectAll={toggleSelectAllHistorique}
+                                        onDeleteSelected={supprimerHistoriqueSelectionnes}
+                                        onDeleteAll={supprimerTouHistorique}
+                                    />
+                                    {historiqueAutorisations.map(a => (
+                                        <div key={a.id} className={`rounded-2xl border p-4 flex items-center justify-between transition ${
+                                            selectedHistorique.includes(a.id) ? 'bg-gray-50 border-blue-300' : 'bg-gray-50 border-gray-200'
+                                        }`}>
+                                            <div className="flex items-center gap-3">
+                                                <input type="checkbox"
+                                                    checked={selectedHistorique.includes(a.id)}
+                                                    onChange={() => toggleSelectHistorique(a.id)}
+                                                    className="w-4 h-4 accent-blue-700 cursor-pointer" />
+                                                <div className="w-9 h-9 bg-gray-200 rounded-full flex items-center justify-center text-gray-700 font-bold text-sm">
+                                                    {a.enseignant?.prenom?.[0]}{a.enseignant?.nom?.[0]}
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-gray-800">{a.enseignant?.prenom} {a.enseignant?.nom}</p>
+                                                    <p className="text-xs text-gray-500">{a.numero} — {a.lieu_deplacement}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                                    a.avis_chef_departement === 'favorable' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                                }`}>
+                                                    {a.avis_chef_departement === 'favorable' ? 'Avis favorable' : 'Rejetee'}
+                                                </span>
+                                              <button
+    onClick={() => navigate('/autorisation-absence/' + a.id)}
+    className="flex items-center gap-1.5 border border-gray-400 text-gray-600 hover:bg-gray-100 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
+    <Eye size={13} /> Voir
+</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )
+                        )}
                     </>
                 )}
             </div>

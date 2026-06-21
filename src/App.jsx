@@ -2,7 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import ValidationNavette from './pages/validation/ValidationNavette'
 import Reservation from './pages/Reservation'
-
+import MotDePasseOublie from './pages/MotDePasseOublie'
+import ReinitialiserMotDePasse from './pages/ReinitialiserMotDePasse'
 // Auth
 import Login from './pages/Login'
 import Inscription from './pages/Inscription'
@@ -17,10 +18,6 @@ import DemandesEnAttente from './pages/ddl/DemandesEnAttente'
 
 // Enseignant
 import EnseignantDashboard from './pages/enseignant/Dashboard'
-import EnseignantNouveauVoyage from './pages/enseignant/NouveauVoyage'
-import EnseignantNouveauRapport from './pages/enseignant/NouveauRapport'
-import EnseignantMesRapports from './pages/enseignant/MesRapports'
-import EnseignantResoumettreRapport from './pages/enseignant/ResoumettreRapport'
 import MesVoyagesEtudes from './pages/enseignant/MesVoyagesEtudes'
 import MesReservations from './pages/enseignant/MesReservations'
 import DemandeAutorisationAbsence from './pages/enseignant/DemandeAutorisationAbsence'
@@ -69,7 +66,7 @@ import AdminVehicules from './pages/admin/Vehicules'
 import ChefDepartementDashboard from './pages/chefdepartement/Dashboard'
 import DirecteurUFRDashboard from './pages/directeurufr/Dashboard'
 import RecteurDashboard from './pages/recteur/Dashboard'
-
+import ArreteVoyageDocument from './pages/recteur/ArreteVoyageDocument'
 import CommissionDashboard from './pages/commission/Dashboard'
 
 const PrivateRoute = ({ children }) => {
@@ -93,7 +90,8 @@ function App() {
                     <Route path="/reservation" element={<Navigate to="/login" replace />} />
                     <Route path="/validation" element={<PrivateRoute><ValidationNavette /></PrivateRoute>} />
                     <Route path="/inscription" element={<Inscription />} />
-
+<Route path="/mot-de-passe-oublie" element={<MotDePasseOublie />} />
+<Route path="/reset-password" element={<ReinitialiserMotDePasse />} />
                     {/* DDL */}
                     <Route path="/ddl/dashboard" element={<PrivateRoute><DDLDashboard /></PrivateRoute>} />
                     <Route path="/ddl/navettes" element={<PrivateRoute><MesNavettes /></PrivateRoute>} />
@@ -105,17 +103,15 @@ function App() {
                     {/* Enseignant */}
                     <Route path="/enseignant/dashboard" element={<PrivateRoute><EnseignantDashboard /></PrivateRoute>} />
                     <Route path="/enseignant/voyages-etudes" element={<PrivateRoute><MesVoyagesEtudes /></PrivateRoute>} />
-                    <Route path="/enseignant/voyages/nouveau" element={<PrivateRoute><EnseignantNouveauVoyage /></PrivateRoute>} />
-                    <Route path="/enseignant/rapports" element={<PrivateRoute><EnseignantMesRapports /></PrivateRoute>} />
-                    <Route path="/enseignant/rapports/nouveau/:voyageId" element={<PrivateRoute><EnseignantNouveauRapport /></PrivateRoute>} />
-                    <Route path="/enseignant/rapports/resoumettre/:rapportId" element={<PrivateRoute><EnseignantResoumettreRapport /></PrivateRoute>} />
+
                     <Route path="/enseignant/reserver" element={<PrivateRoute><Reserver /></PrivateRoute>} />
                     <Route path="/enseignant/mes-reservations" element={<PrivateRoute><MesReservations /></PrivateRoute>} />
                     <Route path="/enseignant/scanner" element={<PrivateRoute><ScannerBus /></PrivateRoute>} />
                     <Route path="/enseignant/autorisation-absence/:beneficiaireId" element={<PrivateRoute><DemandeAutorisationAbsence /></PrivateRoute>} />
 
                     {/* Voyages Etudes */}
-                  <Route path="/autorisation-absence/:id/document" element={<PrivateRoute><AutorisationAbsenceDocument /></PrivateRoute>} />
+                <Route path="/autorisation-absence/:id" element={<PrivateRoute><AutorisationAbsenceDocument /></PrivateRoute>} />
+
                     {/* DRH */}
                     <Route path="/drh/dashboard" element={<PrivateRoute><DRHDashboard /></PrivateRoute>} />
                     <Route path="/drh/ordres" element={<PrivateRoute><DRHOrdres /></PrivateRoute>} />
@@ -162,7 +158,7 @@ function App() {
 
                     {/* Recteur */}
                     <Route path="/recteur/dashboard" element={<PrivateRoute><RecteurDashboard /></PrivateRoute>} />
-
+<Route path="/voyages-etudes/:voyageId/arrete" element={<PrivateRoute><ArreteVoyageDocument /></PrivateRoute>} />
                     {/* Commission */}
                     <Route path="/commission/dashboard" element={<PrivateRoute><CommissionDashboard /></PrivateRoute>} />
 

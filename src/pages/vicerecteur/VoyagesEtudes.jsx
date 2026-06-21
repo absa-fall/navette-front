@@ -138,27 +138,30 @@ export default function VoyagesEtudes() {
         }
     }
 
-    // ===== SUPPRESSIONS =====
     const supprimerVoyages = async (ids) => {
-        if (!confirm(`Supprimer ${ids.length} voyage(s) ?`)) return
-        try {
-            for (const id of ids) await api.delete(`/voyages-etudes/${id}`)
-            setVoyages(prev => prev.filter(v => !ids.includes(v.id)))
-            setSelectedVoyages([])
-            showMsg('Suppression effectuée')
-        } catch { showMsg('Erreur lors de la suppression', true) }
+    if (!confirm(`Supprimer ${ids.length} voyage(s) ?`)) return
+    const resultats = await Promise.allSettled(
+        ids.map(id => api.delete(`/voyages-etudes/${id}`))
+    )
+    const reussis = ids.filter((id, i) => resultats[i].status === 'fulfilled')
+    setVoyages(prev => prev.filter(v => !reussis.includes(v.id)))
+    setSelectedVoyages([])
+    if (reussis.length === ids.length) {
+        showMsg('Suppression effectuée')
+    } else {
+        showMsg(`${reussis.length}/${ids.length} voyage(s) supprimé(s)`, reussis.length < ids.length)
     }
+}
 
-    const supprimerDossiers = async (ids) => {
-        if (!confirm(`Supprimer ${ids.length} dossier(s) ?`)) return
-        try {
-            for (const id of ids) await api.delete(`/voyages-etudes/beneficiaire/${id}/dossier`)
-            setDossiers(prev => prev.filter(d => !ids.includes(d.id)))
-            setSelectedDossiers([])
-            showMsg('Suppression effectuée')
-        } catch { showMsg('Erreur lors de la suppression', true) }
-    }
-
+   const supprimerDossiers = async (ids) => {
+    if (!confirm(`Supprimer ${ids.length} dossier(s) ?`)) return
+    await Promise.allSettled(
+        ids.map(id => api.delete(`/voyages-etudes/beneficiaire/${id}/dossier`))
+    )
+    setSelectedDossiers([])
+    showMsg('Suppression effectuée')
+    fetchDossiers() 
+}
     const getStatutAutorisationLabel = (statut) => {
         const map = {
             non_demande:          { label: 'Non demande',       color: 'bg-gray-100 text-gray-600' },
@@ -317,6 +320,16 @@ export default function VoyagesEtudes() {
                                                                         <CheckCircle size={12} /> Arrete signe
                                                                     </span>
                                                                 )}
+                                                                {voyage.arrete_recteur && (
+    <button
+        onClick={(e) => {
+            e.stopPropagation()
+            navigate(`/voyages-etudes/${voyage.id}/arrete`)
+        }}
+        className="flex items-center gap-1.5 border border-green-600 text-green-600 hover:bg-green-100 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
+        <Eye size={13} /> Voir l'arrete
+    </button>
+)}
                                                             </div>
                                                         </div>
                                                     </div>

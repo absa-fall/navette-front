@@ -15,8 +15,7 @@ api.interceptors.request.use((config) => {
         config.headers.Authorization = `Bearer ${token}`
     }
     
-    // ✅ NE PAS définir Content-Type pour les FormData
-    // Le navigateur le définit automatiquement avec le boundary
+    
     if (config.data instanceof FormData) {
         delete config.headers['Content-Type']
     } else if (!config.headers['Content-Type']) {

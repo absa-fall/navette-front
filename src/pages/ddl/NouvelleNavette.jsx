@@ -66,7 +66,7 @@ const handleChauffeurChange = (e) => {
     }
 
     const handleSubmit = async () => {
-        if (!form.chauffeur_id || !form.destination || !form.date_depart || !form.date_retour || !form.motif.trim()) {
+        if (!form.chauffeur_id || !form.destination || !form.date_retour || !form.motif.trim()) {
             setError('Veuillez remplir tous les champs obligatoires, y compris le motif')
             return
         }
@@ -269,7 +269,7 @@ const handleChauffeurChange = (e) => {
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             <Calendar size={14} className="inline mr-1" />
-                            Date de retour <span className="text-red-500">*</span>
+                            Date de retour <span className="text-gray-400 text-xs">(optionnel)</span>
                         </label>
                         <input
                             type="date"

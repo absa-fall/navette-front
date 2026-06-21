@@ -2,17 +2,27 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
-import { MapPin, Users, Check, AlertCircle, ArrowLeft, Filter, Download, FileText, Search, Pencil, Plus, X } from 'lucide-react'
+import { Users, Check, AlertCircle, ArrowLeft, Filter, Search, Plus, X, FileText } from 'lucide-react'
 
 const UFRS = ['SATIC', 'SDD', 'ECOMIJ', 'ISFAR']
+
+function ChevronDownIcon({ ouverte }) {
+    return (
+        <svg
+            width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            className={`text-gray-400 transition-transform ${ouverte ? 'rotate-180' : ''}`}
+        >
+            <polyline points="6 9 12 15 18 9" />
+        </svg>
+    )
+}
 
 export default function NouveauVoyageEtude() {
     const navigate = useNavigate()
     const [enseignants, setEnseignants]     = useState([])
     const [selected, setSelected]           = useState([])
-    const [overrides, setOverrides]         = useState({}) // { id: { ufr, departement } }
-    const [editingId, setEditingId]         = useState(null)
-    const [editForm, setEditForm]           = useState({ ufr: '', departement: '' })
+    const [manuels, setManuels]             = useState([])
     const [showAddModal, setShowAddModal]   = useState(false)
     const [addForm, setAddForm]             = useState({ prenom: '', nom: '', ufr: 'SATIC', departement: '', matricule: '' })
     const [loading, setLoading]             = useState(false)
@@ -22,16 +32,29 @@ export default function NouveauVoyageEtude() {
     const [filtreUFR, setFiltreUFR]         = useState('tous')
     const [filtrePairing, setFiltrePairing] = useState('tous')
     const [searchEns, setSearchEns]         = useState('')
+    const [ufrOuverte, setUfrOuverte]       = useState(null)
     const [form, setForm]                   = useState({
-        destination: '', date_debut: '', date_fin: '', description: '',
+        date_publication: new Date().toISOString().split('T')[0],
+        motif: 'Voyage d\'études',
     })
 
-    // Enseignants manuels ajoutés (ids négatifs fictifs)
-    const [manuels, setManuels] = useState([])
+    const anneeActuelle = new Date().getFullYear()
+    const pariteAnnee   = anneeActuelle % 2 === 0 ? 'paire' : 'impaire'
 
     useEffect(() => {
         api.get('/enseignants-permanents')
-            .then(res => setEnseignants(res.data))
+            .then(res => {
+                const data = res.data
+                setEnseignants(data)
+                const eligibles = data.filter(e => {
+                    if (!e.date_embauche) return false
+                    const anneeEmbauche = new Date(e.date_embauche).getFullYear()
+                    return anneeActuelle % 2 === 0
+                        ? anneeEmbauche % 2 === 0
+                        : anneeEmbauche % 2 !== 0
+                })
+                setSelected(eligibles.map(e => e.id))
+            })
             .catch(() => {})
             .finally(() => setLoadingEns(false))
     }, [])
@@ -65,22 +88,52 @@ export default function NouveauVoyageEtude() {
         if (tousSelectionnes) setSelected(prev => prev.filter(id => !ids.includes(id)))
         else setSelected(prev => [...new Set([...prev, ...ids])])
     }
-
-    // Ouvrir édition UFR/département dans le récap
-    const ouvrirEdit = (ens) => {
-        setEditingId(ens.id)
-        setEditForm({
-            ufr: overrides[ens.id]?.ufr || ens.ufr || '',
-            departement: overrides[ens.id]?.departement || ens.departement || '',
-        })
-    }
-
-    const sauvegarderEdit = () => {
-        setOverrides(prev => ({ ...prev, [editingId]: editForm }))
-        setEditingId(null)
-    }
-
-    // Ajouter manuellement un enseignant
+const exportPDF = () => {
+    const enseignantsExport = tousEnseignants.filter(e => selected.includes(e.id))
+    const annee = new Date().getFullYear()
+    const contenu = `
+        <html><head><style>
+            body { font-family: Arial, sans-serif; padding: 30px; font-size: 13px; }
+            h1 { color: #1d4ed8; font-size: 16px; }
+            p { color: #6b7280; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; }
+            th { background: #1d4ed8; color: white; padding: 8px; text-align: left; font-size: 12px; }
+            td { padding: 8px; border-bottom: 1px solid #e5e7eb; font-size: 12px; }
+            tr:nth-child(even) { background: #f9fafb; }
+            .footer { margin-top: 30px; font-size: 10px; color: #9ca3af; text-align: center; }
+        </style></head><body>
+        <h1>Liste des bénéficiaires — Voyage d'études ${annee}</h1>
+        <p>Motif : ${form.motif} — Date : ${new Date(form.date_publication).toLocaleDateString('fr-FR')} — Total : ${enseignantsExport.length} bénéficiaire(s)</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>N°</th>
+                    <th>Prénom</th>
+                    <th>Nom</th>
+                    <th>UFR</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${enseignantsExport.map((e, i) => `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td>${e.prenom}</td>
+                        <td>${e.nom}</td>
+                        <td>${e.ufr || '-'}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+        <div class="footer">UADB Mobilité — Généré le ${new Date().toLocaleDateString('fr-FR')}</div>
+        <button onclick="window.print()" style="position:fixed;bottom:20px;right:20px;background:#1d4ed8;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;">
+            Imprimer / PDF
+        </button>
+        </body></html>
+    `
+    const win = window.open('', '_blank')
+    win.document.write(contenu)
+    win.document.close()
+}
     const ajouterManuel = () => {
         if (!addForm.prenom || !addForm.nom) return
         const fakeId = `manuel_${Date.now()}`
@@ -105,7 +158,6 @@ export default function NouveauVoyageEtude() {
         setLoading(true)
         setError('')
         try {
-            // IDs réels uniquement (les manuels sont gérés séparément si besoin)
             const idsReels = selected.filter(id => typeof id === 'number')
             await api.post('/voyages-etudes', { ...form, enseignants: idsReels })
             setSuccess(true)
@@ -117,66 +169,6 @@ export default function NouveauVoyageEtude() {
         }
     }
 
-    const exportExcel = () => {
-        const enseignantsExport = selected.map(id => {
-            const ens = tousEnseignants.find(e => e.id === id)
-            if (!ens) return null
-            const ov = overrides[id] || {}
-            return { ...ens, ufr: ov.ufr || ens.ufr, departement: ov.departement || ens.departement }
-        }).filter(Boolean)
-        const rows = [
-            ['Prenom', 'Nom', 'UFR', 'Departement', 'Matricule', 'Date embauche'],
-            ...enseignantsExport.map(e => [
-                e.prenom, e.nom, e.ufr, e.departement || '', e.matricule || '',
-                e.date_embauche ? new Date(e.date_embauche).getFullYear() : ''
-            ])
-        ]
-        const csv = rows.map(r => r.join(',')).join('\n')
-        const blob = new Blob([csv], { type: 'text/csv' })
-        const url  = URL.createObjectURL(blob)
-        const a    = document.createElement('a')
-        a.href = url
-        a.download = `liste_beneficiaires.csv`
-        a.click()
-    }
-
-    const exportPDF = () => {
-        const enseignantsExport = selected.map(id => {
-            const ens = tousEnseignants.find(e => e.id === id)
-            if (!ens) return null
-            const ov = overrides[id] || {}
-            return { ...ens, ufr: ov.ufr || ens.ufr, departement: ov.departement || ens.departement }
-        }).filter(Boolean)
-        const contenu = `
-            <html><head><style>
-                body { font-family: Arial, sans-serif; padding: 20px; }
-                h1 { color: #1d4ed8; }
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                th { background: #1d4ed8; color: white; padding: 8px; text-align: left; }
-                td { padding: 8px; border-bottom: 1px solid #e5e7eb; }
-                tr:nth-child(even) { background: #f9fafb; }
-            </style></head><body>
-            <h1>Liste des beneficiaires — Voyage d'etudes</h1>
-            <p>Total : ${enseignantsExport.length}</p>
-            <table>
-                <thead><tr><th>Prenom</th><th>Nom</th><th>UFR</th><th>Departement</th><th>Matricule</th></tr></thead>
-                <tbody>
-                    ${enseignantsExport.map(e => `
-                        <tr>
-                            <td>${e.prenom}</td><td>${e.nom}</td><td>${e.ufr}</td>
-                            <td>${e.departement || '-'}</td><td>${e.matricule || '-'}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-            </body></html>
-        `
-        const win = window.open('', '_blank')
-        win.document.write(contenu)
-        win.document.close()
-        win.print()
-    }
-
     if (success) {
         return (
             <Layout>
@@ -185,7 +177,7 @@ export default function NouveauVoyageEtude() {
                         <Check size={48} className="text-green-600" />
                     </div>
                     <h2 className="text-2xl font-bold text-gray-800 mb-2">Liste publiee !</h2>
-                    <p className="text-gray-500">Les Chefs de Departement ont ete notifies par UFR.</p>
+                    <p className="text-gray-500">Les Chefs de Departement ont ete notifies.</p>
                 </div>
             </Layout>
         )
@@ -193,7 +185,9 @@ export default function NouveauVoyageEtude() {
 
     return (
         <Layout>
-            <div className="max-w-3xl mx-auto space-y-6">
+            <div className="w-full space-y-6">
+
+                {/* Header */}
                 <div className="flex items-center gap-3">
                     <button onClick={() => navigate('/vice-recteur/voyages-etudes')}
                         className="p-2 hover:bg-gray-100 rounded-xl transition">
@@ -201,7 +195,9 @@ export default function NouveauVoyageEtude() {
                     </button>
                     <div>
                         <h1 className="text-2xl font-bold text-gray-800">Publier une liste de beneficiaires</h1>
-                        <p className="text-gray-500 text-sm mt-1">Voyage d'etudes</p>
+                        <p className="text-gray-500 text-sm mt-1">
+                            Année {anneeActuelle} — Enseignants années <span className="font-semibold">{pariteAnnee}s</span> pré-sélectionnés
+                        </p>
                     </div>
                 </div>
 
@@ -211,301 +207,251 @@ export default function NouveauVoyageEtude() {
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-5">
-                    {/* Informations voyage */}
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
-                        <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-                            <MapPin size={18} className="text-blue-700" /> Informations du voyage
-                        </h2>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Destination *</label>
-                            <input type="text" value={form.destination}
-                                onChange={e => setForm({ ...form, destination: e.target.value })}
-                                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="Ex: Paris, France" required />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Date debut *</label>
-                                <input type="date" value={form.date_debut}
-                                    onChange={e => setForm({ ...form, date_debut: e.target.value })}
-                                    className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    required />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Date fin *</label>
-                                <input type="date" value={form.date_fin}
-                                    onChange={e => setForm({ ...form, date_fin: e.target.value })}
-                                    className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    required />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                            <textarea value={form.description}
-                                onChange={e => setForm({ ...form, description: e.target.value })}
-                                rows={3}
-                                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                placeholder="Objectif du voyage..." />
-                        </div>
-                    </div>
+                <form onSubmit={handleSubmit} className="space-y-6">
 
-                    {/* Sélection bénéficiaires */}
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-                                <Users size={18} className="text-blue-700" />
-                                Selectionner les beneficiaires
-                                {selected.length > 0 && (
-                                    <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">
-                                        {selected.length} selectionne(s)
-                                    </span>
-                                )}
-                            </h2>
-                            <div className="flex gap-2">
-                                {selected.length > 0 && (
-                                    <>
-                                        <button type="button" onClick={exportPDF}
-                                            className="flex items-center gap-1 text-xs border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition">
-                                            <FileText size={12} /> PDF
-                                        </button>
-                                        <button type="button" onClick={exportExcel}
-                                            className="flex items-center gap-1 text-xs border border-green-200 text-green-600 px-3 py-1.5 rounded-lg hover:bg-green-50 transition">
-                                            <Download size={12} /> Excel
-                                        </button>
-                                    </>
-                                )}
-                                <button type="button" onClick={() => setShowAddModal(true)}
-                                    className="flex items-center gap-1 text-xs border border-blue-200 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition">
-                                    <Plus size={12} /> Ajouter manuellement
-                                </button>
-                            </div>
-                        </div>
+                    {/* Layout 2 colonnes : formulaire à gauche (1/3), liste élargie à droite (2/3) */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
-                        {/* Récap vertical avec édition */}
-                        {selected.length > 0 && (
-                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-2">
-                                <p className="text-xs font-semibold text-blue-800 uppercase tracking-wide">
-                                    Bénéficiaires sélectionnés ({selected.length})
-                                </p>
-                                <div className="space-y-1 max-h-64 overflow-y-auto">
-                                    {selected.map(id => {
-                                        const ens = tousEnseignants.find(e => e.id === id)
-                                        if (!ens) return null
-                                        const ov = overrides[id] || {}
-                                        const ufr  = ov.ufr  || ens.ufr  || ''
-                                        const dept = ov.departement || ens.departement || ''
-                                        const isManuel = ens._manuel
-
-                                        return (
-                                            <div key={id} className="bg-white border border-blue-100 rounded-lg px-3 py-2 space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs">
-                                                            {ens.prenom?.[0]}{ens.nom?.[0]}
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-sm font-medium text-gray-800">
-                                                                {ens.prenom} {ens.nom}
-                                                                {isManuel && <span className="ml-1 text-xs text-orange-500">(manuel)</span>}
-                                                            </p>
-                                                            <p className="text-xs text-gray-400">{ufr}{dept ? ` — ${dept}` : ''}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <button type="button"
-                                                            onClick={() => editingId === id ? setEditingId(null) : ouvrirEdit(ens)}
-                                                            className="text-xs bg-gray-50 border border-gray-200 text-gray-600 px-2 py-0.5 rounded-lg hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition flex items-center gap-1">
-                                                            <Pencil size={10} /> Modifier
-                                                        </button>
-                                                        <button type="button"
-                                                            onClick={() => isManuel ? retirerManuel(id) : toggleSelect(id)}
-                                                            className="text-xs bg-red-50 border border-red-200 text-red-500 px-2 py-0.5 rounded-lg hover:bg-red-100 transition">
-                                                            Retirer
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                {/* Formulaire édition inline */}
-                                                {editingId === id && (
-                                                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 space-y-2">
-                                                        <p className="text-xs font-semibold text-blue-700">Modifier UFR / Département</p>
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <div>
-                                                                <label className="text-xs text-gray-500 mb-0.5 block">UFR</label>
-                                                                <select value={editForm.ufr}
-                                                                    onChange={e => setEditForm(f => ({ ...f, ufr: e.target.value }))}
-                                                                    className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-300">
-                                                                    {UFRS.map(u => <option key={u} value={u}>{u}</option>)}
-                                                                </select>
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs text-gray-500 mb-0.5 block">Département</label>
-                                                                <input type="text" value={editForm.departement}
-                                                                    onChange={e => setEditForm(f => ({ ...f, departement: e.target.value }))}
-                                                                    className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-300"
-                                                                    placeholder="Ex: Informatique" />
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex gap-2 justify-end">
-                                                            <button type="button" onClick={() => setEditingId(null)}
-                                                                className="text-xs text-gray-500 px-2 py-1 rounded-lg hover:bg-gray-100 transition">
-                                                                Annuler
-                                                            </button>
-                                                            <button type="button" onClick={sauvegarderEdit}
-                                                                className="text-xs bg-blue-700 text-white px-3 py-1 rounded-lg hover:bg-blue-800 transition">
-                                                                Sauvegarder
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )
-                                    })}
+                        {/* COLONNE GAUCHE — Informations + actions */}
+                        <div className="lg:col-span-1 space-y-6">
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+                                <h2 className="font-semibold text-gray-800">Informations</h2>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Date de publication *</label>
+                                    <input type="date" value={form.date_publication}
+                                        onChange={e => setForm({ ...form, date_publication: e.target.value })}
+                                        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        required />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Motif *</label>
+                                    <input type="text" value={form.motif}
+                                        onChange={e => setForm({ ...form, motif: e.target.value })}
+                                        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        required />
                                 </div>
                             </div>
-                        )}
 
-                        {/* Filtres */}
-                        <div className="flex gap-3 flex-wrap">
-                            <div className="flex items-center gap-2">
-                                <Filter size={14} className="text-gray-400" />
-                                <select value={filtreUFR} onChange={e => setFiltreUFR(e.target.value)}
-                                    className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200">
-                                    <option value="tous">Toutes les UFR</option>
-                                    {UFRS.map(u => <option key={u} value={u}>{u}</option>)}
-                                </select>
-                            </div>
-                            <div className="flex rounded-xl border border-gray-200 overflow-hidden text-sm">
-                                {[
-                                    { val: 'tous',    label: 'Toutes' },
-                                    { val: 'paire',   label: 'Années paires' },
-                                    { val: 'impaire', label: 'Années impaires' },
-                                ].map(opt => (
-                                    <button key={opt.val} type="button"
-                                        onClick={() => setFiltrePairing(opt.val)}
-                                        className={`px-3 py-1.5 transition ${
-                                            filtrePairing === opt.val
-                                                ? 'bg-blue-700 text-white font-semibold'
-                                                : 'text-gray-600 hover:bg-gray-50'
-                                        }`}>
-                                        {opt.label}
+                            {/* Récap sélection + actions, visible en permanence à gauche */}
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4 sticky top-6">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+                                        <Users size={18} className="text-blue-700" />
+                                        Bénéficiaires
+                                    </h2>
+                                    <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                                        {selected.length}
+                                    </span>
+                                </div>
+
+                                <div className="flex flex-col gap-2">
+                                    {selected.length > 0 && (
+                                        <button type="button" onClick={exportPDF}
+                                            className="flex items-center justify-center gap-1.5 text-sm border border-red-200 text-red-600 px-3 py-2 rounded-xl hover:bg-red-50 transition">
+                                            <FileText size={14} /> Exporter PDF
+                                        </button>
+                                    )}
+                                    <button type="button" onClick={() => setShowAddModal(true)}
+                                        className="flex items-center justify-center gap-1.5 text-sm border border-blue-200 text-blue-600 px-3 py-2 rounded-xl hover:bg-blue-50 transition">
+                                        <Plus size={14} /> Ajouter manuellement
                                     </button>
-                                ))}
-                            </div>
-                            <div className="relative flex-1 min-w-40">
-                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <input type="text" value={searchEns}
-                                    onChange={e => setSearchEns(e.target.value)}
-                                    placeholder="Rechercher..."
-                                    className="w-full border border-gray-300 rounded-xl pl-8 pr-4 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                                </div>
+
+                                {manuels.length > 0 && (
+                                    <div className="space-y-1.5 pt-2 border-t border-gray-100">
+                                        <p className="text-xs font-semibold text-orange-600">Ajoutés manuellement :</p>
+                                        {manuels.map(m => (
+                                            <div key={m.id} className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+                                                <span className="text-xs text-gray-800">{m.prenom} {m.nom} — {m.ufr}</span>
+                                                <button type="button" onClick={() => retirerManuel(m.id)}
+                                                    className="text-xs text-red-500 hover:text-red-700">
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div className="pt-2 border-t border-gray-100 space-y-3">
+                                    <button type="button" onClick={() => navigate('/vice-recteur/voyages-etudes')}
+                                        className="w-full border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition">
+                                        Annuler
+                                    </button>
+                                    <button type="submit" disabled={loading}
+                                        className="w-full bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-50 flex items-center justify-center gap-2">
+                                        {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                                        {loading ? 'Publication...' : `Publier (${selected.length})`}
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Bouton tout sélectionner */}
-                        {enseignantsFiltres.length > 0 && (
-                            <button type="button" onClick={selecterTousFiltres}
-                                className="text-xs text-blue-700 hover:underline font-semibold">
-                                {enseignantsFiltres.every(e => selected.includes(e.id))
-                                    ? 'Tout désélectionner'
-                                    : `Sélectionner tout (${enseignantsFiltres.length})`}
-                            </button>
-                        )}
+                        {/* COLONNE DROITE — Liste enseignants élargie */}
+                        <div className="lg:col-span-2">
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
 
-                        {loadingEns ? (
-                            <div className="flex justify-center py-8">
-                                <div className="w-6 h-6 border-4 border-blue-700 border-t-transparent rounded-full animate-spin" />
+                                {/* Filtres */}
+                                <div className="flex gap-3 flex-wrap">
+                                    <div className="flex items-center gap-2">
+                                        <Filter size={14} className="text-gray-400" />
+                                        <select value={filtreUFR} onChange={e => setFiltreUFR(e.target.value)}
+                                            className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200">
+                                            <option value="tous">Toutes les UFR</option>
+                                            {UFRS.map(u => <option key={u} value={u}>{u}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="flex rounded-xl border border-gray-200 overflow-hidden text-sm">
+                                        {[
+                                            { val: 'tous',    label: 'Toutes' },
+                                            { val: 'paire',   label: 'Années paires' },
+                                            { val: 'impaire', label: 'Années impaires' },
+                                        ].map(opt => (
+                                            <button key={opt.val} type="button"
+                                                onClick={() => setFiltrePairing(opt.val)}
+                                                className={`px-3 py-1.5 transition ${
+                                                    filtrePairing === opt.val
+                                                        ? 'bg-blue-700 text-white font-semibold'
+                                                        : 'text-gray-600 hover:bg-gray-50'
+                                                }`}>
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="relative flex-1 min-w-40">
+                                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <input type="text" value={searchEns}
+                                            onChange={e => setSearchEns(e.target.value)}
+                                            placeholder="Rechercher..."
+                                            className="w-full border border-gray-300 rounded-xl pl-8 pr-4 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                                    </div>
+                                </div>
+
+                                {enseignantsFiltres.length > 0 && (
+                                    <button type="button" onClick={selecterTousFiltres}
+                                        className="text-xs text-blue-700 hover:underline font-semibold">
+                                        {enseignantsFiltres.every(e => selected.includes(e.id))
+                                            ? 'Tout désélectionner'
+                                            : `Sélectionner tout (${enseignantsFiltres.length})`}
+                                    </button>
+                                )}
+
+                              {loadingEns ? (
+    <div className="flex justify-center py-8">
+        <div className="w-6 h-6 border-4 border-blue-700 border-t-transparent rounded-full animate-spin" />
+    </div>
+) : enseignantsFiltres.length === 0 ? (
+    <div className="text-center py-8 text-gray-400 text-sm">
+        Aucun enseignant trouvé
+    </div>
+) : (
+    <div className="border border-gray-100 rounded-xl overflow-hidden">
+      <div className="grid grid-cols-[36px_1.2fr_1.2fr_90px_90px_110px] gap-0 items-center px-4 py-2.5 bg-gray-100 border-b-2 border-gray-300 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+    <span></span>
+    <span className="px-2 border-l-2 border-gray-300">Prénom</span>
+    <span className="px-2 border-l-2 border-gray-300">Nom</span>
+    <span className="px-2 border-l-2 border-gray-300">UFR</span>
+    <span className="px-2 border-l-2 border-gray-300 text-center">Année</span>
+    <span className="px-2 border-l-2 border-gray-300 text-center">Statut</span>
+</div>
+
+        <div className="divide-y divide-gray-100 max-h-[32rem] overflow-y-auto">
+            {UFRS.filter(ufr => filtreUFR === 'tous' || filtreUFR === ufr).map(ufr => {
+                const ensUFR = parUFR[ufr]
+                if (ensUFR.length === 0) return null
+                const nbSelectionnesUFR = ensUFR.filter(e => selected.includes(e.id)).length
+                const estOuverte = ufrOuverte === null || ufrOuverte === ufr
+
+                const parDept = ensUFR.reduce((acc, e) => {
+                    const dept = e.departement || 'Sans département'
+                    if (!acc[dept]) acc[dept] = []
+                    acc[dept].push(e)
+                    return acc
+                }, {})
+
+                return (
+                    <div key={ufr} className="bg-white">
+                        <button type="button"
+                            onClick={() => setUfrOuverte(prev => prev === ufr ? '__closed__' : ufr)}
+                            className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 transition text-left">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-bold text-blue-700">UFR {ufr}</span>
+                                <span className="text-xs text-gray-400">{ensUFR.length} enseignant(s)</span>
                             </div>
-                        ) : enseignantsFiltres.length === 0 ? (
-                            <div className="text-center py-8 text-gray-400 text-sm">
-                                Aucun enseignant trouvé avec ces filtres
+                            <div className="flex items-center gap-3">
+                                {nbSelectionnesUFR > 0 && (
+                                    <span className="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                                        {nbSelectionnesUFR} sélectionné(s)
+                                    </span>
+                                )}
+                                <ChevronDownIcon ouverte={estOuverte} />
                             </div>
-                        ) : (
-                            <div className="space-y-4 max-h-96 overflow-y-auto">
-                                {UFRS.filter(ufr => filtreUFR === 'tous' || filtreUFR === ufr).map(ufr => {
-                                    const ensUFR = parUFR[ufr]
-                                    if (ensUFR.length === 0) return null
-                                    const parDept = ensUFR.reduce((acc, e) => {
-                                        const dept = e.departement || 'Sans département'
-                                        if (!acc[dept]) acc[dept] = []
-                                        acc[dept].push(e)
-                                        return acc
-                                    }, {})
-                                    return (
-                                        <div key={ufr}>
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">UFR {ufr}</span>
-                                                <span className="text-xs text-gray-400">{ensUFR.length} enseignant(s)</span>
-                                            </div>
-                                            {Object.entries(parDept).map(([dept, ens]) => (
-                                                <div key={dept} className="mb-3">
-                                                    <p className="text-xs font-semibold text-gray-500 mb-1 pl-1">Département : {dept}</p>
-                                                    <div className="space-y-1">
-                                                        {ens.map(e => {
-                                                            const annee  = getAnnee(e)
-                                                            const parite = annee ? (annee % 2 === 0 ? 'paire' : 'impaire') : null
-                                                            const isSelected = selected.includes(e.id)
-                                                            return (
-                                                                <div key={e.id}
-                                                                    className={`flex items-center justify-between p-3 rounded-xl transition ${
-                                                                        isSelected
-                                                                            ? 'bg-blue-50 border border-blue-300'
-                                                                            : 'bg-gray-50 border border-transparent hover:border-gray-200'
-                                                                    }`}>
-                                                                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => toggleSelect(e.id)}>
-                                                                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs">
-                                                                            {e.prenom?.[0]}{e.nom?.[0]}
-                                                                        </div>
-                                                                        <div>
-                                                                            <p className="text-sm font-medium text-gray-800">{e.prenom} {e.nom}</p>
-                                                                            <p className="text-xs text-gray-500">
-                                                                                {e.matricule || ''}
-                                                                                {annee && (
-                                                                                    <span className={`ml-2 px-1.5 py-0.5 rounded text-xs font-medium ${
-                                                                                        parite === 'paire' ? 'bg-indigo-100 text-indigo-700' : 'bg-orange-100 text-orange-700'
-                                                                                    }`}>
-                                                                                        {annee} ({parite})
-                                                                                    </span>
-                                                                                )}
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-2">
-                                                                        {isSelected ? (
-                                                                            <button type="button" onClick={() => toggleSelect(e.id)}
-                                                                                className="flex items-center gap-1 text-xs bg-red-50 border border-red-200 text-red-600 px-2.5 py-1 rounded-lg hover:bg-red-100 transition">
-                                                                                × Retirer
-                                                                            </button>
-                                                                        ) : (
-                                                                            <button type="button" onClick={() => toggleSelect(e.id)}
-                                                                                className="flex items-center gap-1 text-xs bg-blue-50 border border-blue-200 text-blue-600 px-2.5 py-1 rounded-lg hover:bg-blue-100 transition">
-                                                                                + Ajouter
-                                                                            </button>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            )
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )
-                                })}
+                        </button>
+
+                        {estOuverte && (
+                            <div className="divide-y divide-gray-300">
+                                {Object.entries(parDept).map(([dept, ens]) => (
+                                    <div key={dept}>
+                                        <p className="text-xs font-semibold text-gray-400 px-4 pt-2 pb-1 uppercase tracking-wide">
+                                            {dept}
+                                        </p>
+                                        {ens.map(e => {
+                                            const annee      = getAnnee(e)
+                                            const parite     = annee ? (annee % 2 === 0 ? 'paire' : 'impaire') : null
+                                            const isSelected = selected.includes(e.id)
+                                            const estEligible = annee && (
+                                                anneeActuelle % 2 === 0
+                                                    ? annee % 2 === 0
+                                                    : annee % 2 !== 0
+                                            )
+                                            return (
+<div key={e.id}
+    onClick={() => toggleSelect(e.id)}
+    className={`grid grid-cols-[36px_1.2fr_1.2fr_90px_90px_110px] gap-0 items-center px-4 py-2.5 cursor-pointer transition border-l-4 ${
+        isSelected ? 'border-l-blue-600' : 'border-l-transparent'
+    } ${
+        annee && parite === 'paire' ? 'bg-sky-50 hover:bg-sky-100' : 'bg-white hover:bg-gray-50'
+    }`}>
+    <input type="checkbox"
+        checked={isSelected}
+        onChange={() => toggleSelect(e.id)}
+        onClick={ev => ev.stopPropagation()}
+        className="w-4 h-4 accent-blue-700" />
+
+    <span className="text-sm text-gray-800 truncate px-2 border-l-2 border-gray-300">{e.prenom}</span>
+    <span className="text-sm font-medium text-gray-800 truncate px-2 border-l-2 border-gray-300">{e.nom}</span>
+    <span className="text-xs font-semibold text-blue-700 px-2 border-l-2 border-gray-300">{e.ufr || '-'}</span>
+
+    <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded text-center mx-2 border-l-2 border-gray-300 ${
+        annee
+            ? (parite === 'paire' ? 'bg-indigo-100 text-indigo-700' : 'bg-orange-100 text-orange-700')
+            : 'text-gray-300'
+    }`}>
+        {annee || '—'}
+    </span>
+
+    <span className="px-2 border-l-2 border-gray-300 flex justify-center">
+        {estEligible ? (
+            <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-green-100 text-green-700">
+                Éligible
+            </span>
+        ) : (
+            <span className="text-[11px] text-gray-300">—</span>
+        )}
+    </span>
+</div>                                           )
+                                        })}
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </div>
-
-                    <div className="flex gap-3">
-                        <button type="button" onClick={() => navigate('/vice-recteur/voyages-etudes')}
-                            className="flex-1 border border-gray-300 text-gray-600 py-3 rounded-xl font-semibold hover:bg-gray-50 transition">
-                            Annuler
-                        </button>
-                        <button type="submit" disabled={loading}
-                            className="flex-1 bg-blue-700 hover:bg-blue-800 text-white py-3 rounded-xl font-semibold transition disabled:opacity-50 flex items-center justify-center gap-2">
-                            {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                            {loading ? 'Publication...' : `Publier la liste (${selected.length} beneficiaire(s))`}
-                        </button>
+                )
+            })}
+        </div>
+    </div>
+)}
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -515,12 +461,11 @@ export default function NouveauVoyageEtude() {
                 <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
                         <div className="flex items-center justify-between">
-                            <h3 className="font-bold text-gray-800">Ajouter un enseignant manuellement</h3>
+                            <h3 className="font-bold text-gray-800">Ajouter manuellement</h3>
                             <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600">
                                 <X size={20} />
                             </button>
                         </div>
-
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <label className="text-xs font-medium text-gray-700 mb-1 block">Prénom *</label>
@@ -537,7 +482,6 @@ export default function NouveauVoyageEtude() {
                                     placeholder="Nom" />
                             </div>
                         </div>
-
                         <div>
                             <label className="text-xs font-medium text-gray-700 mb-1 block">UFR</label>
                             <select value={addForm.ufr}
@@ -546,7 +490,6 @@ export default function NouveauVoyageEtude() {
                                 {UFRS.map(u => <option key={u} value={u}>{u}</option>)}
                             </select>
                         </div>
-
                         <div>
                             <label className="text-xs font-medium text-gray-700 mb-1 block">Département</label>
                             <input type="text" value={addForm.departement}
@@ -554,7 +497,6 @@ export default function NouveauVoyageEtude() {
                                 className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
                                 placeholder="Ex: Informatique" />
                         </div>
-
                         <div>
                             <label className="text-xs font-medium text-gray-700 mb-1 block">Matricule</label>
                             <input type="text" value={addForm.matricule}
@@ -562,7 +504,6 @@ export default function NouveauVoyageEtude() {
                                 className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
                                 placeholder="Ex: PER001" />
                         </div>
-
                         <div className="flex gap-3 pt-2">
                             <button type="button" onClick={() => setShowAddModal(false)}
                                 className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition">

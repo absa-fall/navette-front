@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Mail, Lock, Eye, EyeOff, Bus } from 'lucide-react'
 
@@ -139,6 +139,12 @@ case 'commission': navigate('/commission/dashboard'); break
                                 >
                                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                 </button>
+                                
+                            </div>
+                             <div className="text-right mt-1.5">
+                                <Link to="/mot-de-passe-oublie" className="text-sm text-blue-700 hover:underline">
+                                    Mot de passe oublié ?
+                                </Link>
                             </div>
                         </div>
 

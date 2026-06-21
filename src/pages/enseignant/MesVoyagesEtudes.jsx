@@ -64,26 +64,44 @@ export default function MesVoyagesEtudes() {
     }
 
     const soumettreJustificatifs = async (beneficiaireId) => {
-        if (fichiers.length === 0) {
-            showMsg('Veuillez selectionner au moins un fichier PDF', true)
-            return
-        }
-        setUploadLoading(beneficiaireId)
-        try {
-            const formData = new FormData()
-            fichiers.forEach(f => formData.append('justificatifs[]', f))
-            await api.post(`/voyages-etudes/beneficiaire/${beneficiaireId}/justificatifs`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            })
-            showMsg('Justificatifs soumis avec succes au Chef de Departement')
-            setFichiers([])
-            fetchVoyages()
-        } catch (err) {
-            showMsg(err.response?.data?.message || 'Erreur lors de la soumission', true)
-        } finally {
-            setUploadLoading(null)
-        }
+    if (fichiers.length === 0) {
+        showMsg('Veuillez selectionner au moins un fichier PDF', true)
+        return
     }
+    setUploadLoading(beneficiaireId)
+    try {
+        // 1. Soumettre les justificatifs
+        const formData = new FormData()
+        fichiers.forEach(f => formData.append('justificatifs[]', f))
+        await api.post(`/voyages-etudes/beneficiaire/${beneficiaireId}/justificatifs`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        })
+
+        // 2. Créer le rapport automatiquement avec le premier fichier
+        const b = beneficiaires.find(b => b.id === beneficiaireId)
+        if (b?.voyage?.id) {
+            const rapportForm = new FormData()
+            rapportForm.append('voyage_id', b.voyage.id)
+            rapportForm.append('contenu', 'Rapport de voyage (voir PDF joint)')
+            rapportForm.append('fichier_pdf', fichiers[0])
+            try {
+                await api.post('/rapports', rapportForm, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                })
+            } catch (e) {
+                // Rapport déjà existant — on ignore
+            }
+        }
+
+        showMsg('Justificatifs et rapport soumis avec succes au Chef de Departement')
+        setFichiers([])
+        fetchVoyages()
+    } catch (err) {
+        showMsg(err.response?.data?.message || 'Erreur lors de la soumission', true)
+    } finally {
+        setUploadLoading(null)
+    }
+}
 const demanderAutorisation = async (beneficiaireId) => {
     setActionLoading(beneficiaireId)
     try {
@@ -129,7 +147,19 @@ const demanderAutorisation = async (beneficiaireId) => {
                     <div className="space-y-4">
                         {beneficiaires.map(b => {
                             const justif       = statutJustifConfig[b.statut_justificatif] || statutJustifConfig['en_attente']
-                            const autorisation = statutAutorisationConfig[b.statut_autorisation] || statutAutorisationConfig['non_demande']
+                           const getStatutAutorisationAffiche = (b) => {
+    const auto = b.autorisation_absence
+    if (!auto) return statutAutorisationConfig['non_demande']
+    if (auto.statut === 'rejetee') return { label: 'Rejetee', color: 'bg-red-100 text-red-700' }
+    if (auto.statut === 'transmise') return { label: 'Approuve - Transmise', color: 'bg-green-100 text-green-700' }
+    if (auto.statut === 'signee_recteur') return { label: 'Signee, en cours de transmission', color: 'bg-green-100 text-green-700' }
+    if (auto.statut === 'avis_directeur_ufr') return { label: 'Chez le Recteur', color: 'bg-indigo-100 text-indigo-700' }
+    if (auto.statut === 'avis_chef_departement') return { label: 'Chez le Directeur UFR', color: 'bg-blue-100 text-blue-700' }
+    if (auto.statut === 'soumise') return { label: 'En attente chef dept', color: 'bg-yellow-100 text-yellow-700' }
+    return statutAutorisationConfig['non_demande']
+}
+
+const autorisation = getStatutAutorisationAffiche(b)
                             const isExpanded   = expanded === b.id
 
                             // Conditions
@@ -278,36 +308,45 @@ const demanderAutorisation = async (beneficiaireId) => {
 )}
 
                                             {/* Autorisation en cours de traitement */}
-                                            {b.dans_liste_definitive && arreteSigné && b.statut_autorisation && b.statut_autorisation !== 'non_demande' && b.statut_autorisation !== 'approuve_recteur' && (
-                                                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
-                                                    <Clock size={20} className="text-blue-600" />
-                                                    <p className="text-sm text-blue-700">
-                                                        Votre demande d'autorisation est en cours de traitement.
-                                                    </p>
-                                                </div>
-                                            )}
+                                           {b.autorisation_absence && !['transmise', 'rejetee'].includes(b.autorisation_absence.statut) && (
+    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+        <Clock size={20} className="text-blue-600" />
+        <p className="text-sm text-blue-700">
+            Votre demande d'autorisation est en cours de traitement.
+        </p>
+    </div>
+)}
 
                                             {/* Autorisation approuvée */}
-                                            {b.statut_autorisation === 'approuve_recteur' && (
-                                                <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
-                                                    <CheckCircle size={20} className="text-green-600" />
-                                                    <p className="text-sm text-green-700 font-medium">
-                                                        Votre autorisation de sortie a ete approuvee par le Recteur !
-                                                    </p>
-                                                </div>
-                                            )}
+                                           {b.autorisation_absence?.statut === 'transmise' && (
+    <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
+        <CheckCircle size={20} className="text-green-600" />
+        <p className="text-sm text-green-700 font-medium">
+            Votre autorisation de sortie a ete approuvee et transmise !
+        </p>
+    </div>
+)}
 
                                            {/* Voir / Imprimer l'autorisation */}
 {b.autorisation_absence && (
     <button
-       onClick={() => navigate(`/autorisation-absence/${b.autorisation_absence.id}/document`)}
+       onClick={() => navigate(`/autorisation-absence/${b.autorisation_absence.id}`)}
         className="w-full flex items-center justify-center gap-2 border border-blue-200 text-blue-700 py-2.5 rounded-xl font-semibold text-sm hover:bg-blue-50 transition"
     >
         <Eye size={16} />
         Voir l'autorisation d'absence ({b.autorisation_absence.numero})
     </button>
 )}
-
+{/* Voir l'arrêté si signé */}
+{b.dans_liste_definitive && b.voyage?.arrete_recteur && (
+    <button
+        onClick={() => navigate(`/voyages-etudes/${b.voyage.id}/arrete`)}
+        className="w-full flex items-center justify-center gap-2 border border-green-600 text-green-600 py-2.5 rounded-xl font-semibold text-sm hover:bg-green-50 transition"
+    >
+        <Eye size={16} />
+        Voir l'arrêté de voyage
+    </button>
+)}
                                             {/* Bloqué : arrêté pas encore signé */}
                                             {b.dans_liste_definitive && !arreteSigné && b.statut_justificatif === 'valide' && (
                                                 <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center gap-3">

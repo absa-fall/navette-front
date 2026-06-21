@@ -18,7 +18,10 @@ const getTypeTrajetResume = (p) => {
     const types = [...new Set((p.trajets || []).map(t => t.type_trajet))]
     return types.map(t => LABELS_TRAJET[t] || t).join(', ') || '-'
 }
-
+const getVillesResume = (p) => {
+    const villes = (p.trajets || []).map(t => t.trajet)
+    return [...new Set(villes)].join(' | ') || '-'
+}
 export default function Recapitulatifs() {
 
     const [recaps, setRecaps] = useState([])
@@ -30,6 +33,9 @@ export default function Recapitulatifs() {
     const [message, setMessage] = useState(null)
     const [selected, setSelected] = useState([])
     const [selectAll, setSelectAll] = useState(false)
+    const [detailOuvert, setDetailOuvert] = useState(null)
+const [detailData, setDetailData]     = useState({})
+const [detailLoading, setDetailLoading] = useState(null)
 
     useEffect(() => { fetchRecaps() }, [])
 
@@ -44,7 +50,20 @@ export default function Recapitulatifs() {
             setLoading(false)
         }
     }
-
+const toggleDetail = async (recapId) => {
+    if (detailOuvert === recapId) { setDetailOuvert(null); return }
+    setDetailOuvert(recapId)
+    if (detailData[recapId]) return
+    setDetailLoading(recapId)
+    try {
+        const res = await api.get(`/recapitulatifs/${recapId}`)
+        setDetailData(prev => ({ ...prev, [recapId]: res.data.detail_par_personne }))
+    } catch {
+        setError('Erreur lors du chargement du detail')
+    } finally {
+        setDetailLoading(null)
+    }
+}
     const handleGenerer = async (e) => {
         e.preventDefault()
         setError(null)
@@ -94,20 +113,22 @@ export default function Recapitulatifs() {
             const res = await api.get(`/recapitulatifs/${recap.id}`)
             const { detail_par_personne } = res.data
             const BOM = '\uFEFF'
+           
             const lignes = [
-                ['RÉCAPITULATIF HEBDOMADAIRE'],
-                [],
-                ['Nom', 'Prénom', 'UFR', 'Type', 'Type de trajet', 'Trajets', 'Montant'],
-                ...detail_par_personne.map(p => [
-                    p.nom,
-                    p.prenom,
-                    p.ufr || '-',
-                    p.type_profil || '-',
-                    getTypeTrajetResume(p),
-                    p.nombre_trajets,
-                    p.montant_total
-                ])
-            ]
+    ['RÉCAPITULATIF HEBDOMADAIRE'],
+    [],
+    ['Nom', 'Prénom', 'UFR', 'Type', 'Type de trajet', 'Villes', 'Trajets', 'Montant'],
+    ...detail_par_personne.map(p => [
+        p.nom,
+        p.prenom,
+        p.ufr || '-',
+        p.type_profil || '-',
+        getTypeTrajetResume(p),
+        getVillesResume(p),
+        p.nombre_trajets,
+        p.montant_total
+    ])
+]
             const csvContent = BOM + lignes.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';')).join('\n')
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
             const url = URL.createObjectURL(blob)
@@ -120,18 +141,18 @@ export default function Recapitulatifs() {
             alert("Erreur export Excel")
         }
     }
-
-    const exportPDF = async (recap) => {
-        try {
-            const res = await api.get(`/recapitulatifs/${recap.id}`)
-            const { detail_par_personne } = res.data
-            const rows = detail_par_personne.map(p => `
-                <tr>
-                    <td>${p.nom}</td><td>${p.prenom}</td><td>${p.ufr || '-'}</td>
-                    <td>${p.type_profil || '-'}</td><td>${getTypeTrajetResume(p)}</td>
-                    <td style="text-align:center">${p.nombre_trajets}</td>
-                    <td style="text-align:right">${Number(p.montant_total).toLocaleString()} FCFA</td>
-                </tr>`).join('')
+const exportPDF = async (recap) => {
+    try {
+        const res = await api.get(`/recapitulatifs/${recap.id}`)
+        const { detail_par_personne } = res.data
+        const rows = detail_par_personne.map(p => `
+    <tr>
+        <td>${p.nom}</td><td>${p.prenom}</td><td>${p.ufr || '-'}</td>
+        <td>${p.type_profil || '-'}</td><td>${getTypeTrajetResume(p)}</td>
+        <td>${getVillesResume(p)}</td>
+        <td style="text-align:center">${p.nombre_trajets}</td>
+        <td style="text-align:right">${Number(p.montant_total).toLocaleString()} FCFA</td>
+    </tr>`).join('')
             const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
                 <style>body{font-family:Arial,sans-serif;padding:30px;font-size:13px;}
                 h2{color:#1e3a8a;margin-bottom:4px;}p{color:#6b7280;margin-bottom:20px;}
@@ -144,7 +165,7 @@ export default function Recapitulatifs() {
                 </head><body>
                 <h2>Récapitulatif Hebdomadaire</h2>
                 <p>Semaine du ${new Date(recap.semaine_debut).toLocaleDateString('fr-FR')} au ${new Date(recap.semaine_fin).toLocaleDateString('fr-FR')}</p>
-                <table><thead><tr><th>Nom</th><th>Prénom</th><th>UFR</th><th>Type</th><th>Type de trajet</th><th>Trajets</th><th>Montant</th></tr></thead>
+<table><thead><tr><th>Nom</th><th>Prénom</th><th>UFR</th><th>Type</th><th>Type de trajet</th><th>Villes</th><th>Trajets</th><th>Montant</th></tr></thead>
                 <tbody>${rows}</tbody></table>
                 <button class="print-btn" onclick="window.print()">🖨️ Imprimer / PDF</button>
                 </body></html>`
@@ -237,59 +258,92 @@ export default function Recapitulatifs() {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {recaps.map(recap => (
-                            <div key={recap.id}
-                                className={`bg-white rounded-2xl p-5 border shadow-sm transition ${selected.includes(recap.id) ? 'border-red-200 bg-red-50' : 'border-gray-100'}`}>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <input type="checkbox" checked={selected.includes(recap.id)} onChange={() => toggleSelect(recap.id)}
-                                            className="w-4 h-4 rounded border-gray-300 text-blue-600" />
-                                        <div className="bg-blue-100 p-3 rounded-xl">
-                                            <ClipboardList size={20} className="text-blue-700" />
+                      {recaps.map(recap => (
+    <div key={recap.id}
+        className={`bg-white rounded-2xl p-5 border shadow-sm transition ${selected.includes(recap.id) ? 'border-red-200 bg-red-50' : 'border-gray-100'}`}>
+        <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+                <input type="checkbox" checked={selected.includes(recap.id)} onChange={() => toggleSelect(recap.id)}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600" />
+                <div className="bg-blue-100 p-3 rounded-xl">
+                    <ClipboardList size={20} className="text-blue-700" />
+                </div>
+                <div>
+                    <p className="font-semibold text-gray-800">
+                        Semaine du {new Date(recap.semaine_debut).toLocaleDateString('fr-FR')} au {new Date(recap.semaine_fin).toLocaleDateString('fr-FR')}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                        Généré le {new Date(recap.date_generation).toLocaleDateString('fr-FR')}
+                    </p>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+                <span className={`text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 ${
+                    recap.statut === 'valide'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-yellow-100 text-yellow-700'
+                }`}>
+                    {recap.statut === 'valide' ? <CheckCircle size={12} /> : <AlertCircle size={12} />}
+                    {recap.statut === 'valide' ? 'Validé' : 'Brouillon'}
+                </span>
+
+                <span className="text-sm font-bold text-gray-700">
+                    {Number(recap.montant_total).toLocaleString()} FCFA
+                </span>
+
+                <button onClick={() => toggleDetail(recap.id)}
+                    className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold transition">
+                    {detailOuvert === recap.id ? 'Masquer' : 'Voir les trajets'}
+                </button>
+
+                <button onClick={() => exportExcel(recap)}
+                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition">
+                    <FileSpreadsheet size={15} />
+                    Excel
+                </button>
+
+                <button onClick={() => exportPDF(recap)}
+                    className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition">
+                    <FileText size={15} />
+                    PDF
+                </button>
+            </div>
+        </div>
+
+        {detailOuvert === recap.id && (
+            <div className="mt-4 border-t border-gray-100 pt-4">
+                {detailLoading === recap.id ? (
+                    <div className="flex justify-center py-6">
+                        <div className="w-5 h-5 border-4 border-blue-700 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {(detailData[recap.id] || []).map((p, i) => (
+                            <div key={i} className="bg-gray-50 rounded-xl p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-sm font-semibold text-gray-800">{p.prenom} {p.nom}</p>
+                                    <span className="text-xs text-gray-500">{p.ufr || '-'} · {p.type_profil || '-'}</span>
+                                </div>
+                                <div className="space-y-1">
+                                    {p.trajets.map((t, j) => (
+                                        <div key={j} className="flex items-center justify-between text-xs text-gray-600 bg-white rounded-lg px-3 py-2">
+                                            <span>{new Date(t.date).toLocaleDateString('fr-FR')} — {t.trajet}</span>
+                                            <span className="flex items-center gap-2">
+                                                <span className="text-gray-400">{LABELS_TRAJET[t.type_trajet] || t.type_trajet}</span>
+                                                <span className="font-semibold text-gray-700">{Number(t.montant).toLocaleString()} FCFA</span>
+                                            </span>
                                         </div>
-                                        <div>
-                                            <p className="font-semibold text-gray-800">
-                                                Semaine du {new Date(recap.semaine_debut).toLocaleDateString('fr-FR')} au {new Date(recap.semaine_fin).toLocaleDateString('fr-FR')}
-                                            </p>
-                                            <p className="text-xs text-gray-400 mt-0.5">
-                                                Généré le {new Date(recap.date_generation).toLocaleDateString('fr-FR')}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-3">
-                                        {/* Statut */}
-                                        <span className={`text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 ${
-                                            recap.statut === 'valide'
-                                                ? 'bg-green-100 text-green-700'
-                                                : 'bg-yellow-100 text-yellow-700'
-                                        }`}>
-                                            {recap.statut === 'valide' ? <CheckCircle size={12} /> : <AlertCircle size={12} />}
-                                            {recap.statut === 'valide' ? 'Validé' : 'Brouillon'}
-                                        </span>
-
-                                        {/* Montant */}
-                                        <span className="text-sm font-bold text-gray-700">
-                                            {Number(recap.montant_total).toLocaleString()} FCFA
-                                        </span>
-
-                                        {/* Bouton Excel — vert */}
-                                        <button onClick={() => exportExcel(recap)}
-                                            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition">
-                                            <FileSpreadsheet size={15} />
-                                            Excel
-                                        </button>
-
-                                        {/*  Bouton PDF — rouge */}
-                                        <button onClick={() => exportPDF(recap)}
-                                            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition">
-                                            <FileText size={15} />
-                                            PDF
-                                        </button>
-                                    </div>
+                                    ))}
                                 </div>
                             </div>
                         ))}
+                    </div>
+                )}
+            </div>
+        )}
+    </div>
+))}
                     </div>
                 )}
             </div>

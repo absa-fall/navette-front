@@ -14,9 +14,10 @@ const roleLabels = {
     admin: 'Administrateur',
     enseignant: 'Enseignant',
     usager: 'Usager Navette',
-     chef_departement: 'Chef de Departement',   
+    chef_departement: 'Chef de Departement',   
     directeur_ufr: 'Directeur UFR',             
     recteur: 'Recteur',
+    commission: 'Commission',
 }
 
 const roleColors = {
@@ -90,7 +91,7 @@ export default function AdminUtilisateurs() {
         setActionLoading('create')
         setError('')
         try {
-            await api.post('/register', form)
+           await api.post('/users', form)
             setSuccess('Utilisateur créé avec succès !')
             setModal(false)
             resetForm()

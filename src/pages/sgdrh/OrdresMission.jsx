@@ -154,6 +154,23 @@ const supprimerHistorique = async (id) => {
         setDeleteLoading(null)
     }
 }
+const signer = async (id) => {
+    setActionLoading(id)
+    try {
+        const ordre = ordres.find(o => o.id === id)
+        await api.patch(`/ordres-mission/${id}/signer`, {
+            chauffeur_id: ordre?.chauffeur_id
+        })
+        setSignerModal(null)
+        chargerOrdres()
+        setSuccessMsg(`Ordre signé et transmis au chauffeur ${ordre?.chauffeur_prenom} ${ordre?.chauffeur_nom}.`)
+        setTimeout(() => setSuccessMsg(''), 5000)
+    } catch (err) {
+        alert(err.response?.data?.message || 'Erreur')
+    } finally {
+        setActionLoading(null)
+    }
+}
     const voirOrdre = (ordre) => {
         const dateDepart = new Date(ordre.date_depart).toLocaleDateString('fr-FR')
         const dateRetour = ordre.date_retour

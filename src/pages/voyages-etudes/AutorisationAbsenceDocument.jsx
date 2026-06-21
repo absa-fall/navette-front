@@ -117,7 +117,7 @@ export default function AutorisationAbsenceDocument() {
                 <div className="grid grid-cols-2 gap-8 mb-10">
                     <div>
                         <p className="font-bold underline mb-3">CHEF DE DÉPARTEMENT</p>
-                        <p className="text-sm mb-1">Avis : {avisBadge(data.avis_chef_departement)}</p>
+                       
                         {data.commentaire_chef_departement && (
                             <p className="text-sm italic text-gray-600">"{data.commentaire_chef_departement}"</p>
                         )}
@@ -130,7 +130,7 @@ export default function AutorisationAbsenceDocument() {
                     </div>
                     <div>
                         <p className="font-bold underline mb-3">DIRECTEUR DE L'UFR {data.ufr_departement?.replace('UFR ', '') || 'UFR'}</p>
-                        <p className="text-sm mb-1">Avis : {avisBadge(data.avis_directeur_ufr)}</p>
+                       
                         {data.commentaire_directeur_ufr && (
                             <p className="text-sm italic text-gray-600">"{data.commentaire_directeur_ufr}"</p>
                         )}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
-import { FileText, CheckCircle, AlertCircle, Eye, MessageSquare, X } from 'lucide-react'
+import { FileText, CheckCircle, AlertCircle, Eye, MessageSquare, X, Trash2 } from 'lucide-react'
 
 export default function CommissionDashboard() {
     const [dossiers, setDossiers]           = useState([])
@@ -11,7 +11,8 @@ export default function CommissionDashboard() {
     const [actionLoading, setActionLoading] = useState(null)
     const [message, setMessage]             = useState('')
     const [error, setError]                 = useState('')
-    const [filtreVue, setFiltreVue]         = useState('attente') // 'attente' ou 'traites'
+    const [filtreVue, setFiltreVue]         = useState('attente')
+    const [selected, setSelected]           = useState([])
 
     useEffect(() => { fetchDossiers() }, [])
 
@@ -54,8 +55,35 @@ export default function CommissionDashboard() {
         }
     }
 
-    const enAttente  = dossiers.filter(d => !d.avis?.some(a => a.user?.role === 'commission'))
-    const traites    = dossiers.filter(d =>  d.avis?.some(a => a.user?.role === 'commission'))
+    // ===== SÉLECTION =====
+    const toggleSelect = (id) =>
+        setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
+
+    const toggleSelectAll = () =>
+        setSelected(selected.length === traites.length ? [] : traites.map(d => d.id))
+
+    const supprimerSelectionnes = async () => {
+        if (!confirm(`Supprimer ${selected.length} dossier(s) ?`)) return
+        try {
+            for (const id of selected) await api.delete(`/voyages-etudes/beneficiaire/${id}/dossier`)
+            showMsg('Suppression effectuée')
+            setSelected([])
+            fetchDossiers()
+        } catch { showMsg('Erreur lors de la suppression', true) }
+    }
+
+    const supprimerTous = async () => {
+        if (!confirm('Supprimer tous les dossiers traités ?')) return
+        try {
+            for (const d of traites) await api.delete(`/voyages-etudes/beneficiaire/${d.id}/dossier`)
+            showMsg('Tous les dossiers supprimés')
+            setSelected([])
+            fetchDossiers()
+        } catch { showMsg('Erreur lors de la suppression', true) }
+    }
+
+    const enAttente = dossiers.filter(d => !d.avis?.some(a => a.user?.role === 'commission'))
+    const traites   = dossiers.filter(d =>  d.avis?.some(a => a.user?.role === 'commission'))
 
     return (
         <Layout>
@@ -65,7 +93,7 @@ export default function CommissionDashboard() {
                     <p className="text-gray-500 text-sm mt-1">Validation des dossiers de justificatifs</p>
                 </div>
 
-                {/* Stats — cliquables pour filtrer la vue */}
+                {/* Stats */}
                 <div className="grid grid-cols-2 gap-4">
                     <div
                         onClick={() => setFiltreVue('attente')}
@@ -117,7 +145,8 @@ export default function CommissionDashboard() {
                     </div>
                 ) : (
                     <div className="space-y-6">
-                        {/* Dossiers en attente */}
+
+                        {/* ===== ONGLET EN ATTENTE ===== */}
                         {filtreVue === 'attente' && (
                             enAttente.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
@@ -137,7 +166,6 @@ export default function CommissionDashboard() {
 
                                         return (
                                             <div key={d.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-                                                {/* Enseignant + voyage */}
                                                 <div className="flex items-start justify-between">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-sm">
@@ -156,23 +184,19 @@ export default function CommissionDashboard() {
                                                     </div>
                                                 </div>
 
-                                                {/* Justificatifs */}
                                                 {d.justificatifs?.length > 0 && (
                                                     <div className="space-y-1">
                                                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Justificatifs ({d.justificatifs.length}) :</p>
                                                         {d.justificatifs.map(j => (
-                                                            <button
-                                                                key={j.id}
+                                                            <button key={j.id}
                                                                 onClick={() => window.open(`http://127.0.0.1:8000/storage/${j.fichier_pdf}`, '_blank')}
-                                                                className="flex items-center gap-2 text-sm text-blue-700 hover:underline"
-                                                            >
+                                                                className="flex items-center gap-2 text-sm text-blue-700 hover:underline">
                                                                 <Eye size={14} /> {j.nom_original || 'Fichier PDF'}
                                                             </button>
                                                         ))}
                                                     </div>
                                                 )}
 
-                                                {/* Avis du VR si déjà donné */}
                                                 {avisVR && (
                                                     <div className={`flex items-center gap-2 p-3 rounded-xl text-sm ${avisVR.avis === 'valide' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                                                         {avisVR.avis === 'valide' ? <CheckCircle size={14} /> : <X size={14} />}
@@ -181,53 +205,38 @@ export default function CommissionDashboard() {
                                                     </div>
                                                 )}
 
-                                                {/* Formulaire avis commission */}
                                                 <div className="space-y-2">
                                                     {isAvisOuvert && (
-                                                        <textarea
-                                                            value={commentaire}
-                                                            onChange={e => setCommentaire(e.target.value)}
-                                                            placeholder="Commentaire (optionnel)..."
-                                                            rows={2}
-                                                            className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                                                        />
+                                                        <textarea value={commentaire} onChange={e => setCommentaire(e.target.value)}
+                                                            placeholder="Commentaire (optionnel)..." rows={2}
+                                                            className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
                                                     )}
                                                     <div className="flex gap-2 flex-wrap">
                                                         {!isAvisOuvert ? (
-                                                            <button
-                                                                onClick={() => setAvisOuvert(d.id)}
-                                                                className="flex items-center gap-2 border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 transition"
-                                                            >
+                                                            <button onClick={() => setAvisOuvert(d.id)}
+                                                                className="flex items-center gap-2 border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 transition">
                                                                 <MessageSquare size={14} /> Donner mon avis
                                                             </button>
                                                         ) : (
                                                             <>
-                                                                <button
-                                                                    onClick={() => donnerAvis(d.id, 'valide')}
+                                                                <button onClick={() => donnerAvis(d.id, 'valide')}
                                                                     disabled={actionLoading === 'avis_' + d.id + '_valide'}
-                                                                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50"
-                                                                >
+                                                                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
                                                                     {actionLoading === 'avis_' + d.id + '_valide'
                                                                         ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                                        : <CheckCircle size={14} />
-                                                                    }
+                                                                        : <CheckCircle size={14} />}
                                                                     Valider le dossier
                                                                 </button>
-                                                                <button
-                                                                    onClick={() => donnerAvis(d.id, 'rejete')}
+                                                                <button onClick={() => donnerAvis(d.id, 'rejete')}
                                                                     disabled={actionLoading === 'avis_' + d.id + '_rejete'}
-                                                                    className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50"
-                                                                >
+                                                                    className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
                                                                     {actionLoading === 'avis_' + d.id + '_rejete'
                                                                         ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                                        : <X size={14} />
-                                                                    }
+                                                                        : <X size={14} />}
                                                                     Rejeter le dossier
                                                                 </button>
-                                                                <button
-                                                                    onClick={() => { setAvisOuvert(null); setCommentaire('') }}
-                                                                    className="text-gray-400 hover:text-gray-600 px-2"
-                                                                >
+                                                                <button onClick={() => { setAvisOuvert(null); setCommentaire('') }}
+                                                                    className="text-gray-400 hover:text-gray-600 px-2">
                                                                     <X size={16} />
                                                                 </button>
                                                             </>
@@ -241,7 +250,7 @@ export default function CommissionDashboard() {
                             )
                         )}
 
-                        {/* Dossiers traités */}
+                        {/* ===== ONGLET TRAITÉS ===== */}
                         {filtreVue === 'traites' && (
                             traites.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
@@ -255,15 +264,48 @@ export default function CommissionDashboard() {
                                         <span className="w-2 h-2 bg-green-400 rounded-full inline-block"></span>
                                         Traites ({traites.length})
                                     </h2>
+
+                                    {/* Barre sélection */}
+                                    <div className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-2.5 shadow-sm">
+                                        <div className="flex items-center gap-3">
+                                            <input type="checkbox"
+                                                checked={selected.length === traites.length && traites.length > 0}
+                                                onChange={toggleSelectAll}
+                                                className="w-4 h-4 accent-blue-700 cursor-pointer" />
+                                            <span className="text-sm text-gray-600">
+                                                {selected.length > 0 ? `${selected.length} sélectionné(s)` : 'Tout sélectionner'}
+                                            </span>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            {selected.length > 0 && (
+                                                <button onClick={supprimerSelectionnes}
+                                                    className="flex items-center gap-1.5 text-xs bg-red-50 border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition">
+                                                    <Trash2 size={13} /> Supprimer ({selected.length})
+                                                </button>
+                                            )}
+                                            <button onClick={supprimerTous}
+                                                className="flex items-center gap-1.5 text-xs bg-red-50 border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition">
+                                                <Trash2 size={13} /> Supprimer tout
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Liste dossiers traités */}
                                     {traites.map(d => {
                                         const monAvis = d.avis?.find(a => a.user?.role === 'commission')
                                         return (
-                                            <div key={d.id} className={`rounded-2xl border p-4 flex items-center justify-between ${
-                                                monAvis?.avis === 'valide'
-                                                    ? 'bg-green-50 border-green-200'
-                                                    : 'bg-red-50 border-red-200'
+                                            <div key={d.id} className={`rounded-2xl border p-4 flex items-center justify-between transition ${
+                                                selected.includes(d.id)
+                                                    ? 'bg-blue-50 border-blue-300'
+                                                    : monAvis?.avis === 'valide'
+                                                        ? 'bg-green-50 border-green-200'
+                                                        : 'bg-red-50 border-red-200'
                                             }`}>
                                                 <div className="flex items-center gap-3">
+                                                    <input type="checkbox"
+                                                        checked={selected.includes(d.id)}
+                                                        onChange={() => toggleSelect(d.id)}
+                                                        className="w-4 h-4 accent-blue-700 cursor-pointer" />
                                                     <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-gray-700 font-bold text-xs border border-gray-200">
                                                         {d.enseignant?.prenom?.[0]}{d.enseignant?.nom?.[0]}
                                                     </div>
