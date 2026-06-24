@@ -23,7 +23,6 @@ export default function ChefDepartementDashboard() {
     const [selectedHistorique, setSelectedHistorique] = useState([])
     const [autorisationsAbsence, setAutorisationsAbsence] = useState([])
 
-
     useEffect(() => {
         const params = new URLSearchParams(location.search)
         const tab = params.get('tab')
@@ -32,20 +31,20 @@ export default function ChefDepartementDashboard() {
 
     useEffect(() => { fetchDossiers() }, [])
 
-   const fetchDossiers = async () => {
-    try {
-        const [resDossiers, resAutos] = await Promise.all([
-            api.get('/voyages-etudes/dossiers-departement'),
-            api.get('/autorisations-absence'),
-        ])
-        setDossiers(resDossiers.data)
-        setAutorisationsAbsence(resAutos.data)
-    } catch (err) {
-        console.error(err)
-    } finally {
-        setLoading(false)
+    const fetchDossiers = async () => {
+        try {
+            const [resDossiers, resAutos] = await Promise.all([
+                api.get('/voyages-etudes/dossiers-departement'),
+                api.get('/autorisations-absence'),
+            ])
+            setDossiers(resDossiers.data)
+            setAutorisationsAbsence(resAutos.data)
+        } catch (err) {
+            console.error(err)
+        } finally {
+            setLoading(false)
+        }
     }
-}
 
     const showMsg = (msg, isError = false) => {
         if (isError) setError(msg)
@@ -62,13 +61,13 @@ export default function ChefDepartementDashboard() {
             const res = await api.get(`/voyages-etudes/${voyageId}/beneficiaires`)
             setBeneficiaires(prev => ({ ...prev, [voyageId]: res.data }))
         } catch {
-            showMsg('Impossible de charger les bénéficiaires', true)
+            showMsg('Impossible de charger les beneficiaires', true)
         } finally {
             setLoadingBenef(null)
         }
     }
 
-    // ===== SÉLECTION VOYAGES =====
+    // ===== SELECTION VOYAGES =====
     const toggleSelectVoyage = (id) =>
         setSelectedVoyages(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
 
@@ -76,26 +75,24 @@ export default function ChefDepartementDashboard() {
         setSelectedVoyages(selectedVoyages.length === voyagesUniques.length ? [] : voyagesUniques.map(v => v.id))
 
     const supprimerVoyagesSelectionnes = async () => {
-        if (!confirm(`Supprimer ${selectedVoyages.length} voyage(s) ?`)) return
+        if (!confirm(`Masquer ${selectedVoyages.length} voyage(s) de votre vue ?`)) return
         try {
-            for (const id of selectedVoyages) await api.delete(`/voyages-etudes/${id}`)
-            showMsg('Suppression effectuée')
+            setDossiers(prev => prev.filter(d => !selectedVoyages.includes(d.voyage?.id)))
             setSelectedVoyages([])
-            fetchDossiers()
-        } catch { showMsg('Erreur lors de la suppression', true) }
+            showMsg('Voyage(s) masque(s) de votre vue')
+        } catch { showMsg('Erreur', true) }
     }
 
     const supprimerTousVoyages = async () => {
-        if (!confirm('Supprimer tous les voyages ?')) return
+        if (!confirm('Masquer tous les voyages de votre vue ?')) return
         try {
-            for (const v of voyagesUniques) await api.delete(`/voyages-etudes/${v.id}`)
-            showMsg('Tous les voyages supprimés')
+            setDossiers([])
             setSelectedVoyages([])
-            fetchDossiers()
-        } catch { showMsg('Erreur lors de la suppression', true) }
+            showMsg('Voyages masques de votre vue')
+        } catch { showMsg('Erreur', true) }
     }
 
-    // ===== SÉLECTION JUSTIFICATIFS =====
+    // ===== SELECTION JUSTIFICATIFS =====
     const toggleSelectJustif = (id) =>
         setSelectedJustif(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
 
@@ -106,7 +103,7 @@ export default function ChefDepartementDashboard() {
         if (!confirm(`Supprimer ${selectedJustif.length} dossier(s) ?`)) return
         try {
             for (const id of selectedJustif) await api.delete(`/voyages-etudes/beneficiaire/${id}/dossier`)
-            showMsg('Suppression effectuée')
+            showMsg('Suppression effectuee')
             setSelectedJustif([])
             fetchDossiers()
         } catch { showMsg('Erreur lors de la suppression', true) }
@@ -116,24 +113,24 @@ export default function ChefDepartementDashboard() {
         if (!confirm('Supprimer tous les dossiers justificatifs ?')) return
         try {
             for (const d of dossiersJustif) await api.delete(`/voyages-etudes/beneficiaire/${d.id}/dossier`)
-            showMsg('Tous les dossiers supprimés')
+            showMsg('Tous les dossiers supprimes')
             setSelectedJustif([])
             fetchDossiers()
         } catch { showMsg('Erreur lors de la suppression', true) }
     }
 
-    // ===== SÉLECTION AUTORISATIONS (en attente) =====
+    // ===== SELECTION AUTORISATIONS EN ATTENTE =====
     const toggleSelectAuto = (id) =>
         setSelectedAuto(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
 
     const toggleSelectAllAuto = () =>
-        setSelectedAuto(selectedAuto.length === dossiersAutorisation.length ? [] : dossiersAutorisation.map(d => d.id))
+        setSelectedAuto(selectedAuto.length === autorisationsEnAttente.length ? [] : autorisationsEnAttente.map(a => a.id))
 
     const supprimerAutoSelectionnes = async () => {
         if (!confirm(`Supprimer ${selectedAuto.length} demande(s) ?`)) return
         try {
-            for (const id of selectedAuto) await api.delete(`/voyages-etudes/beneficiaire/${id}/dossier`)
-            showMsg('Suppression effectuée')
+            for (const id of selectedAuto) await api.delete(`/autorisations-absence/${id}`)
+            showMsg('Suppression effectuee')
             setSelectedAuto([])
             fetchDossiers()
         } catch { showMsg('Erreur lors de la suppression', true) }
@@ -142,14 +139,14 @@ export default function ChefDepartementDashboard() {
     const supprimerToutesAuto = async () => {
         if (!confirm('Supprimer toutes les demandes ?')) return
         try {
-            for (const d of dossiersAutorisation) await api.delete(`/voyages-etudes/beneficiaire/${d.id}/dossier`)
-            showMsg('Toutes les demandes supprimées')
+            for (const a of autorisationsEnAttente) await api.delete(`/autorisations-absence/${a.id}`)
+            showMsg('Toutes les demandes supprimees')
             setSelectedAuto([])
             fetchDossiers()
         } catch { showMsg('Erreur lors de la suppression', true) }
     }
 
-    // ===== SÉLECTION HISTORIQUE (autorisations d'absence déjà signées par moi) =====
+    // ===== SELECTION HISTORIQUE =====
     const toggleSelectHistorique = (id) =>
         setSelectedHistorique(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
 
@@ -160,14 +157,14 @@ export default function ChefDepartementDashboard() {
         if (!confirm(`Supprimer ${selectedHistorique.length} element(s) de l'historique ?`)) return
         try {
             for (const id of selectedHistorique) await api.delete(`/autorisations-absence/${id}`)
-            showMsg('Suppression effectuée')
+            showMsg('Suppression effectuee')
             setSelectedHistorique([])
             fetchDossiers()
         } catch { showMsg('Erreur lors de la suppression', true) }
     }
 
     const supprimerTouHistorique = async () => {
-        if (!confirm('Vider tout l\'historique ?')) return
+        if (!confirm("Vider tout l'historique ?")) return
         try {
             for (const a of historiqueAutorisations) await api.delete(`/autorisations-absence/${a.id}`)
             showMsg('Historique vide')
@@ -197,32 +194,27 @@ export default function ChefDepartementDashboard() {
         } finally { setActionLoading(null) }
     }
 
-    
-
-const signerEtTransmettre = async (autorisationId) => {
-    setActionLoading(autorisationId + '_signer')
-    try {
-        await api.patch(`/autorisations-absence/${autorisationId}/avis-chef-departement`, {
-            avis: 'favorable',
-        })
-        showMsg('Autorisation signee et transmise au Directeur UFR')
-        fetchDossiers()
-    } catch (err) {
-        showMsg(err.response?.data?.message || 'Erreur', true)
-    } finally {
-        setActionLoading(null)
+    const signerEtTransmettre = async (autorisationId) => {
+        setActionLoading(autorisationId + '_signer')
+        try {
+            await api.patch(`/autorisations-absence/${autorisationId}/avis-chef-departement`, {
+                avis: 'favorable',
+            })
+            showMsg('Autorisation signee et transmise au Directeur UFR')
+            fetchDossiers()
+        } catch (err) {
+            showMsg(err.response?.data?.message || 'Erreur', true)
+        } finally {
+            setActionLoading(null)
+        }
     }
-}
 
-    const dossiersJustif       = dossiers.filter(d => !["transmis_vr", "valide"].includes(d.statut_justificatif))
-    const voyagesUniques       = [...new Map(dossiers.map(d => [d.voyage?.id, d.voyage])).values()].filter(Boolean)
-
-    // Demandes d'autorisation d'absence : en attente de mon avis vs déjà traitées par moi
-    const autorisationsEnAttente = autorisationsAbsence.filter(a => a.statut === 'soumise')
+    const dossiersJustif         = dossiers.filter(d => !["transmis_vr", "valide"].includes(d.statut_justificatif))
+    const voyagesUniques          = [...new Map(dossiers.map(d => [d.voyage?.id, d.voyage])).values()].filter(Boolean)
+    const autorisationsEnAttente  = autorisationsAbsence.filter(a => a.statut === 'soumise')
     const historiqueAutorisations = autorisationsAbsence.filter(a => a.avis_chef_departement !== null)
 
-    // Barre sélection réutilisable
-    const BarreSelection = ({ selected, total, onSelectAll, onDeleteSelected, onDeleteAll, label }) => (
+    const BarreSelection = ({ selected, total, onSelectAll, onDeleteSelected, onDeleteAll }) => (
         <div className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-2.5 shadow-sm">
             <div className="flex items-center gap-3">
                 <input type="checkbox"
@@ -230,7 +222,7 @@ const signerEtTransmettre = async (autorisationId) => {
                     onChange={onSelectAll}
                     className="w-4 h-4 accent-blue-700 cursor-pointer" />
                 <span className="text-sm text-gray-600">
-                    {selected.length > 0 ? `${selected.length} sélectionné(s)` : 'Tout sélectionner'}
+                    {selected.length > 0 ? `${selected.length} selectionne(s)` : 'Tout selectionner'}
                 </span>
             </div>
             <div className="flex gap-2">
@@ -256,11 +248,10 @@ const signerEtTransmettre = async (autorisationId) => {
                     <p className="text-gray-500 text-sm mt-1">Gestion des dossiers de voyage d'etudes</p>
                 </div>
 
-                {/* Onglets */}
                 <div className="flex gap-2 border-b border-gray-200 flex-wrap">
                     {[
                         { key: 'listes', label: 'Nouvelles listes', icon: <Bell size={14} />, count: voyagesUniques.length, color: 'blue' },
-                        { key: 'justificatifs', label: 'Justificatifs reçus', icon: null, count: dossiersJustif.length, color: 'blue' },
+                        { key: 'justificatifs', label: 'Justificatifs recus', icon: null, count: dossiersJustif.length, color: 'blue' },
                         { key: 'autorisations', label: "Demandes d'autorisation", icon: null, count: autorisationsEnAttente.length, color: 'green' },
                         { key: 'historique', label: 'Historique', icon: <History size={14} />, count: historiqueAutorisations.length, color: 'gray' },
                     ].map(tab => (
@@ -280,7 +271,6 @@ const signerEtTransmettre = async (autorisationId) => {
                     ))}
                 </div>
 
-                {/* Messages */}
                 {message && (
                     <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl p-4 text-sm flex items-center gap-2">
                         <CheckCircle size={16} /> {message}
@@ -304,7 +294,7 @@ const signerEtTransmettre = async (autorisationId) => {
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                                     <Bell size={40} className="mx-auto mb-4 text-gray-300" />
                                     <h3 className="text-gray-700 font-semibold mb-2">Aucune liste</h3>
-                                    <p className="text-gray-400 text-sm">Les listes publiées par le Vice-Recteur apparaîtront ici</p>
+                                    <p className="text-gray-400 text-sm">Les listes publiees par le Vice-Recteur apparaitront ici</p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
@@ -364,7 +354,7 @@ const signerEtTransmettre = async (autorisationId) => {
                                                     ) : beneficiaires[v.id]?.length > 0 ? (
                                                         <div className="space-y-2">
                                                             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                                                                Bénéficiaires ({beneficiaires[v.id].length})
+                                                                Beneficiaires ({beneficiaires[v.id].length})
                                                             </p>
                                                             {beneficiaires[v.id].map(b => (
                                                                 <div key={b.id} className="flex items-center justify-between bg-white border border-gray-100 rounded-lg px-3 py-2">
@@ -385,14 +375,14 @@ const signerEtTransmettre = async (autorisationId) => {
                                                                     }`}>
                                                                         {b.statut_justificatif === 'soumis'      ? 'Soumis'      :
                                                                          b.statut_justificatif === 'transmis_vr' ? 'Transmis VR' :
-                                                                         b.statut_justificatif === 'valide'      ? 'Validé'      :
+                                                                         b.statut_justificatif === 'valide'      ? 'Valide'      :
                                                                          'En attente'}
                                                                     </span>
                                                                 </div>
                                                             ))}
                                                         </div>
                                                     ) : (
-                                                        <p className="text-sm text-gray-400 text-center py-3">Aucun bénéficiaire trouvé</p>
+                                                        <p className="text-sm text-gray-400 text-center py-3">Aucun beneficiaire trouve</p>
                                                     )}
                                                 </div>
                                             )}
@@ -402,13 +392,13 @@ const signerEtTransmettre = async (autorisationId) => {
                             )
                         )}
 
-                        {/* ===== ONGLET JUSTIFICATIFS REÇUS ===== */}
+                        {/* ===== ONGLET JUSTIFICATIFS RECUS ===== */}
                         {activeTab === 'justificatifs' && (
                             dossiersJustif.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                                     <FileText size={40} className="mx-auto mb-4 text-gray-300" />
                                     <h3 className="text-gray-700 font-semibold mb-2">Aucun justificatif</h3>
-                                    <p className="text-gray-400 text-sm">Les justificatifs soumis par les enseignants apparaîtront ici</p>
+                                    <p className="text-gray-400 text-sm">Les justificatifs soumis par les enseignants apparaitront ici</p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
@@ -476,20 +466,33 @@ const signerEtTransmettre = async (autorisationId) => {
                             )
                         )}
 
-                        {/* ===== ONGLET AUTORISATIONS (en attente de mon avis) ===== */}
+                        {/* ===== ONGLET AUTORISATIONS EN ATTENTE ===== */}
                         {activeTab === 'autorisations' && (
                             autorisationsEnAttente.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                                     <CheckCircle size={40} className="mx-auto mb-4 text-gray-300" />
                                     <h3 className="text-gray-700 font-semibold mb-2">Aucune demande</h3>
-                                    <p className="text-gray-400 text-sm">Les demandes d'autorisation d'absence apparaîtront ici</p>
+                                    <p className="text-gray-400 text-sm">Les demandes d'autorisation d'absence apparaitront ici</p>
                                 </div>
                             ) : (
                                 <div className="space-y-4">
+                                    <BarreSelection
+                                        selected={selectedAuto}
+                                        total={autorisationsEnAttente.length}
+                                        onSelectAll={toggleSelectAllAuto}
+                                        onDeleteSelected={supprimerAutoSelectionnes}
+                                        onDeleteAll={supprimerToutesAuto}
+                                    />
                                     {autorisationsEnAttente.map(a => (
-                                        <div key={a.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                                        <div key={a.id} className={`bg-white rounded-2xl border shadow-sm p-5 transition ${
+                                            selectedAuto.includes(a.id) ? 'border-blue-300' : 'border-gray-100'
+                                        }`}>
                                             <div className="flex items-start justify-between mb-4">
                                                 <div className="flex items-center gap-3">
+                                                    <input type="checkbox"
+                                                        checked={selectedAuto.includes(a.id)}
+                                                        onChange={() => toggleSelectAuto(a.id)}
+                                                        className="w-4 h-4 accent-blue-700 cursor-pointer mt-1" />
                                                     <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-700 font-bold text-sm">
                                                         {a.enseignant?.prenom?.[0]}{a.enseignant?.nom?.[0]}
                                                     </div>
@@ -517,13 +520,10 @@ const signerEtTransmettre = async (autorisationId) => {
                                                     {actionLoading === a.id + '_signer'
                                                         ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                                         : <CheckCircle size={14} />}
-                                                    Signer l'autorisation → Transmettre au Directeur UFR
+                                                    Signer et transmettre au Directeur UFR
                                                 </button>
-
-                                                <button
-                                                   onClick={() => navigate('/autorisation-absence/' + a.id)}
-                                                    className="flex items-center gap-2 border border-blue-700 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm font-semibold transition"
-                                                >
+                                                <button onClick={() => navigate('/autorisation-absence/' + a.id)}
+                                                    className="flex items-center gap-2 border border-blue-700 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm font-semibold transition">
                                                     <Eye size={14} />
                                                     Voir le document
                                                 </button>
@@ -534,7 +534,7 @@ const signerEtTransmettre = async (autorisationId) => {
                             )
                         )}
 
-                        {/* ===== ONGLET HISTORIQUE (autorisations deja signees par moi) ===== */}
+                        {/* ===== ONGLET HISTORIQUE ===== */}
                         {activeTab === 'historique' && (
                             historiqueAutorisations.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
@@ -574,11 +574,10 @@ const signerEtTransmettre = async (autorisationId) => {
                                                 }`}>
                                                     {a.avis_chef_departement === 'favorable' ? 'Avis favorable' : 'Rejetee'}
                                                 </span>
-                                              <button
-    onClick={() => navigate('/autorisation-absence/' + a.id)}
-    className="flex items-center gap-1.5 border border-gray-400 text-gray-600 hover:bg-gray-100 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
-    <Eye size={13} /> Voir
-</button>
+                                                <button onClick={() => navigate('/autorisation-absence/' + a.id)}
+                                                    className="flex items-center gap-1.5 border border-gray-400 text-gray-600 hover:bg-gray-100 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
+                                                    <Eye size={13} /> Voir
+                                                </button>
                                             </div>
                                         </div>
                                     ))}

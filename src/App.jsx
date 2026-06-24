@@ -4,6 +4,7 @@ import ValidationNavette from './pages/validation/ValidationNavette'
 import Reservation from './pages/Reservation'
 import MotDePasseOublie from './pages/MotDePasseOublie'
 import ReinitialiserMotDePasse from './pages/ReinitialiserMotDePasse'
+import LandingPage from './pages/LandingPage'
 // Auth
 import Login from './pages/Login'
 import Inscription from './pages/Inscription'
@@ -84,7 +85,8 @@ function App() {
         <AuthProvider>
             <BrowserRouter>
                 <Routes>
-
+                    
+<Route path="/" element={<LandingPage />} />
                     {/* Public */}
                     <Route path="/login" element={<Login />} />
                     <Route path="/reservation" element={<Navigate to="/login" replace />} />

@@ -19,6 +19,7 @@
     "react-qr-code": "^2.2.0",
     "react-router-dom": "^7.16.0",
     "recharts": "^3.8.1",
+    "swiper": "^12.2.0",
     "tailwindcss": "^4.3.0"
   },
   "devDependencies": {

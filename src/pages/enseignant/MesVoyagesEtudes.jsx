@@ -26,7 +26,7 @@ export default function MesVoyagesEtudes() {
     const [expanded, setExpanded]           = useState(null)
     const [fichiers, setFichiers]           = useState([])
     const [uploadLoading, setUploadLoading] = useState(null)
-
+const [actionLoading, setActionLoading] = useState(null)
     const [message, setMessage]             = useState('')
     const [error, setError]                 = useState('')
 
@@ -62,38 +62,19 @@ export default function MesVoyagesEtudes() {
     const retirerFichier = (index) => {
         setFichiers(prev => prev.filter((_, i) => i !== index))
     }
-
-    const soumettreJustificatifs = async (beneficiaireId) => {
+const soumettreJustificatifs = async (beneficiaireId) => {
     if (fichiers.length === 0) {
         showMsg('Veuillez selectionner au moins un fichier PDF', true)
         return
     }
     setUploadLoading(beneficiaireId)
     try {
-        // 1. Soumettre les justificatifs
         const formData = new FormData()
         fichiers.forEach(f => formData.append('justificatifs[]', f))
         await api.post(`/voyages-etudes/beneficiaire/${beneficiaireId}/justificatifs`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         })
-
-        // 2. Créer le rapport automatiquement avec le premier fichier
-        const b = beneficiaires.find(b => b.id === beneficiaireId)
-        if (b?.voyage?.id) {
-            const rapportForm = new FormData()
-            rapportForm.append('voyage_id', b.voyage.id)
-            rapportForm.append('contenu', 'Rapport de voyage (voir PDF joint)')
-            rapportForm.append('fichier_pdf', fichiers[0])
-            try {
-                await api.post('/rapports', rapportForm, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                })
-            } catch (e) {
-                // Rapport déjà existant — on ignore
-            }
-        }
-
-        showMsg('Justificatifs et rapport soumis avec succes au Chef de Departement')
+        showMsg('Justificatifs soumis avec succes au Chef de Departement')
         setFichiers([])
         fetchVoyages()
     } catch (err) {
@@ -102,6 +83,7 @@ export default function MesVoyagesEtudes() {
         setUploadLoading(null)
     }
 }
+    
 const demanderAutorisation = async (beneficiaireId) => {
     setActionLoading(beneficiaireId)
     try {

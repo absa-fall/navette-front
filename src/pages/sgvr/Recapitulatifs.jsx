@@ -157,7 +157,7 @@ const exportPDF = async (recap) => {
                 <style>body{font-family:Arial,sans-serif;padding:30px;font-size:13px;}
                 h2{color:#1e3a8a;margin-bottom:4px;}p{color:#6b7280;margin-bottom:20px;}
                 table{width:100%;border-collapse:collapse;}
-                th{background:#1e3a8a;color:white;padding:10px;text-align:left;font-size:12px;}
+               th{background:#ffffff;color:#111827;padding:10px;text-align:left;font-size:12px;border-bottom:2px solid #e5e7eb;}
                 td{padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;}
                 tr:nth-child(even){background:#f9fafb;}
                 .print-btn{position:fixed;bottom:20px;right:20px;background:#1e3a8a;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;}

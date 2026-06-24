@@ -2,22 +2,23 @@ import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { MapPin, CheckCircle, AlertCircle, FileText, Send, Eye, Trash2, History } from 'lucide-react'
+import { MapPin, CheckCircle, AlertCircle, FileText, Eye, Trash2, History } from 'lucide-react'
 
 export default function RecteurDashboard() {
     const navigate  = useNavigate()
     const location  = useLocation()
     const [voyages, setVoyages]             = useState([])
-    const [autorisations, setAutorisations] = useState([])
     const [loading, setLoading]             = useState(true)
     const [activeTab, setActiveTab]         = useState('arretes')
     const [actionLoading, setActionLoading] = useState(null)
     const [message, setMessage]             = useState('')
     const [error, setError]                 = useState('')
 
-    const [selectedDefinitifs, setSelectedDefinitifs] = useState([])
-    const [selectedSignes, setSelectedSignes]         = useState([])
-    const [autorisationsAbsence, setAutorisationsAbsence] = useState([])
+    const [selectedDefinitifs, setSelectedDefinitifs]         = useState([])
+    const [selectedSignes, setSelectedSignes]                 = useState([])
+    const [selectedAbsAttente, setSelectedAbsAttente]         = useState([])
+    const [selectedAbsHistorique, setSelectedAbsHistorique]   = useState([])
+    const [autorisationsAbsence, setAutorisationsAbsence]     = useState([])
     const [arreteOuvert, setArreteOuvert] = useState(null)
     const [arreteForm, setArreteForm]     = useState({
         numero: '', date_arrete: '', visas: '', montant_billet: '', montant_indemnite: ''
@@ -26,20 +27,18 @@ export default function RecteurDashboard() {
     useEffect(() => {
         const params = new URLSearchParams(location.search)
         const tab = params.get('tab')
-        if (['arretes', 'autorisations', 'historique', 'historique_arretes', 'autorisations_absence'].includes(tab)) setActiveTab(tab)
+        if (['arretes', 'autorisations_absence', 'historique_arretes', 'historique_absences'].includes(tab)) setActiveTab(tab)
     }, [location.search])
 
     useEffect(() => { fetchAll() }, [])
 
     const fetchAll = async () => {
         try {
-            const [voyagesRes, autorisationsRes, autorisationsAbsenceRes] = await Promise.all([
+            const [voyagesRes, autorisationsAbsenceRes] = await Promise.all([
                 api.get('/voyages-etudes'),
-                api.get('/voyages-etudes/dossiers-departement'),
                 api.get('/autorisations-absence'),
             ])
             setVoyages(voyagesRes.data)
-            setAutorisations(autorisationsRes.data)
             setAutorisationsAbsence(autorisationsAbsenceRes.data)
         } catch (err) {
             console.error(err)
@@ -73,14 +72,11 @@ export default function RecteurDashboard() {
         }
     }
 
-  
-
-    // ===== Signature de l'autorisation d'absence par le Recteur =====
     const signerAutorisationAbsence = async (autorisationId) => {
         setActionLoading(autorisationId + '_signer_absence')
         try {
             await api.patch(`/autorisations-absence/${autorisationId}/signer-recteur`)
-            showMsg('Autorisation signee et transmise a l\'enseignant')
+            showMsg("Autorisation signee et transmise a l'enseignant")
             fetchAll()
         } catch (err) {
             showMsg(err.response?.data?.message || 'Erreur', true)
@@ -89,6 +85,7 @@ export default function RecteurDashboard() {
         }
     }
 
+    // ===== SELECTION VOYAGES DEFINITIFS =====
     const supprimerVoyages = async (ids) => {
         if (!confirm(`Supprimer ${ids.length} voyage(s) ?`)) return
         try {
@@ -96,31 +93,67 @@ export default function RecteurDashboard() {
             setVoyages(prev => prev.filter(v => !ids.includes(v.id)))
             setSelectedDefinitifs(prev => prev.filter(i => !ids.includes(i)))
             setSelectedSignes(prev => prev.filter(i => !ids.includes(i)))
-            showMsg('Suppression effectuée')
+            showMsg('Suppression effectuee')
         } catch { showMsg('Erreur lors de la suppression', true) }
     }
 
-  
-    const envoyerEmailAutorisation = async (autorisationId) => {
-    setActionLoading('email_auto_' + autorisationId)
-    try {
-        await api.post('/autorisations-absence/' + autorisationId + '/envoyer-email')
-        showMsg('Autorisation envoyee par email avec succes')
-    } catch (err) {
-        showMsg(err.response?.data?.message || 'Erreur lors de l\'envoi', true)
-    } finally {
-        setActionLoading(null)
+    // ===== SELECTION ABSENCES EN ATTENTE =====
+    const toggleSelectAbsAttente = (id) =>
+        setSelectedAbsAttente(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
+
+    const toggleSelectAllAbsAttente = () =>
+        setSelectedAbsAttente(selectedAbsAttente.length === autorisationsAbsenceEnAttente.length ? [] : autorisationsAbsenceEnAttente.map(a => a.id))
+
+    const supprimerAbsAttenteSelectionnes = async () => {
+        if (!confirm(`Supprimer ${selectedAbsAttente.length} demande(s) ?`)) return
+        try {
+            for (const id of selectedAbsAttente) await api.delete(`/autorisations-absence/${id}`)
+            showMsg('Suppression effectuee')
+            setSelectedAbsAttente([])
+            fetchAll()
+        } catch { showMsg('Erreur lors de la suppression', true) }
     }
-}
 
+    const supprimerToutesAbsAttente = async () => {
+        if (!confirm('Supprimer toutes les demandes en attente ?')) return
+        try {
+            for (const a of autorisationsAbsenceEnAttente) await api.delete(`/autorisations-absence/${a.id}`)
+            showMsg('Toutes les demandes supprimees')
+            setSelectedAbsAttente([])
+            fetchAll()
+        } catch { showMsg('Erreur lors de la suppression', true) }
+    }
 
-    const definitifs      = voyages.filter(v => v.statut_liste === 'definitive' && !v.arrete_recteur)
-    const signes           = voyages.filter(v => v.arrete_recteur)
-   
+    // ===== SELECTION HISTORIQUE ABSENCES =====
+    const toggleSelectAbsHistorique = (id) =>
+        setSelectedAbsHistorique(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
 
-    // Autorisations d'absence en attente de signature du Recteur (avis favorable du Directeur UFR)
+    const toggleSelectAllAbsHistorique = () =>
+        setSelectedAbsHistorique(selectedAbsHistorique.length === autorisationsAbsenceSignees.length ? [] : autorisationsAbsenceSignees.map(a => a.id))
+
+    const supprimerAbsHistoriqueSelectionnes = async () => {
+        if (!confirm(`Supprimer ${selectedAbsHistorique.length} element(s) ?`)) return
+        try {
+            for (const id of selectedAbsHistorique) await api.delete(`/autorisations-absence/${id}`)
+            showMsg('Suppression effectuee')
+            setSelectedAbsHistorique([])
+            fetchAll()
+        } catch { showMsg('Erreur lors de la suppression', true) }
+    }
+
+    const supprimerToutAbsHistorique = async () => {
+        if (!confirm("Vider tout l'historique des absences ?")) return
+        try {
+            for (const a of autorisationsAbsenceSignees) await api.delete(`/autorisations-absence/${a.id}`)
+            showMsg('Historique vide')
+            setSelectedAbsHistorique([])
+            fetchAll()
+        } catch { showMsg('Erreur lors de la suppression', true) }
+    }
+
+    const definitifs                    = voyages.filter(v => v.statut_liste === 'definitive' && !v.arrete_recteur)
+    const signes                        = voyages.filter(v => v.arrete_recteur)
     const autorisationsAbsenceEnAttente = autorisationsAbsence.filter(a => a.statut === 'avis_directeur_ufr')
-    // Déjà signées par le Recteur (ou plus loin dans le circuit)
     const autorisationsAbsenceSignees   = autorisationsAbsence.filter(a => ['signee_recteur', 'transmise'].includes(a.statut))
 
     const BarreSelection = ({ selected, total, onSelectAll, onDeleteSelected, onDeleteAll }) => (
@@ -131,7 +164,7 @@ export default function RecteurDashboard() {
                     onChange={onSelectAll}
                     className="w-4 h-4 accent-blue-700 cursor-pointer" />
                 <span className="text-sm text-gray-600">
-                    {selected.length > 0 ? `${selected.length} sélectionné(s)` : 'Tout sélectionner'}
+                    {selected.length > 0 ? `${selected.length} selectionne(s)` : 'Tout selectionner'}
                 </span>
             </div>
             <div className="flex gap-2">
@@ -166,7 +199,6 @@ export default function RecteurDashboard() {
                         <p className="text-2xl font-bold text-gray-800">{definitifs.length}</p>
                         <p className="text-sm text-gray-500 mt-1">Arretes a signer</p>
                     </div>
-                    
                     <div onClick={() => setActiveTab('autorisations_absence')}
                         className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-purple-200 hover:shadow-md transition">
                         <div className="bg-purple-100 p-2 rounded-xl w-fit mb-3">
@@ -183,24 +215,23 @@ export default function RecteurDashboard() {
                         <p className="text-2xl font-bold text-gray-800">{signes.length}</p>
                         <p className="text-sm text-gray-500 mt-1">Arretes signes</p>
                     </div>
-                  
-<div onClick={() => setActiveTab('historique_absences')}
-    className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-purple-200 hover:shadow-md transition">
-    <div className="bg-purple-100 p-2 rounded-xl w-fit mb-3">
-        <History size={20} className="text-purple-700" />
-    </div>
-    <p className="text-2xl font-bold text-gray-800">{autorisationsAbsenceSignees.length}</p>
-    <p className="text-sm text-gray-500 mt-1">Absences signees</p>
-</div>
+                    <div onClick={() => setActiveTab('historique_absences')}
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-purple-200 hover:shadow-md transition">
+                        <div className="bg-purple-100 p-2 rounded-xl w-fit mb-3">
+                            <History size={20} className="text-purple-700" />
+                        </div>
+                        <p className="text-2xl font-bold text-gray-800">{autorisationsAbsenceSignees.length}</p>
+                        <p className="text-sm text-gray-500 mt-1">Absences signees</p>
+                    </div>
                 </div>
 
                 <div className="flex gap-2 border-b border-gray-200 flex-wrap">
-                 {[
-    { key: 'arretes', label: 'Arretes a signer', count: definitifs.length, color: 'orange' },
-    { key: 'autorisations_absence', label: "Absences a signer", count: autorisationsAbsenceEnAttente.length, color: 'purple' },
-    { key: 'historique_arretes', label: 'Historique arretes signes', count: signes.length, color: 'green' },
-    { key: 'historique_absences', label: 'Historique absences', count: autorisationsAbsenceSignees.length, color: 'purple' },
-].map(tab => (
+                    {[
+                        { key: 'arretes', label: 'Arretes a signer', count: definitifs.length, color: 'orange' },
+                        { key: 'autorisations_absence', label: 'Absences a signer', count: autorisationsAbsenceEnAttente.length, color: 'purple' },
+                        { key: 'historique_arretes', label: 'Historique arretes', count: signes.length, color: 'green' },
+                        { key: 'historique_absences', label: 'Historique absences', count: autorisationsAbsenceSignees.length, color: 'purple' },
+                    ].map(tab => (
                         <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                             className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center gap-2 ${
                                 activeTab === tab.key
@@ -234,6 +265,7 @@ export default function RecteurDashboard() {
                     </div>
                 ) : (
                     <>
+                        {/* ===== ARRETES A SIGNER ===== */}
                         {activeTab === 'arretes' && (
                             definitifs.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
@@ -361,7 +393,7 @@ export default function RecteurDashboard() {
                             )
                         )}
 
-                        {/* ===== ONGLET ABSENCES A SIGNER ===== */}
+                        {/* ===== ABSENCES A SIGNER ===== */}
                         {activeTab === 'autorisations_absence' && (
                             autorisationsAbsenceEnAttente.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
@@ -371,10 +403,23 @@ export default function RecteurDashboard() {
                                 </div>
                             ) : (
                                 <div className="space-y-3">
+                                    <BarreSelection
+                                        selected={selectedAbsAttente}
+                                        total={autorisationsAbsenceEnAttente.length}
+                                        onSelectAll={toggleSelectAllAbsAttente}
+                                        onDeleteSelected={supprimerAbsAttenteSelectionnes}
+                                        onDeleteAll={supprimerToutesAbsAttente}
+                                    />
                                     {autorisationsAbsenceEnAttente.map(a => (
-                                        <div key={a.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                                        <div key={a.id} className={`bg-white rounded-2xl border shadow-sm p-5 transition ${
+                                            selectedAbsAttente.includes(a.id) ? 'border-purple-300' : 'border-gray-100'
+                                        }`}>
                                             <div className="flex items-start justify-between mb-4">
                                                 <div className="flex items-center gap-3">
+                                                    <input type="checkbox"
+                                                        checked={selectedAbsAttente.includes(a.id)}
+                                                        onChange={() => toggleSelectAbsAttente(a.id)}
+                                                        className="w-4 h-4 accent-blue-700 cursor-pointer mt-1" />
                                                     <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-700 font-bold text-sm">
                                                         {a.enseignant?.prenom?.[0]}{a.enseignant?.nom?.[0]}
                                                     </div>
@@ -393,82 +438,84 @@ export default function RecteurDashboard() {
 
                                             <div className="bg-purple-50 rounded-xl p-3 mb-4">
                                                 <p className="text-sm text-purple-700">
-                                                    Le Directeur UFR a approuve cette demande. Votre signature est requise avant transmission au Vice-Recteur.
+                                                    Le Directeur UFR a approuve cette demande. Votre signature est requise avant transmission a l'enseignant.
                                                 </p>
                                             </div>
 
                                             <div className="flex gap-2 flex-wrap">
-                                                <button
-                                                    onClick={() => navigate('/autorisation-absence/' + a.id)}
+                                                <button onClick={() => navigate('/autorisation-absence/' + a.id)}
                                                     className="flex items-center gap-2 border border-blue-700 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm font-semibold transition">
                                                     <Eye size={14} />
                                                     Voir le document
                                                 </button>
-                                               <button onClick={() => signerAutorisationAbsence(a.id)}
-    disabled={actionLoading === a.id + '_signer_absence'}
-    className="flex items-center gap-2 bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
-    {actionLoading === a.id + '_signer_absence'
-        ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-        : <CheckCircle size={14} />}
-    Signer et transmettre a l'enseignant
-</button>
+                                                <button onClick={() => signerAutorisationAbsence(a.id)}
+                                                    disabled={actionLoading === a.id + '_signer_absence'}
+                                                    className="flex items-center gap-2 bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
+                                                    {actionLoading === a.id + '_signer_absence'
+                                                        ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                        : <CheckCircle size={14} />}
+                                                    Signer et transmettre a l'enseignant
+                                                </button>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             )
                         )}
-{activeTab === 'historique_arretes' && (
-    signes.length === 0 ? (
-        <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
-            <History size={40} className="mx-auto mb-4 text-gray-300" />
-            <h3 className="text-gray-700 font-semibold mb-2">Aucun arrete signe</h3>
-            <p className="text-gray-400 text-sm">Les arretes que vous signez apparaitront ici</p>
-        </div>
-    ) : (
-        <div className="space-y-3">
-            <BarreSelection
-                selected={selectedSignes}
-                total={signes.length}
-                onSelectAll={() => setSelectedSignes(
-                    selectedSignes.length === signes.length ? [] : signes.map(v => v.id)
-                )}
-                onDeleteSelected={() => supprimerVoyages(selectedSignes)}
-                onDeleteAll={() => supprimerVoyages(signes.map(v => v.id))}
-            />
-            {signes.map(voyage => (
-                <div key={voyage.id} className={`rounded-2xl p-4 flex items-center justify-between border transition ${
-                    selectedSignes.includes(voyage.id) ? 'bg-green-50 border-blue-300' : 'bg-green-50 border-green-200'
-                }`}>
-                    <div className="flex items-center gap-3">
-                        <input type="checkbox"
-                            checked={selectedSignes.includes(voyage.id)}
-                            onChange={() => setSelectedSignes(prev =>
-                                prev.includes(voyage.id) ? prev.filter(i => i !== voyage.id) : [...prev, voyage.id]
-                            )}
-                            className="w-4 h-4 accent-blue-700 cursor-pointer" />
-                        <div>
-                            <p className="font-medium text-gray-800">{voyage.destination}</p>
-                            <p className="text-xs text-gray-500">
-                                {new Date(voyage.date_debut).toLocaleDateString('fr-FR')} - {new Date(voyage.date_fin).toLocaleDateString('fr-FR')} · {voyage.beneficiaires?.filter(b => b.dans_liste_definitive).length} beneficiaire(s)
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <span className="flex items-center gap-1 text-xs font-semibold text-green-700">
-                            <CheckCircle size={14} /> Signe
-                        </span>
-                        <button
-                            onClick={() => navigate(`/voyages-etudes/${voyage.id}/arrete`)}
-                            className="flex items-center gap-1.5 border border-green-600 text-green-600 hover:bg-green-100 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
-                            <Eye size={13} /> Voir l'arrete
-                        </button>
-                    </div>
-                </div>
-            ))}
-        </div>
-    )
-)}
+
+                        {/* ===== HISTORIQUE ARRETES ===== */}
+                        {activeTab === 'historique_arretes' && (
+                            signes.length === 0 ? (
+                                <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
+                                    <History size={40} className="mx-auto mb-4 text-gray-300" />
+                                    <h3 className="text-gray-700 font-semibold mb-2">Aucun arrete signe</h3>
+                                    <p className="text-gray-400 text-sm">Les arretes que vous signez apparaitront ici</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    <BarreSelection
+                                        selected={selectedSignes}
+                                        total={signes.length}
+                                        onSelectAll={() => setSelectedSignes(
+                                            selectedSignes.length === signes.length ? [] : signes.map(v => v.id)
+                                        )}
+                                        onDeleteSelected={() => supprimerVoyages(selectedSignes)}
+                                        onDeleteAll={() => supprimerVoyages(signes.map(v => v.id))}
+                                    />
+                                    {signes.map(voyage => (
+                                        <div key={voyage.id} className={`rounded-2xl p-4 flex items-center justify-between border transition ${
+                                            selectedSignes.includes(voyage.id) ? 'bg-green-50 border-blue-300' : 'bg-green-50 border-green-200'
+                                        }`}>
+                                            <div className="flex items-center gap-3">
+                                                <input type="checkbox"
+                                                    checked={selectedSignes.includes(voyage.id)}
+                                                    onChange={() => setSelectedSignes(prev =>
+                                                        prev.includes(voyage.id) ? prev.filter(i => i !== voyage.id) : [...prev, voyage.id]
+                                                    )}
+                                                    className="w-4 h-4 accent-blue-700 cursor-pointer" />
+                                                <div>
+                                                    <p className="font-medium text-gray-800">{voyage.destination}</p>
+                                                    <p className="text-xs text-gray-500">
+                                                        {new Date(voyage.date_debut).toLocaleDateString('fr-FR')} - {new Date(voyage.date_fin).toLocaleDateString('fr-FR')} · {voyage.beneficiaires?.filter(b => b.dans_liste_definitive).length} beneficiaire(s)
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="flex items-center gap-1 text-xs font-semibold text-green-700">
+                                                    <CheckCircle size={14} /> Signe
+                                                </span>
+                                                <button onClick={() => navigate(`/voyages-etudes/${voyage.id}/arrete`)}
+                                                    className="flex items-center gap-1.5 border border-green-600 text-green-600 hover:bg-green-100 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
+                                                    <Eye size={13} /> Voir l'arrete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )
+                        )}
+
+                        {/* ===== HISTORIQUE ABSENCES ===== */}
                         {activeTab === 'historique_absences' && (
                             autorisationsAbsenceSignees.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
@@ -478,9 +525,22 @@ export default function RecteurDashboard() {
                                 </div>
                             ) : (
                                 <div className="space-y-3">
+                                    <BarreSelection
+                                        selected={selectedAbsHistorique}
+                                        total={autorisationsAbsenceSignees.length}
+                                        onSelectAll={toggleSelectAllAbsHistorique}
+                                        onDeleteSelected={supprimerAbsHistoriqueSelectionnes}
+                                        onDeleteAll={supprimerToutAbsHistorique}
+                                    />
                                     {autorisationsAbsenceSignees.map(a => (
-                                        <div key={a.id} className="bg-purple-50 rounded-2xl border border-purple-200 p-4 flex items-center justify-between">
+                                        <div key={a.id} className={`rounded-2xl border p-4 flex items-center justify-between transition ${
+                                            selectedAbsHistorique.includes(a.id) ? 'bg-purple-50 border-blue-300' : 'bg-purple-50 border-purple-200'
+                                        }`}>
                                             <div className="flex items-center gap-3">
+                                                <input type="checkbox"
+                                                    checked={selectedAbsHistorique.includes(a.id)}
+                                                    onChange={() => toggleSelectAbsHistorique(a.id)}
+                                                    className="w-4 h-4 accent-blue-700 cursor-pointer" />
                                                 <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-700 font-bold text-sm">
                                                     {a.enseignant?.prenom?.[0]}{a.enseignant?.nom?.[0]}
                                                 </div>
@@ -493,8 +553,7 @@ export default function RecteurDashboard() {
                                                 <span className="flex items-center gap-1 text-xs font-semibold text-purple-700">
                                                     <CheckCircle size={12} /> Signee et transmise
                                                 </span>
-                                                <button
-                                                    onClick={() => navigate('/autorisation-absence/' + a.id)}
+                                                <button onClick={() => navigate('/autorisation-absence/' + a.id)}
                                                     className="flex items-center gap-1.5 border border-purple-600 text-purple-600 hover:bg-purple-100 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
                                                     <Eye size={13} /> Voir
                                                 </button>

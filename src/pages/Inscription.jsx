@@ -17,6 +17,7 @@ export default function Inscription() {
         prenom: '',
         email: '',
         password: '',
+        confirmPassword: '',
         type_profil: '',
         statut: '',
         ufr: '',
@@ -47,13 +48,24 @@ export default function Inscription() {
     }
 
     const handleSubmit = async (e) => {
-        e.preventDefault()
-        setLoading(true)
-        setError('')
+    e.preventDefault()
+   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._\-#])[A-Za-z\d@$!%*?&._\-#]{8,}$/
+if (!passwordRegex.test(form.password)) {
+    setError('Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial (@$!%*?&._-#)')
+    return
+}
+    if (form.password !== form.confirmPassword) {
+        setError('Les mots de passe ne correspondent pas')
+        return
+    }
+    setLoading(true)
+    setError('')
         try {
-            const data = {
+       const data = {
     ...form,
-    role: form.type_profil === 'PER' ? 'enseignant' : 'usager'
+    role: form.type_profil === 'PER' ? 'enseignant' : 'usager',
+    type_profil: form.type_profil === 'Vacataire' ? 'vacataire' : form.type_profil,
+    statut: form.type_profil === 'Vacataire' ? 'vacataire' : form.statut,
 }
             await api.post('/register', data)
             setSuccess(true)
@@ -76,7 +88,7 @@ export default function Inscription() {
                         Votre compte a été créé avec succès. Un QR code unique vous a été assigné.
                         Connectez-vous pour accéder à votre espace.
                     </p>
-                    <button
+                     <button
                         onClick={() => navigate('/login')}
                         className="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-xl transition"
                     >
@@ -170,7 +182,18 @@ export default function Inscription() {
                                 </button>
                             </div>
                         </div>
-
+{/* Confirmation mot de passe */}
+<div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">Confirmer le mot de passe *</label>
+    <div className="relative">
+        <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input type={showPassword ? 'text' : 'password'}
+            name="confirmPassword" value={form.confirmPassword}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="••••••••" required />
+    </div>
+</div>
                         {/* Type profil et Statut */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -180,23 +203,29 @@ export default function Inscription() {
                                     className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     required>
                                     <option value="">Choisir...</option>
-                                    <option value="PER">PER</option>
-                                    <option value="PATS">PATS</option>
-                                    <option value="ATR">ATR</option>
+<option value="PER">PER</option>
+<option value="PATS">PATS</option>
+<option value="ATR">ATR</option>
+<option value="Vacataire">Vacataire</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Statut *</label>
-                               <select name="statut" value={form.statut}
-    onChange={handleChange}
-    className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-    required>
-    <option value="">Choisir...</option>
-    <option value="permanent">Permanent</option>
-    <option value="non_permanent">Non permanent</option>
-    <option value="contractuel">Contractuel</option>
-    <option value="vacataire">Vacataire</option>
-</select>
+                              {form.type_profil === 'Vacataire' ? (
+    <div className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm text-gray-400 italic">
+        Vacataire (automatique)
+    </div>
+) : (
+    <select name="statut" value={form.statut}
+        onChange={handleChange}
+        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        required={form.type_profil !== 'Vacataire'}>
+        <option value="">Choisir...</option>
+        <option value="permanent">Permanent</option>
+        <option value="non_permanent">Non permanent</option>
+        <option value="contractuel">Contractuel</option>
+        <option value="vacataire">Vacataire</option>
+    </select>
+)}
                             </div>
                         </div>
 

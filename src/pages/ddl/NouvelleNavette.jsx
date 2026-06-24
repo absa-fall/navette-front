@@ -269,7 +269,7 @@ const handleChauffeurChange = (e) => {
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             <Calendar size={14} className="inline mr-1" />
-                            Date de retour <span className="text-gray-400 text-xs">(optionnel)</span>
+                           Date de retour <span className="text-red-500">*</span>
                         </label>
                         <input
                             type="date"

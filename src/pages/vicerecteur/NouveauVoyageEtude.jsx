@@ -97,7 +97,7 @@ const exportPDF = () => {
             h1 { color: #1d4ed8; font-size: 16px; }
             p { color: #6b7280; margin-bottom: 20px; }
             table { width: 100%; border-collapse: collapse; }
-            th { background: #1d4ed8; color: white; padding: 8px; text-align: left; font-size: 12px; }
+th { background: #ffffff; color: #111827; padding: 8px; text-align: left; font-size: 12px; border-bottom: 2px solid #e5e7eb; }
             td { padding: 8px; border-bottom: 1px solid #e5e7eb; font-size: 12px; }
             tr:nth-child(even) { background: #f9fafb; }
             .footer { margin-top: 30px; font-size: 10px; color: #9ca3af; text-align: center; }

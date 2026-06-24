@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import {
     Bus, MapPin, FileText, Users, LayoutDashboard, LogOut,
     Menu, X, ChevronRight, Bell, Trash2, CheckCheck, BarChart2, Camera, 
-    CheckCircle, Clock, XCircle
+    CheckCircle, Clock, XCircle, Calendar,
 } from 'lucide-react'
 const menuParRole = {
     admin: [
@@ -13,23 +13,23 @@ const menuParRole = {
         { label: 'Utilisateurs',  icon: Users,           path: '/admin/utilisateurs' },
         { label: 'Véhicules',     icon: Bus,             path: '/admin/vehicules' },
     ],
-   ddl: [
-    { label: 'Dashboard',          icon: LayoutDashboard, path: '/ddl/dashboard' },
-    { label: 'Mes navettes',       icon: Bus,             path: '/ddl/navettes' },
-    { label: 'En attente',         icon: Clock,           path: '/ddl/en-attente' },
-    { label: 'Demandes rejetées',  icon: XCircle,         path: '/ddl/demandes-rejetees' },
-],
-   enseignant: [
-    { label: 'Dashboard',        icon: LayoutDashboard, path: '/enseignant/dashboard' },
-    { label: 'Mes voyages',      icon: MapPin,          path: '/enseignant/voyages-etudes' },
-    { label: 'Réserver navette', icon: Bus,             path: '/enseignant/reserver' },
-],
-   drh: [
-    { label: 'Dashboard',      icon: LayoutDashboard, path: '/drh/dashboard' },
-    { label: 'En attente',     icon: Clock,           path: '/drh/ordres?statut=en_attente' },
-    { label: 'Approuvés',      icon: CheckCircle,     path: '/drh/ordres?statut=approuve' },
-    { label: 'Rejetés',        icon: XCircle,         path: '/drh/ordres?statut=rejete' },
-],
+    ddl: [
+        { label: 'Dashboard',          icon: LayoutDashboard, path: '/ddl/dashboard' },
+        { label: 'Mes navettes',       icon: Bus,             path: '/ddl/navettes' },
+        { label: 'En attente',         icon: Clock,           path: '/ddl/en-attente' },
+        { label: 'Demandes rejetées',  icon: XCircle,         path: '/ddl/demandes-rejetees' },
+    ],
+    enseignant: [
+        { label: 'Dashboard',        icon: LayoutDashboard, path: '/enseignant/dashboard' },
+        { label: 'Mes voyages',      icon: MapPin,          path: '/enseignant/voyages-etudes' },
+        { label: 'Réserver navette', icon: Bus,             path: '/enseignant/reserver' },
+    ],
+    drh: [
+        { label: 'Dashboard',      icon: LayoutDashboard, path: '/drh/dashboard' },
+        { label: 'En attente',     icon: Clock,           path: '/drh/ordres?statut=en_attente' },
+        { label: 'Approuvés',      icon: CheckCircle,     path: '/drh/ordres?statut=approuve' },
+        { label: 'Rejetés',        icon: XCircle,         path: '/drh/ordres?statut=rejete' },
+    ],
     sg_drh: [
         { label: 'Dashboard',       icon: LayoutDashboard, path: '/sg-drh/dashboard' },
         { label: 'Ordres à signer', icon: FileText,        path: '/sg-drh/ordres' },
@@ -38,16 +38,15 @@ const menuParRole = {
         { label: 'Dashboard',   icon: LayoutDashboard, path: '/chauffeur/dashboard' },
         { label: 'Mes trajets', icon: Bus,             path: '/chauffeur/trajets' },
     ],
-  sg_vr: [
-    { label: 'Dashboard',      icon: LayoutDashboard, path: '/sg-vr/dashboard?tab=accueil' },
-    { label: 'Récapitulatifs', icon: FileText,        path: '/sg-vr/recapitulatifs' },
-    { label: 'Graphiques',     icon: BarChart2,       path: '/sg-vr/dashboard?tab=graphiques' },
-],
-    vice_recteur: [
-        { label: 'Dashboard',          icon: LayoutDashboard, path: '/vice-recteur/dashboard' },
-        { label: 'Rapports à valider', icon: FileText,        path: '/vice-recteur/rapports' },
-        { label: "Voyages d'etudes",   icon: MapPin,          path: '/vice-recteur/voyages-etudes' },
+    sg_vr: [
+        { label: 'Dashboard',      icon: LayoutDashboard, path: '/sg-vr/dashboard?tab=accueil' },
+        { label: 'Récapitulatifs', icon: FileText,        path: '/sg-vr/recapitulatifs' },
+        { label: 'Graphiques',     icon: BarChart2,       path: '/sg-vr/dashboard?tab=graphiques' },
     ],
+   vice_recteur: [
+    { label: 'Dashboard',        icon: LayoutDashboard, path: '/vice-recteur/dashboard' },
+    { label: "Voyages d'etudes", icon: MapPin,          path: '/vice-recteur/voyages-etudes' },
+],
     chef_departement: [
         { label: 'Dashboard',               icon: LayoutDashboard, path: '/chef-departement/dashboard' },
         { label: 'Nouvelles listes',        icon: Bell,            path: '/chef-departement/dashboard?tab=listes' },
@@ -55,39 +54,75 @@ const menuParRole = {
         { label: "Demandes d'autorisation", icon: CheckCircle,     path: '/chef-departement/dashboard?tab=autorisations' },
     ],
     directeur_ufr: [
-    { label: 'Dashboard',          icon: LayoutDashboard, path: '/directeur-ufr/dashboard' },
-    { label: 'En attente',         icon: FileText,        path: '/directeur-ufr/dashboard?tab=attente' },
-    { label: 'Transmis au Recteur', icon: CheckCircle,    path: '/directeur-ufr/dashboard?tab=transmis' },
-],
-   recteur: [
-    { label: 'Dashboard',               icon: LayoutDashboard, path: '/recteur/dashboard' },
-    { label: 'Arretes à signer',        icon: FileText,        path: '/recteur/dashboard?tab=arretes' },
-    { label: 'Autorisations de sortie', icon: CheckCircle,     path: '/recteur/dashboard?tab=autorisations' },
-],
+        { label: 'Dashboard',           icon: LayoutDashboard, path: '/directeur-ufr/dashboard' },
+        { label: 'En attente',          icon: FileText,        path: '/directeur-ufr/dashboard?tab=attente' },
+        { label: 'Transmis au Recteur', icon: CheckCircle,     path: '/directeur-ufr/dashboard?tab=transmis' },
+    ],
+    recteur: [
+        { label: 'Dashboard',               icon: LayoutDashboard, path: '/recteur/dashboard' },
+        { label: 'Arretes à signer',        icon: FileText,        path: '/recteur/dashboard?tab=arretes' },
+        { label: 'Autorisations de sortie', icon: CheckCircle,     path: '/recteur/dashboard?tab=autorisations' },
+    ],
     commission: [
         { label: 'Dashboard', icon: LayoutDashboard, path: '/commission/dashboard' },
     ],
-}
-const roleLabels = {
-   admin:            'Administrateur',
-   ddl:              'DDL',
-   enseignant:       'Enseignant',
-   drh:              'DRH',
-   sg_drh:           'SG - DRH',
-   chauffeur:        'Chauffeur',
-   sg_vr:            'SG - Vice-Recteur',
-   vice_recteur:     'Vice-Recteur',
-   chef_departement: 'Chef de Département',
-   directeur_ufr:    'Directeur UFR',
-   recteur:          'Recteur',
-   commission:       'Commission',
+    usager: [
+    { label: 'Dashboard',        icon: LayoutDashboard, path: '/usager/dashboard' },
+    { label: 'Réserver',         icon: Bus,             path: '/usager/reserver' },
+    { label: 'Scanner le bus',   icon: Camera,          path: '/usager/scanner' },
+    { label: 'Mes réservations', icon: Calendar,        path: '/usager/dashboard?tab=reservations' },
+{ label: 'Notifications',    icon: Bell,             path: '/usager/dashboard?tab=notifications' },
+],
 }
 
+const roleLabels = {
+    admin:            'Administrateur',
+    ddl:              'DDL',
+    enseignant:       'Enseignant',
+    drh:              'DRH',
+    sg_drh:           'SG - DRH',
+    chauffeur:        'Chauffeur',
+    sg_vr:            'SG - Vice-Recteur',
+    vice_recteur:     'Vice-Recteur',
+    chef_departement: 'Chef de Département',
+    directeur_ufr:    'Directeur UFR',
+    recteur:          'Recteur',
+    commission:       'Commission',
+    usager:           'Usager',
+}
 const getRoleLabel = (user) => {
-    if (user?.role === 'enseignant' && user?.statut === 'permanent') {
-        return 'Enseignant Permanent'
+    if (!user) return ''
+
+    switch (user.role) {
+        case 'enseignant':
+            if (user.statut === 'permanent')     return 'Enseignant Permanent'
+            if (user.statut === 'non_permanent') return 'Enseignant Non Permanent'
+            if (user.statut === 'contractuel')   return 'Enseignant Contractuel'
+            return 'Enseignant'
+
+        case 'usager':
+            if (user.type_profil === 'PATS')      return 'Personnel PATS'
+            if (user.type_profil === 'ATR')        return 'Agent Temporaire (ATR)'
+            if (user.type_profil === 'Vacataire')  return 'Vacataire'
+            if (user.statut === 'permanent')       return 'Personnel Permanent'
+            if (user.statut === 'non_permanent')   return 'Personnel Non Permanent'
+            if (user.statut === 'contractuel')     return 'Personnel Contractuel'
+            if (user.statut === 'vacataire')       return 'Vacataire'
+            return 'Usager'
+
+        case 'chauffeur':        return 'Chauffeur'
+        case 'drh':              return 'Directeur RH'
+        case 'sg_drh':           return 'SG - DRH'
+        case 'sg_vr':            return 'SG - Vice Rectorat'
+        case 'ddl':              return 'DDL'
+        case 'vice_recteur':     return 'Vice-Recteur'
+        case 'recteur':          return 'Recteur'
+        case 'chef_departement': return 'Chef de Département'
+        case 'directeur_ufr':    return 'Directeur UFR'
+        case 'commission':       return 'Commission'
+        case 'admin':            return 'Administrateur'
+        default:                 return user.role || ''
     }
-    return roleLabels[user?.role] || ''
 }
 
 const notifNavigation = {
@@ -101,25 +136,14 @@ const notifNavigation = {
     recteur:          '/recteur/dashboard',
     commission:       '/commission/dashboard',
     enseignant:       '/enseignant/voyages-etudes',
+    usager:           '/usager/dashboard',
 }
 
-// Composant avatar réutilisable
 function AvatarImg({ avatar, prenom, nom, size = 'md', className = '' }) {
-    const sizes = {
-        sm: 'w-8 h-8 text-xs',
-        md: 'w-9 h-9 text-sm',
-        lg: 'w-16 h-16 text-xl',
-    }
+    const sizes = { sm: 'w-8 h-8 text-xs', md: 'w-9 h-9 text-sm', lg: 'w-16 h-16 text-xl' }
     const initials = `${prenom?.[0] ?? ''}${nom?.[0] ?? ''}`
-
     if (avatar) {
-        return (
-            <img
-                src={avatar}
-                alt="avatar"
-                className={`${sizes[size]} rounded-full object-cover flex-shrink-0 ${className}`}
-            />
-        )
+        return <img src={avatar} alt="avatar" className={`${sizes[size]} rounded-full object-cover flex-shrink-0 ${className}`} />
     }
     return (
         <div className={`${sizes[size]} rounded-full flex items-center justify-center font-bold flex-shrink-0 bg-white/20 text-white ${className}`}>
@@ -130,16 +154,18 @@ function AvatarImg({ avatar, prenom, nom, size = 'md', className = '' }) {
 
 export default function Layout({ children }) {
     const { user, logout } = useAuth()
-    const navigate  = useNavigate()
-    const location  = useLocation()
+    const navigate   = useNavigate()
+    const location   = useLocation()
     const fileInputRef = useRef(null)
 
-    const [sidebarOpen, setSidebarOpen]     = useState(true)
-    const [avatar, setAvatar]               = useState(null)
-    const [profileOpen, setProfileOpen]     = useState(false)
-    const [uploading, setUploading]         = useState(false)
-    const [uploadMsg, setUploadMsg]         = useState('')
-    const [badges, setBadges]               = useState({
+    // Sur mobile, sidebar fermée par défaut
+    const isMobile = () => window.innerWidth < 768
+    const [sidebarOpen, setSidebarOpen] = useState(!isMobile())
+    const [avatar, setAvatar]           = useState(null)
+    const [profileOpen, setProfileOpen] = useState(false)
+    const [uploading, setUploading]     = useState(false)
+    const [uploadMsg, setUploadMsg]     = useState('')
+    const [badges, setBadges]           = useState({
         drhOrdres: 0, sgDrhOrdres: 0,
         viceRecteurVoyages: 0, viceRecteurRapports: 0,
         enAttente: 0, mesDemandes: 0, mesDemandesRejetees: 0,
@@ -150,7 +176,21 @@ export default function Layout({ children }) {
     const totalNotifs = notifications.filter(n => !n.lu).length
     const totalLues   = notifications.filter(n => n.lu).length
 
-    // Charger avatar au démarrage
+    // Fermer sidebar sur mobile quand on change de page
+    useEffect(() => {
+        if (isMobile()) setSidebarOpen(false)
+    }, [location.pathname])
+
+    // Gérer le resize
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth >= 768) setSidebarOpen(true)
+            else setSidebarOpen(false)
+        }
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
+    }, [])
+
     useEffect(() => {
         const fetchMe = async () => {
             try {
@@ -208,11 +248,25 @@ export default function Layout({ children }) {
             setAvatar(res.data.avatar)
             setUploadMsg('Photo mise à jour !')
         } catch {
-            setUploadMsg('Erreur lors de l\'upload.')
+            setUploadMsg("Erreur lors de l'upload.")
         } finally {
             setUploading(false)
         }
     }
+    const supprimerAvatar = async () => {
+    if (!window.confirm('Supprimer votre photo de profil ?')) return
+    try {
+        await api.delete('/profile/avatar')
+        setAvatar(null)
+        setUploadMsg('Photo supprimée avec succès')
+        setTimeout(() => setUploadMsg(''), 3000)
+    } catch {
+        setUploadMsg('Erreur lors de la suppression')
+        setTimeout(() => setUploadMsg(''), 3000)
+    }
+}
+
+
 
     const marquerLu = async (id) => {
         try {
@@ -263,12 +317,27 @@ export default function Layout({ children }) {
     }
 
     const menu = menuParRole[user?.role] || []
+    const mobile = isMobile()
 
     return (
-        <div className="min-h-screen flex bg-gray-100">
+        <div className="min-h-screen flex bg-gray-100 relative">
+
+            {/* Overlay mobile — fond sombre derrière la sidebar */}
+            {sidebarOpen && mobile && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-30 md:hidden"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
 
             {/* Sidebar */}
-            <aside className={`${sidebarOpen ? 'w-64' : 'w-16'} bg-blue-900 text-white flex flex-col transition-all duration-300 min-h-screen`}>
+            <aside className={`
+                bg-blue-900 text-white flex flex-col transition-all duration-300 min-h-screen z-40
+                ${mobile
+                    ? `fixed top-0 left-0 h-full w-64 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
+                    : `relative ${sidebarOpen ? 'w-64' : 'w-16'}`
+                }
+            `}>
 
                 {/* Logo */}
                 <div className="flex items-center gap-3 p-4 border-b border-blue-800">
@@ -279,16 +348,14 @@ export default function Layout({ children }) {
                 </div>
 
                 {/* Menu */}
-                <nav className="flex-1 p-3 space-y-1">
+                <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
                     {menu.map((item) => {
-                        const Icon     = item.icon
-                       const isActive = (location.pathname + location.search) === item.path
+                        const Icon = item.icon
+                        const isActive = (location.pathname + location.search) === item.path
                         return (
                             <Link key={item.path} to={item.path}
                                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                                    isActive
-                                        ? 'bg-white text-blue-900 font-semibold'
-                                        : 'text-blue-200 hover:bg-blue-800'
+                                    isActive ? 'bg-white text-blue-900 font-semibold' : 'text-blue-200 hover:bg-blue-800'
                                 }`}
                             >
                                 <Icon size={18} className="flex-shrink-0" />
@@ -327,14 +394,12 @@ export default function Layout({ children }) {
                         {totalLues > 0 && (
                             <button onClick={supprimerLues}
                                 className="w-full flex items-center gap-2 text-blue-300 hover:text-white text-xs px-2 py-1.5 rounded-lg hover:bg-blue-800 transition">
-                                <Trash2 size={13} />
-                                Supprimer lues ({totalLues})
+                                <Trash2 size={13} /> Supprimer lues ({totalLues})
                             </button>
                         )}
                         <button onClick={supprimerToutes}
                             className="w-full flex items-center gap-2 text-blue-300 hover:text-red-300 text-xs px-2 py-1.5 rounded-lg hover:bg-blue-800 transition">
-                            <Trash2 size={13} />
-                            Supprimer tout ({notifications.length})
+                            <Trash2 size={13} /> Supprimer tout ({notifications.length})
                         </button>
                     </div>
                 )}
@@ -343,7 +408,6 @@ export default function Layout({ children }) {
                 {sidebarOpen && (
                     <div className="p-4 border-t border-blue-800">
                         <div className="flex items-center gap-3 mb-3">
-                            {/* Avatar cliquable dans sidebar */}
                             <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                                 <AvatarImg avatar={avatar} prenom={user?.prenom} nom={user?.nom} size="md" />
                                 <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
@@ -364,15 +428,15 @@ export default function Layout({ children }) {
             </aside>
 
             {/* Main */}
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col min-w-0">
 
                 {/* Topbar */}
-                <header className="bg-white shadow-sm px-6 py-4 flex items-center justify-between">
+                <header className="bg-white shadow-sm px-4 md:px-6 py-4 flex items-center justify-between sticky top-0 z-20">
                     <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-gray-500 hover:text-gray-700">
-                        {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+                        {sidebarOpen && !mobile ? <X size={20} /> : <Menu size={20} />}
                     </button>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 md:gap-4">
 
                         {/* Cloche notifications */}
                         <div className="relative notif-dropdown">
@@ -387,7 +451,7 @@ export default function Layout({ children }) {
                             </button>
 
                             {notifOpen && (
-                                <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden">
+                                <div className="absolute right-0 mt-2 w-72 md:w-80 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden">
                                     <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50">
                                         <h3 className="font-semibold text-sm text-gray-800">
                                             Notifications {totalNotifs > 0 && <span className="text-red-500">({totalNotifs})</span>}
@@ -457,29 +521,26 @@ export default function Layout({ children }) {
                             )}
                         </div>
 
-                        {/* Avatar topbar — cliquable → dropdown profil */}
+                        {/* Avatar topbar */}
                         <div className="relative profile-dropdown">
                             <button onClick={() => setProfileOpen(!profileOpen)}
                                 className="flex items-center gap-2 hover:bg-gray-100 px-2 py-1 rounded-lg transition">
-                                <div className="relative">
-                                    {avatar ? (
-                                        <img src={avatar} alt="avatar"
-                                            className="w-8 h-8 rounded-full object-cover border-2 border-blue-200" />
-                                    ) : (
-                                        <div className="bg-blue-700 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                                            {user?.prenom?.[0]}{user?.nom?.[0]}
-                                        </div>
-                                    )}
-                                </div>
-                                <span className="text-sm font-medium text-gray-700">
+                                {avatar ? (
+                                    <img src={avatar} alt="avatar"
+                                        className="w-8 h-8 rounded-full object-cover border-2 border-blue-200" />
+                                ) : (
+                                    <div className="bg-blue-700 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                        {user?.prenom?.[0]}{user?.nom?.[0]}
+                                    </div>
+                                )}
+                                {/* Nom caché sur très petit écran */}
+                                <span className="hidden sm:block text-sm font-medium text-gray-700">
                                     {user?.prenom} {user?.nom}
                                 </span>
                             </button>
 
-                            {/* Dropdown profil */}
                             {profileOpen && (
                                 <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden">
-                                    {/* Header */}
                                     <div className="bg-blue-900 p-5 flex flex-col items-center gap-3">
                                         <div className="relative group">
                                             {avatar ? (
@@ -497,36 +558,53 @@ export default function Layout({ children }) {
                                             </button>
                                         </div>
                                         <div className="text-center">
-                                            <p className="text-white font-semibold">{user?.prenom} {user?.nom}</p>
-                                            <p className="text-blue-200 text-xs mt-0.5">{getRoleLabel(user)}</p>
-                                            {user?.email && <p className="text-blue-300 text-xs mt-0.5">{user?.email}</p>}
-                                        </div>
+    <p className="text-white font-semibold">{user?.prenom} {user?.nom}</p>
+    <p className="text-blue-200 text-xs mt-0.5">{getRoleLabel(user)}</p>
+    {user?.ufr && (
+        <p className="text-blue-300 text-xs mt-0.5">{user.ufr}</p>
+    )}
+    {user?.matricule && (
+        <p className="text-blue-300 text-xs mt-0.5">Mat. {user.matricule}</p>
+    )}
+    {user?.email && (
+        <p className="text-blue-300 text-xs mt-0.5">{user.email}</p>
+    )}
+</div>
                                     </div>
 
-                                    {/* Actions */}
-                                    <div className="p-3 space-y-1">
-                                        <button
-                                            onClick={() => fileInputRef.current?.click()}
-                                            disabled={uploading}
-                                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 text-sm text-gray-700 transition">
-                                            <Camera size={16} className="text-blue-600" />
-                                            {uploading ? 'Envoi en cours...' : 'Changer la photo de profil'}
-                                        </button>
+                                   <div className="p-3 space-y-1">
+    <button
+        onClick={() => fileInputRef.current?.click()}
+        disabled={uploading}
+        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 text-sm text-gray-700 transition">
+        <Camera size={16} className="text-blue-600" />
+        {uploading ? 'Envoi en cours...' : 'Changer la photo de profil'}
+    </button>
 
-                                        {uploadMsg && (
-                                            <p className={`text-xs px-3 py-1 rounded ${uploadMsg.includes('Erreur') ? 'text-red-500 bg-red-50' : 'text-green-600 bg-green-50'}`}>
-                                                {uploadMsg}
-                                            </p>
-                                        )}
 
-                                        <div className="border-t border-gray-100 my-1" />
+    {avatar && (
+        <button
+            onClick={supprimerAvatar}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-50 text-sm text-red-500 transition">
+            <Trash2 size={16} className="text-red-400" />
+            Supprimer la photo
+        </button>
+    )}
 
-                                        <button onClick={handleLogout}
-                                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-50 text-sm text-red-600 transition">
-                                            <LogOut size={16} />
-                                            Se déconnecter
-                                        </button>
-                                    </div>
+    {uploadMsg && (
+        <p className={`text-xs px-3 py-1 rounded ${uploadMsg.includes('Erreur') ? 'text-red-500 bg-red-50' : 'text-green-600 bg-green-50'}`}>
+            {uploadMsg}
+        </p>
+    )}
+
+    <div className="border-t border-gray-100 my-1" />
+
+    <button onClick={handleLogout}
+        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-50 text-sm text-red-600 transition">
+        <LogOut size={16} />
+        Se déconnecter
+    </button>
+</div>
                                 </div>
                             )}
                         </div>
@@ -534,7 +612,7 @@ export default function Layout({ children }) {
                 </header>
 
                 {/* Page content */}
-                <main className="flex-1 p-6 overflow-auto">
+                <main className="flex-1 p-4 md:p-6 overflow-auto">
                     {children}
                 </main>
             </div>
@@ -550,3 +628,7 @@ export default function Layout({ children }) {
         </div>
     )
 }
+
+
+
+
