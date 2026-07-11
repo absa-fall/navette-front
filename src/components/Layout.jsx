@@ -317,11 +317,21 @@ export default function Layout({ children }) {
     }
 
     const menu = menuParRole[user?.role] || []
+    const rolesAvecFondVoyage = ['recteur', 'vice_recteur', 'chef_departement', 'directeur_ufr']
+const afficherFondVoyage = rolesAvecFondVoyage.includes(user?.role)
+    || (user?.role === 'enseignant' && user?.statut === 'permanent')
+
+const fondImage = afficherFondVoyage ? '/avion-voyage.png' : '/bus1.png'
     const mobile = isMobile()
+return (
+    <div className="min-h-screen flex bg-gray-100 relative z-0">
 
-    return (
-        <div className="min-h-screen flex bg-gray-100 relative">
-
+    <img
+    src={fondImage}
+    alt=""
+    className="fixed inset-0 w-full h-full object-cover -z-10"
+/>
+<div className="fixed inset-0 bg-gradient-to-br from-white/60 via-blue-50/55 to-white/65 -z-10" />
             {/* Overlay mobile — fond sombre derrière la sidebar */}
             {sidebarOpen && mobile && (
                 <div

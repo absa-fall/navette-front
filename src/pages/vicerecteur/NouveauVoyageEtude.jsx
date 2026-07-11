@@ -24,6 +24,8 @@ export default function NouveauVoyageEtude() {
     const [selected, setSelected]           = useState([])
     const [manuels, setManuels]             = useState([])
     const [showAddModal, setShowAddModal]   = useState(false)
+    const [editingId, setEditingId] = useState(null)
+    const [showRecap, setShowRecap] = useState(false)
     const [addForm, setAddForm]             = useState({ prenom: '', nom: '', ufr: 'SATIC', departement: '', matricule: '' })
     const [loading, setLoading]             = useState(false)
     const [loadingEns, setLoadingEns]       = useState(true)
@@ -134,20 +136,48 @@ th { background: #ffffff; color: #111827; padding: 8px; text-align: left; font-s
     win.document.write(contenu)
     win.document.close()
 }
-    const ajouterManuel = () => {
-        if (!addForm.prenom || !addForm.nom) return
+   const ajouterManuel = () => {
+    if (!addForm.prenom || !addForm.nom) return
+
+    if (editingId) {
+        // Mode modification
+        setManuels(prev => prev.map(m => m.id === editingId ? { ...m, ...addForm } : m))
+        setEditingId(null)
+    } else {
+        // Mode ajout
         const fakeId = `manuel_${Date.now()}`
         const nouvel = { ...addForm, id: fakeId, date_embauche: null, _manuel: true }
         setManuels(prev => [...prev, nouvel])
         setSelected(prev => [...prev, fakeId])
-        setAddForm({ prenom: '', nom: '', ufr: 'SATIC', departement: '', matricule: '' })
-        setShowAddModal(false)
     }
+
+    setAddForm({ prenom: '', nom: '', ufr: 'SATIC', departement: '', matricule: '' })
+    setShowAddModal(false)
+}
+
+const ouvrirModification = (m) => {
+    setAddForm({ prenom: m.prenom, nom: m.nom, ufr: m.ufr, departement: m.departement, matricule: m.matricule })
+    setEditingId(m.id)
+    setShowAddModal(true)
+}
+
+const fermerModal = () => {
+    setShowAddModal(false)
+    setEditingId(null)
+    setAddForm({ prenom: '', nom: '', ufr: 'SATIC', departement: '', matricule: '' })
+}
 
     const retirerManuel = (id) => {
         setManuels(prev => prev.filter(e => e.id !== id))
         setSelected(prev => prev.filter(i => i !== id))
     }
+    const retirerDeLaSelection = (item) => {
+    if (item._manuel) {
+        retirerManuel(item.id)
+    } else {
+        toggleSelect(item.id)
+    }
+}
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -235,14 +265,38 @@ th { background: #ffffff; color: #111827; padding: 8px; text-align: left; font-s
                             {/* Récap sélection + actions, visible en permanence à gauche */}
                             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4 sticky top-6">
                                 <div className="flex items-center justify-between">
-                                    <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-                                        <Users size={18} className="text-blue-700" />
-                                        Bénéficiaires
-                                    </h2>
-                                    <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">
-                                        {selected.length}
-                                    </span>
-                                </div>
+    <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+        <Users size={18} className="text-blue-700" />
+        Bénéficiaires
+    </h2>
+    <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">
+        {selected.length}
+    </span>
+</div>
+
+{selected.length > 0 && (
+    <button type="button" onClick={() => setShowRecap(prev => !prev)}
+        className="w-full text-xs text-blue-700 hover:underline font-semibold text-left">
+        {showRecap ? 'Masquer la liste' : `Voir la liste complète (${selected.length})`}
+    </button>
+)}
+
+{showRecap && (
+    <div className="space-y-1.5 max-h-64 overflow-y-auto border border-gray-100 rounded-xl p-2 bg-gray-50">
+        {tousEnseignants.filter(e => selected.includes(e.id)).map(e => (
+            <div key={e.id} className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-3 py-1.5">
+                <span className="text-xs text-gray-700 truncate">
+                    {e.prenom} {e.nom} — <span className="text-gray-400">{e.ufr || '-'}</span>
+                    {e._manuel && <span className="ml-1 text-orange-500 font-medium">(manuel)</span>}
+                </span>
+                <button type="button" onClick={() => retirerDeLaSelection(e)}
+                    className="text-red-500 hover:text-red-700 shrink-0 ml-2">
+                    <X size={13} />
+                </button>
+            </div>
+        ))}
+    </div>
+)}
 
                                 <div className="flex flex-col gap-2">
                                     {selected.length > 0 && (
@@ -260,15 +314,21 @@ th { background: #ffffff; color: #111827; padding: 8px; text-align: left; font-s
                                 {manuels.length > 0 && (
                                     <div className="space-y-1.5 pt-2 border-t border-gray-100">
                                         <p className="text-xs font-semibold text-orange-600">Ajoutés manuellement :</p>
-                                        {manuels.map(m => (
-                                            <div key={m.id} className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
-                                                <span className="text-xs text-gray-800">{m.prenom} {m.nom} — {m.ufr}</span>
-                                                <button type="button" onClick={() => retirerManuel(m.id)}
-                                                    className="text-xs text-red-500 hover:text-red-700">
-                                                    <X size={14} />
-                                                </button>
-                                            </div>
-                                        ))}
+                                       {manuels.map(m => (
+    <div key={m.id} className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+        <span className="text-xs text-gray-800">{m.prenom} {m.nom} — {m.ufr}</span>
+        <div className="flex items-center gap-2">
+            <button type="button" onClick={() => ouvrirModification(m)}
+                className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                Modifier
+            </button>
+            <button type="button" onClick={() => retirerManuel(m.id)}
+                className="text-xs text-red-500 hover:text-red-700">
+                <X size={14} />
+            </button>
+        </div>
+    </div>
+))}
                                     </div>
                                 )}
 
@@ -461,10 +521,10 @@ th { background: #ffffff; color: #111827; padding: 8px; text-align: left; font-s
                 <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
                         <div className="flex items-center justify-between">
-                            <h3 className="font-bold text-gray-800">Ajouter manuellement</h3>
-                            <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600">
-                                <X size={20} />
-                            </button>
+                           <h3 className="font-bold text-gray-800">{editingId ? 'Modifier l\'enseignant' : 'Ajouter manuellement'}</h3>
+<button onClick={fermerModal} className="text-gray-400 hover:text-gray-600">
+    <X size={20} />
+</button>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
@@ -505,15 +565,15 @@ th { background: #ffffff; color: #111827; padding: 8px; text-align: left; font-s
                                 placeholder="Ex: PER001" />
                         </div>
                         <div className="flex gap-3 pt-2">
-                            <button type="button" onClick={() => setShowAddModal(false)}
-                                className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition">
-                                Annuler
-                            </button>
-                            <button type="button" onClick={ajouterManuel}
-                                disabled={!addForm.prenom || !addForm.nom}
-                                className="flex-1 bg-blue-700 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-800 transition disabled:opacity-50">
-                                Ajouter
-                            </button>
+                           <button type="button" onClick={fermerModal}
+    className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition">
+    Annuler
+</button>
+<button type="button" onClick={ajouterManuel}
+    disabled={!addForm.prenom || !addForm.nom}
+    className="flex-1 bg-blue-700 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-800 transition disabled:opacity-50">
+    {editingId ? 'Enregistrer' : 'Ajouter'}
+</button>
                         </div>
                     </div>
                 </div>

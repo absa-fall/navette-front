@@ -96,7 +96,22 @@ export default function RecteurDashboard() {
             showMsg('Suppression effectuee')
         } catch { showMsg('Erreur lors de la suppression', true) }
     }
-
+const supprimerArretes = async (voyageIds) => {
+    if (!confirm(`Supprimer ${voyageIds.length} arrete(s) ?`)) return
+    try {
+        for (const voyageId of voyageIds) {
+            const voyage = signes.find(v => v.id === voyageId)
+            if (voyage?.arrete?.id) {
+                await api.delete(`/arretes/${voyage.arrete.id}`)
+            }
+        }
+        setSelectedSignes([])
+        showMsg('Arrete(s) supprime(s)')
+        fetchAll()
+    } catch {
+        showMsg('Erreur lors de la suppression', true)
+    }
+}
     // ===== SELECTION ABSENCES EN ATTENTE =====
     const toggleSelectAbsAttente = (id) =>
         setSelectedAbsAttente(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
@@ -281,8 +296,8 @@ export default function RecteurDashboard() {
                                         onSelectAll={() => setSelectedDefinitifs(
                                             selectedDefinitifs.length === definitifs.length ? [] : definitifs.map(v => v.id)
                                         )}
-                                        onDeleteSelected={() => supprimerVoyages(selectedDefinitifs)}
-                                        onDeleteAll={() => supprimerVoyages(definitifs.map(v => v.id))}
+                                       onDeleteSelected={() => supprimerArretes(selectedSignes)}
+onDeleteAll={() => supprimerArretes(signes.map(v => v.id))}
                                     />
                                     {definitifs.map(voyage => (
                                         <div key={voyage.id} className={`bg-white rounded-2xl border shadow-sm p-5 transition ${
@@ -479,8 +494,8 @@ export default function RecteurDashboard() {
                                         onSelectAll={() => setSelectedSignes(
                                             selectedSignes.length === signes.length ? [] : signes.map(v => v.id)
                                         )}
-                                        onDeleteSelected={() => supprimerVoyages(selectedSignes)}
-                                        onDeleteAll={() => supprimerVoyages(signes.map(v => v.id))}
+                                       onDeleteSelected={() => supprimerArretes(selectedSignes)}
+onDeleteAll={() => supprimerArretes(signes.map(v => v.id))}
                                     />
                                     {signes.map(voyage => (
                                         <div key={voyage.id} className={`rounded-2xl p-4 flex items-center justify-between border transition ${

@@ -24,17 +24,26 @@ export default function MotDePasseOublie() {
         }
     }
 
-    return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <div className="bg-blue-700 text-white p-4">
-                <div className="max-w-md mx-auto flex items-center gap-2">
-                    <Bus size={22} />
-                    <span className="font-bold text-lg">UADB Mobilité</span>
-                </div>
-            </div>
+   return (
+    <div className="min-h-screen relative">
 
-            <div className="max-w-md mx-auto p-6">
+        {/* Image de fond fixe */}
+        <img
+            src="/bus1.png"
+            alt=""
+            className="fixed inset-0 w-full h-full object-cover -z-10"
+        />
+        <div className="fixed inset-0 bg-gradient-to-br from-white/60 via-blue-50/55 to-white/65 -z-10" />
+
+        {/* Header */}
+        <div className="bg-blue-700/90 backdrop-blur-sm text-white p-4 relative z-10">
+            <div className="max-w-md mx-auto flex items-center gap-2">
+                <img src="/logo-uadb.png" alt="Logo UADB" className="w-6 h-6 object-contain bg-white rounded-md p-0.5" />
+                <span className="font-bold text-lg">UADB Mobilité</span>
+            </div>
+        </div>
+
+        <div className="max-w-md mx-auto p-6 relative z-10">
                 <div className="bg-white rounded-2xl shadow-lg p-8">
 
                     {success ? (

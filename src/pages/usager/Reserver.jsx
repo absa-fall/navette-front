@@ -155,8 +155,17 @@ const handleSubmit = async (e) => {
     const villes = ['Bambey', 'Dakar', 'Thies', 'Ngouniane']
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <div className="bg-blue-700 text-white p-4">
+    <div className="min-h-screen relative">
+
+        {/* Image de fond fixe */}
+        <img
+            src="/bus1.png"
+            alt=""
+            className="fixed inset-0 w-full h-full object-cover -z-10"
+        />
+        <div className="fixed inset-0 bg-gradient-to-br from-white/60 via-blue-50/55 to-white/65 -z-10" />
+
+        <div className="bg-blue-700/90 backdrop-blur-sm text-white p-4 relative z-10">
                 <div className="max-w-lg mx-auto flex items-center gap-3">
                     <button onClick={() => navigate(dashboard)}
                         className="p-2 hover:bg-white/20 rounded-lg transition">
@@ -169,8 +178,8 @@ const handleSubmit = async (e) => {
                 </div>
             </div>
 
-            <div className="max-w-lg mx-auto p-6">
-                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6">
+           <div className="max-w-lg mx-auto p-6 relative z-10">
+    <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6">
                     <p className="text-sm text-blue-800">
                         <span className="font-semibold">Reservation pour :</span>{' '}
                         {user?.prenom} {user?.nom} · {user?.ufr} · {user?.statut}

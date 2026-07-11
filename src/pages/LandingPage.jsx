@@ -8,6 +8,11 @@ import { Bus, QrCode, Calendar, MapPin, Shield, Clock, ArrowRight, Phone, Mail, 
 
 const slides = [
     {
+        image: '/rectorat-uadb.png',
+        titre: 'Université Alioune Diop de Bambey',
+        sous_titre: 'Excellence académique et innovation depuis sa création',
+    },
+    {
         image: '/bus1.png',
         titre: 'Votre navette universitaire',
         sous_titre: 'Réservez votre place en quelques secondes',
@@ -33,7 +38,6 @@ const slides = [
         sous_titre: 'Réservez, scannez, montez — c\'est tout',
     },
 ]
-
 const trajets = [
     { depart: 'Bambey',    arrivee: 'Dakar'      },
     { depart: 'Dakar',     arrivee: 'Bambey'     },

@@ -69,17 +69,28 @@ if (!passwordRegex.test(form.password)) {
 }
             await api.post('/register', data)
             setSuccess(true)
-        } catch (err) {
-            setError(err.response?.data?.message || 'Erreur lors de la création du compte')
-        } finally {
-            setLoading(false)
-        }
+       } catch (err) {
+    console.error('DEBUG erreur complète:', err)
+    setError(
+        err.response?.data?.message
+        || err.message
+        || 'Erreur inconnue à l\'inscription'
+    )
+} finally {
+    setLoading(false)
+}
     }
 
-    if (success) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-                <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+   if (success) {
+    return (
+        <div className="min-h-screen relative flex items-center justify-center p-6">
+            <img
+                src="/bus1.png"
+                alt="Bus UADB"
+                className="fixed inset-0 w-full h-full object-cover -z-10"
+            />
+            <div className="fixed inset-0 bg-gradient-to-br from-blue-900/85 via-blue-800/75 to-blue-900/90 -z-10" />
+            <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center relative z-10">
                     <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <BadgeCheck size={40} className="text-green-600" />
                     </div>
@@ -99,15 +110,24 @@ if (!passwordRegex.test(form.password)) {
         )
     }
 
-    return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <div className="bg-blue-700 text-white p-4">
+   return (
+    <div className="min-h-screen relative">
+
+       {/* Image de fond fixe */}
+<img
+    src="/rectorat-uadb.png"
+    alt="Rectorat UADB"
+    className="fixed inset-0 w-full h-full object-cover -z-10"
+/>
+        <div className="fixed inset-0 bg-gradient-to-br from-blue-900/85 via-blue-800/75 to-blue-900/90 -z-10" />
+
+        {/* Header */}
+        <div className="bg-blue-900/70 backdrop-blur-sm text-white p-4 relative z-10">
                 <div className="max-w-lg mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <Bus size={22} />
-                        <span className="font-bold text-lg">UADB Mobilité</span>
-                    </div>
+    <img src="/logo-uadb.png" alt="Logo UADB" className="w-7 h-7 object-contain bg-white rounded-lg p-0.5" />
+    <span className="font-bold text-lg">UADB Mobilité</span>
+</div>
                     <button onClick={() => navigate('/login')}
                         className="text-sm bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition">
                         Se connecter
@@ -115,8 +135,8 @@ if (!passwordRegex.test(form.password)) {
                 </div>
             </div>
 
-            <div className="max-w-lg mx-auto p-6">
-                <div className="bg-white rounded-2xl shadow-lg p-8">
+           <div className="max-w-lg mx-auto p-6 relative z-10">
+    <div className="bg-white rounded-2xl shadow-lg p-8">
                     <h1 className="text-2xl font-bold text-gray-800 mb-2">Créer un compte</h1>
                     <p className="text-gray-500 text-sm mb-6">
                         Inscrivez-vous pour réserver la navette UADB
