@@ -75,10 +75,10 @@ export default function SGDRHDashboard() {
                     </div>
                 </div>
 
-                {/* CORRECTION : Grand card "Ordres à signer" dynamique */}
+                
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold text-gray-800">Ordres à signer</h2>
+                        <h2 className="text-lg font-semibold text-gray-800">Ordres</h2>
                         {stats.aSigner > 0 && (
                             <button 
                                 onClick={() => navigate('/sg-drh/ordres?statut=a_signer')}

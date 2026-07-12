@@ -29,7 +29,7 @@ export default function MotDePasseOublie() {
 
         {/* Image de fond fixe */}
         <img
-            src="/bus1.png"
+            src="/rectorat-uadb.png"
             alt=""
             className="fixed inset-0 w-full h-full object-cover -z-10"
         />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
 import {
@@ -23,10 +23,12 @@ const statutJustifConfig = {
 
 export default function VoyagesEtudes() {
     const navigate = useNavigate()
+    const location = useLocation()
+    const tabParam = new URLSearchParams(location.search).get('tab')
     const [voyages, setVoyages]                       = useState([])
     const [dossiers, setDossiers]                     = useState([])
     const [loading, setLoading]                       = useState(true)
-    const [activeTab, setActiveTab]                   = useState('voyages')
+    const [activeTab, setActiveTab]                   = useState(tabParam === 'dossiers' ? 'dossiers' : 'voyages')
     const [expanded, setExpanded]                     = useState(null)
     const [selectedDefinitifs, setSelectedDefinitifs] = useState({})
     const [avisOuvert, setAvisOuvert]                 = useState(null)
@@ -152,16 +154,15 @@ export default function VoyagesEtudes() {
         showMsg(`${reussis.length}/${ids.length} voyage(s) supprimé(s)`, reussis.length < ids.length)
     }
 }
-
-   const supprimerDossiers = async (ids) => {
+    const supprimerDossiers = async (ids) => {
     if (!confirm(`Supprimer ${ids.length} dossier(s) ?`)) return
     await Promise.allSettled(
         ids.map(id => api.delete(`/voyages-etudes/beneficiaire/${id}/dossier`))
     )
     setSelectedDossiers([])
     showMsg('Suppression effectuée')
-    fetchDossiers() 
-}
+    fetchDossiers()
+ }
     const getStatutAutorisationLabel = (statut) => {
         const map = {
             non_demande:          { label: 'Non demande',       color: 'bg-gray-100 text-gray-600' },
@@ -349,8 +350,7 @@ export default function VoyagesEtudes() {
                                                 {voyage.description && (
                                                     <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-3">{voyage.description}</p>
                                                 )}
-
-                                               {voyage.arrete_recteur && definitifs.length > 0 && (
+                                                {voyage.arrete_recteur && definitifs.length > 0 && (
     <div className="flex gap-2 flex-wrap">
         <button onClick={() => notifierBeneficiaires(voyage.id)}
             disabled={actionLoading === 'notif_' + voyage.id}
@@ -593,8 +593,7 @@ export default function VoyagesEtudes() {
                                                     </div>
                                                 </div>
                                             )}
-
-                                         {d.autorisation_absence && d.autorisation_absence.id && (
+                                          {d.autorisation_absence && d.autorisation_absence.id && (
     <button onClick={() => navigate('/autorisation-absence/' + d.autorisation_absence.id + '/document')}
         className="flex items-center gap-2 border border-green-600 text-green-600 hover:bg-green-50 px-4 py-2 rounded-xl text-sm font-semibold transition">
         <Eye size={14} /> Voir l'autorisation d'absence

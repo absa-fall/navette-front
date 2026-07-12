@@ -158,7 +158,6 @@ export default function Layout({ children }) {
     const location   = useLocation()
     const fileInputRef = useRef(null)
 
-    // Sur mobile, sidebar fermée par défaut
     const isMobile = () => window.innerWidth < 768
     const [sidebarOpen, setSidebarOpen] = useState(!isMobile())
     const [avatar, setAvatar]           = useState(null)
@@ -176,12 +175,10 @@ export default function Layout({ children }) {
     const totalNotifs = notifications.filter(n => !n.lu).length
     const totalLues   = notifications.filter(n => n.lu).length
 
-    // Fermer sidebar sur mobile quand on change de page
     useEffect(() => {
         if (isMobile()) setSidebarOpen(false)
     }, [location.pathname])
 
-    // Gérer le resize
     useEffect(() => {
         const handleResize = () => {
             if (window.innerWidth >= 768) setSidebarOpen(true)
@@ -266,8 +263,6 @@ export default function Layout({ children }) {
     }
 }
 
-
-
     const marquerLu = async (id) => {
         try {
             await api.patch(`/notifications/${id}/lu`)
@@ -317,78 +312,67 @@ export default function Layout({ children }) {
     }
 
     const menu = menuParRole[user?.role] || []
-    const rolesAvecFondVoyage = ['recteur', 'vice_recteur', 'chef_departement', 'directeur_ufr']
-const afficherFondVoyage = rolesAvecFondVoyage.includes(user?.role)
-    || (user?.role === 'enseignant' && user?.statut === 'permanent')
-
-const fondImage = afficherFondVoyage ? '/avion-voyage.png' : '/bus1.png'
     const mobile = isMobile()
-return (
-    <div className="min-h-screen flex bg-gray-100 relative z-0">
 
-    <img
-    src={fondImage}
-    alt=""
-    className="fixed inset-0 w-full h-full object-cover -z-10"
-/>
-<div className="fixed inset-0 bg-gradient-to-br from-white/60 via-blue-50/55 to-white/65 -z-10" />
-            {/* Overlay mobile — fond sombre derrière la sidebar */}
+    return (
+        <div className="min-h-screen flex bg-[#F8FAFC]">
+
             {sidebarOpen && mobile && (
                 <div
-                    className="fixed inset-0 bg-black/50 z-30 md:hidden"
+                    className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-30 md:hidden transition-opacity"
                     onClick={() => setSidebarOpen(false)}
                 />
             )}
 
-            {/* Sidebar */}
             <aside className={`
-                bg-blue-900 text-white flex flex-col transition-all duration-300 min-h-screen z-40
+                bg-gradient-to-b from-[#1E3A8A] to-[#16295F] text-white flex flex-col
+                transition-all duration-300 ease-in-out min-h-screen z-40 shadow-2xl shadow-blue-950/20
                 ${mobile
                     ? `fixed top-0 left-0 h-full w-64 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
-                    : `relative ${sidebarOpen ? 'w-64' : 'w-16'}`
+                    : `relative ${sidebarOpen ? 'w-64' : 'w-[72px]'}`
                 }
             `}>
 
-                {/* Logo */}
-                <div className="flex items-center gap-3 p-4 border-b border-blue-800">
-                    <div className="bg-white/20 p-2 rounded-xl flex-shrink-0">
+                <div className={`flex items-center gap-3 h-16 border-b border-white/10 ${sidebarOpen ? 'px-5' : 'px-4 justify-center'}`}>
+                    <div className="bg-white/15 p-2 rounded-xl flex-shrink-0 shadow-inner shadow-white/5">
                         <Bus size={20} className="text-white" />
                     </div>
-                    {sidebarOpen && <span className="font-bold text-sm">UADB Mobilité</span>}
+                    {sidebarOpen && <span className="font-bold text-[15px] tracking-tight">UADB Mobilité</span>}
                 </div>
 
-                {/* Menu */}
-                <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+                <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto overflow-x-hidden">
                     {menu.map((item) => {
                         const Icon = item.icon
                         const isActive = (location.pathname + location.search) === item.path
                         return (
                             <Link key={item.path} to={item.path}
-                                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                                    isActive ? 'bg-white text-blue-900 font-semibold' : 'text-blue-200 hover:bg-blue-800'
-                                }`}
+                                className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+                                    isActive
+                                        ? 'bg-white text-blue-900 font-semibold shadow-md shadow-blue-950/20'
+                                        : 'text-blue-100/80 hover:bg-white/10 hover:text-white'
+                                } ${!sidebarOpen ? 'justify-center' : ''}`}
                             >
-                                <Icon size={18} className="flex-shrink-0" />
+                                <Icon size={18} className={`flex-shrink-0 transition-transform duration-200 ${!isActive ? 'group-hover:scale-110' : ''}`} />
                                 {sidebarOpen && (
                                     <>
                                         <span className="text-sm flex-1">{item.label}</span>
                                         {item.path === '/drh/ordres' && badges.drhOrdres > 0 && (
-                                            <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{badges.drhOrdres}</span>
+                                            <span className="bg-red-500 text-white text-[11px] font-semibold px-2 py-0.5 rounded-full shadow-sm shadow-red-900/30">{badges.drhOrdres}</span>
                                         )}
                                         {item.path === '/sg-drh/ordres' && badges.sgDrhOrdres > 0 && (
-                                            <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{badges.sgDrhOrdres}</span>
+                                            <span className="bg-red-500 text-white text-[11px] font-semibold px-2 py-0.5 rounded-full shadow-sm shadow-red-900/30">{badges.sgDrhOrdres}</span>
                                         )}
                                         {item.path === '/vice-recteur/voyages' && badges.viceRecteurVoyages > 0 && (
-                                            <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">{badges.viceRecteurVoyages}</span>
+                                            <span className="bg-orange-500 text-white text-[11px] font-semibold px-2 py-0.5 rounded-full shadow-sm shadow-orange-900/30">{badges.viceRecteurVoyages}</span>
                                         )}
                                         {item.path === '/vice-recteur/rapports' && badges.viceRecteurRapports > 0 && (
-                                            <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">{badges.viceRecteurRapports}</span>
+                                            <span className="bg-emerald-500 text-white text-[11px] font-semibold px-2 py-0.5 rounded-full shadow-sm shadow-emerald-900/30">{badges.viceRecteurRapports}</span>
                                         )}
                                         {item.path === '/chauffeur/trajets' && badges.enAttente > 0 && (
-                                            <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{badges.enAttente}</span>
+                                            <span className="bg-red-500 text-white text-[11px] font-semibold px-2 py-0.5 rounded-full shadow-sm shadow-red-900/30">{badges.enAttente}</span>
                                         )}
                                         {item.path === '/ddl/navettes' && (badges.mesDemandes + badges.mesDemandesRejetees) > 0 && (
-                                            <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{badges.mesDemandes + badges.mesDemandesRejetees}</span>
+                                            <span className="bg-red-500 text-white text-[11px] font-semibold px-2 py-0.5 rounded-full shadow-sm shadow-red-900/30">{badges.mesDemandes + badges.mesDemandesRejetees}</span>
                                         )}
                                         {isActive && <ChevronRight size={14} className="ml-auto" />}
                                     </>
@@ -398,99 +382,95 @@ return (
                     })}
                 </nav>
 
-                {/* Suppression notifs bas sidebar */}
                 {sidebarOpen && notifications.length > 0 && (
                     <div className="px-3 pb-2 space-y-1">
                         {totalLues > 0 && (
                             <button onClick={supprimerLues}
-                                className="w-full flex items-center gap-2 text-blue-300 hover:text-white text-xs px-2 py-1.5 rounded-lg hover:bg-blue-800 transition">
+                                className="w-full flex items-center gap-2 text-blue-200/70 hover:text-white text-xs px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors duration-200">
                                 <Trash2 size={13} /> Supprimer lues ({totalLues})
                             </button>
                         )}
                         <button onClick={supprimerToutes}
-                            className="w-full flex items-center gap-2 text-blue-300 hover:text-red-300 text-xs px-2 py-1.5 rounded-lg hover:bg-blue-800 transition">
+                            className="w-full flex items-center gap-2 text-blue-200/70 hover:text-red-300 text-xs px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors duration-200">
                             <Trash2 size={13} /> Supprimer tout ({notifications.length})
                         </button>
                     </div>
                 )}
 
-                {/* User info sidebar */}
                 {sidebarOpen && (
-                    <div className="p-4 border-t border-blue-800">
-                        <div className="flex items-center gap-3 mb-3">
+                    <div className="p-3 border-t border-white/10">
+                        <div className="flex items-center gap-3 mb-2 p-2 rounded-xl hover:bg-white/5 transition-colors duration-200">
                             <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                                <AvatarImg avatar={avatar} prenom={user?.prenom} nom={user?.nom} size="md" />
-                                <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                                <AvatarImg avatar={avatar} prenom={user?.prenom} nom={user?.nom} size="md" className="ring-2 ring-white/20" />
+                                <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
                                     <Camera size={12} className="text-white" />
                                 </div>
                             </div>
                             <div className="overflow-hidden">
                                 <p className="text-sm font-semibold truncate">{user?.prenom} {user?.nom}</p>
-                                <p className="text-xs text-blue-300">{getRoleLabel(user)}</p>
+                                <p className="text-xs text-blue-200/70 truncate">{getRoleLabel(user)}</p>
                             </div>
                         </div>
                         <button onClick={handleLogout}
-                            className="w-full flex items-center gap-2 text-blue-300 hover:text-white text-sm px-2 py-2 rounded-lg hover:bg-blue-800 transition">
+                            className="w-full flex items-center gap-2 text-blue-200/70 hover:text-white text-sm px-3 py-2 rounded-lg hover:bg-white/10 transition-colors duration-200">
                             <LogOut size={16} /> Se déconnecter
                         </button>
                     </div>
                 )}
             </aside>
 
-            {/* Main */}
             <div className="flex-1 flex flex-col min-w-0">
 
-                {/* Topbar */}
-                <header className="bg-white shadow-sm px-4 md:px-6 py-4 flex items-center justify-between sticky top-0 z-20">
-                    <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-gray-500 hover:text-gray-700">
+                <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 md:px-6 h-16 flex items-center justify-between sticky top-0 z-20 shadow-sm shadow-slate-200/50">
+                    <button onClick={() => setSidebarOpen(!sidebarOpen)}
+                        className="text-slate-500 hover:text-slate-800 hover:bg-slate-100 p-2 rounded-lg transition-colors duration-200">
                         {sidebarOpen && !mobile ? <X size={20} /> : <Menu size={20} />}
                     </button>
 
-                    <div className="flex items-center gap-2 md:gap-4">
+                    <div className="flex items-center gap-1.5 md:gap-3">
 
-                        {/* Cloche notifications */}
                         <div className="relative notif-dropdown">
                             <button onClick={() => setNotifOpen(!notifOpen)}
-                                className="relative text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition">
+                                className="relative text-slate-500 hover:text-slate-800 p-2.5 rounded-full hover:bg-slate-100 transition-colors duration-200">
                                 <Bell size={20} />
                                 {totalNotifs > 0 && (
-                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold animate-pulse">
+                                    <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] w-[18px] h-[18px] rounded-full flex items-center justify-center font-bold ring-2 ring-white animate-pulse">
                                         {totalNotifs > 9 ? '9+' : totalNotifs}
                                     </span>
                                 )}
                             </button>
 
                             {notifOpen && (
-                                <div className="absolute right-0 mt-2 w-72 md:w-80 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden">
-                                    <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50">
-                                        <h3 className="font-semibold text-sm text-gray-800">
+                                <div className="absolute right-0 mt-2 w-72 md:w-80 bg-white rounded-2xl shadow-xl shadow-slate-300/40 border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/80">
+                                        <h3 className="font-semibold text-sm text-slate-800">
                                             Notifications {totalNotifs > 0 && <span className="text-red-500">({totalNotifs})</span>}
                                         </h3>
                                         <div className="flex gap-2">
                                             {totalNotifs > 0 && (
                                                 <button onClick={marquerToutLu}
-                                                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium">
+                                                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors">
                                                     <CheckCheck size={12} /> Tout lire
                                                 </button>
                                             )}
                                             {totalLues > 0 && (
                                                 <button onClick={supprimerLues}
-                                                    className="text-xs text-orange-600 hover:text-orange-800 font-medium">
+                                                    className="text-xs text-orange-600 hover:text-orange-800 font-medium transition-colors">
                                                     Effacer lues
                                                 </button>
                                             )}
                                             {notifications.length > 0 && (
                                                 <button onClick={supprimerToutes}
-                                                    className="text-xs text-red-600 hover:text-red-800 font-medium">
+                                                    className="text-xs text-red-600 hover:text-red-800 font-medium transition-colors">
                                                     Tout effacer
                                                 </button>
                                             )}
                                         </div>
                                     </div>
 
-                                    <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
+                                    <div className="max-h-80 overflow-y-auto divide-y divide-slate-50">
                                         {notifications.length === 0 ? (
-                                            <div className="p-6 text-center text-gray-400">
+                                            <div className="p-6 text-center text-slate-400">
                                                 <Bell size={32} className="mx-auto mb-2 opacity-30" />
                                                 <p className="text-sm">Aucune notification</p>
                                             </div>
@@ -498,16 +478,16 @@ return (
                                             notifications.map(notif => (
                                                 <div key={notif.id}
                                                     onClick={() => handleNotifClick(notif)}
-                                                    className={`p-4 cursor-pointer hover:bg-gray-50 transition ${!notif.lu ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`}
+                                                    className={`p-4 cursor-pointer hover:bg-slate-50 transition-colors duration-150 ${!notif.lu ? 'bg-blue-50/60 border-l-4 border-l-blue-500' : ''}`}
                                                 >
                                                     <div className="flex items-start gap-3">
-                                                        <div className={`p-2 rounded-lg flex-shrink-0 ${!notif.lu ? 'bg-blue-100' : 'bg-gray-100'}`}>
-                                                            <Bell size={14} className={!notif.lu ? 'text-blue-600' : 'text-gray-400'} />
+                                                        <div className={`p-2 rounded-lg flex-shrink-0 ${!notif.lu ? 'bg-blue-100' : 'bg-slate-100'}`}>
+                                                            <Bell size={14} className={!notif.lu ? 'text-blue-600' : 'text-slate-400'} />
                                                         </div>
                                                         <div className="flex-1 min-w-0">
-                                                            <p className="text-sm font-medium text-gray-800 truncate">{notif.titre}</p>
-                                                            <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{notif.message}</p>
-                                                            <p className="text-xs text-gray-400 mt-1">
+                                                            <p className="text-sm font-medium text-slate-800 truncate">{notif.titre}</p>
+                                                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{notif.message}</p>
+                                                            <p className="text-xs text-slate-400 mt-1">
                                                                 {new Date(notif.created_at).toLocaleDateString('fr-FR', {
                                                                     day: 'numeric', month: 'short',
                                                                     hour: '2-digit', minute: '2-digit'
@@ -518,7 +498,7 @@ return (
                                                             {!notif.lu && <div className="w-2 h-2 bg-blue-500 rounded-full" />}
                                                             <button
                                                                 onClick={e => { e.stopPropagation(); supprimerNotification(notif.id) }}
-                                                                className="text-gray-300 hover:text-red-500 transition">
+                                                                className="text-slate-300 hover:text-red-500 transition-colors duration-150">
                                                                 <Trash2 size={13} />
                                                             </button>
                                                         </div>
@@ -531,39 +511,37 @@ return (
                             )}
                         </div>
 
-                        {/* Avatar topbar */}
                         <div className="relative profile-dropdown">
                             <button onClick={() => setProfileOpen(!profileOpen)}
-                                className="flex items-center gap-2 hover:bg-gray-100 px-2 py-1 rounded-lg transition">
+                                className="flex items-center gap-2 hover:bg-slate-100 pl-1.5 pr-3 py-1.5 rounded-full transition-colors duration-200">
                                 {avatar ? (
                                     <img src={avatar} alt="avatar"
-                                        className="w-8 h-8 rounded-full object-cover border-2 border-blue-200" />
+                                        className="w-8 h-8 rounded-full object-cover ring-2 ring-blue-100" />
                                 ) : (
-                                    <div className="bg-blue-700 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                    <div className="bg-blue-700 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-blue-100">
                                         {user?.prenom?.[0]}{user?.nom?.[0]}
                                     </div>
                                 )}
-                                {/* Nom caché sur très petit écran */}
-                                <span className="hidden sm:block text-sm font-medium text-gray-700">
+                                <span className="hidden sm:block text-sm font-medium text-slate-700">
                                     {user?.prenom} {user?.nom}
                                 </span>
                             </button>
 
                             {profileOpen && (
-                                <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden">
-                                    <div className="bg-blue-900 p-5 flex flex-col items-center gap-3">
+                                <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl shadow-slate-300/40 border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="bg-gradient-to-br from-[#1E3A8A] to-[#16295F] p-5 flex flex-col items-center gap-3">
                                         <div className="relative group">
                                             {avatar ? (
                                                 <img src={avatar} alt="avatar"
-                                                    className="w-16 h-16 rounded-full object-cover border-4 border-white/30" />
+                                                    className="w-16 h-16 rounded-full object-cover border-4 border-white/30 shadow-lg" />
                                             ) : (
-                                                <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-white text-2xl font-bold border-4 border-white/30">
+                                                <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-white text-2xl font-bold border-4 border-white/30 shadow-lg">
                                                     {user?.prenom?.[0]}{user?.nom?.[0]}
                                                 </div>
                                             )}
                                             <button
                                                 onClick={() => fileInputRef.current?.click()}
-                                                className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                                                className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
                                                 <Camera size={16} className="text-white" />
                                             </button>
                                         </div>
@@ -586,7 +564,7 @@ return (
     <button
         onClick={() => fileInputRef.current?.click()}
         disabled={uploading}
-        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 text-sm text-gray-700 transition">
+        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 text-sm text-slate-700 transition-colors duration-150">
         <Camera size={16} className="text-blue-600" />
         {uploading ? 'Envoi en cours...' : 'Changer la photo de profil'}
     </button>
@@ -595,22 +573,22 @@ return (
     {avatar && (
         <button
             onClick={supprimerAvatar}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-50 text-sm text-red-500 transition">
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-50 text-sm text-red-500 transition-colors duration-150">
             <Trash2 size={16} className="text-red-400" />
             Supprimer la photo
         </button>
     )}
 
     {uploadMsg && (
-        <p className={`text-xs px-3 py-1 rounded ${uploadMsg.includes('Erreur') ? 'text-red-500 bg-red-50' : 'text-green-600 bg-green-50'}`}>
+        <p className={`text-xs px-3 py-1.5 rounded-lg ${uploadMsg.includes('Erreur') ? 'text-red-500 bg-red-50' : 'text-green-600 bg-green-50'}`}>
             {uploadMsg}
         </p>
     )}
 
-    <div className="border-t border-gray-100 my-1" />
+    <div className="border-t border-slate-100 my-1" />
 
     <button onClick={handleLogout}
-        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-50 text-sm text-red-600 transition">
+        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-50 text-sm text-red-600 transition-colors duration-150">
         <LogOut size={16} />
         Se déconnecter
     </button>
@@ -621,13 +599,11 @@ return (
                     </div>
                 </header>
 
-                {/* Page content */}
                 <main className="flex-1 p-4 md:p-6 overflow-auto">
                     {children}
                 </main>
             </div>
 
-            {/* Input file caché */}
             <input
                 ref={fileInputRef}
                 type="file"
@@ -638,7 +614,3 @@ return (
         </div>
     )
 }
-
-
-
-

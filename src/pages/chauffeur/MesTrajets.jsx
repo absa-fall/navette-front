@@ -221,26 +221,25 @@ export default function MesTrajets() {
                     </div>
                 )}
 
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800">{getTitre()}</h1>
-                    <p className="text-gray-500 text-sm mt-1">
-                        {onglet === 'encours'
-                            ? `${enCours.length} trajet(s) en cours`
-                            : `${historique.length} trajet(s) dans l'historique`}
-                    </p>
-                </div>
-
-                <div className="flex gap-2 border-b border-gray-200">
-                    <button onClick={() => setOnglet('encours')}
-                        className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition ${onglet === 'encours' ? 'border-blue-700 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-                        En cours ({enCours.length})
-                    </button>
-                    <button onClick={() => setOnglet('historique')}
-                        className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center gap-2 ${onglet === 'historique' ? 'border-blue-700 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-                        <History size={15} />
-                        Historique ({historique.length})
-                    </button>
-                </div>
+              <div>
+    <h1 className="text-2xl font-bold text-gray-800">{getTitre()}</h1>
+    <p className="text-gray-500 text-sm mt-1">
+        {onglet === 'encours'
+            ? `${enCours.length} trajet(s) en cours`
+            : `${historique.length} trajet(s) dans l'historique`}
+    </p>
+</div>
+               <div className="flex gap-2 border-b border-gray-200">
+    <button onClick={() => setOnglet('encours')}
+        className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition ${onglet === 'encours' ? 'border-blue-700 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+        En cours ({enCours.length})
+    </button>
+    <button onClick={() => setOnglet('historique')}
+        className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center gap-2 ${onglet === 'historique' ? 'border-blue-700 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+        <History size={15} />
+        Historique ({historique.length})
+    </button>
+</div>
 
                 {loading ? (
                     <div className="flex justify-center py-20">

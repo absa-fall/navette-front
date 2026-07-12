@@ -282,46 +282,44 @@ export default function MesNavettes() {
     return (
         <Layout>
             <div className="space-y-6">
-
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-800">Mes demandes de navette</h1>
-                        <p className="text-gray-500 text-sm mt-1">{enAttente.length} en attente · {historique.length} dans l'historique</p>
-                    </div>
-                    <button
-                        onClick={() => navigate('/ddl/navettes/nouvelle')}
-                        className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2.5 rounded-xl transition"
-                    >
-                        <Plus size={18} />
-                        Nouvelle demande
-                    </button>
-                </div>
+<div className="flex items-center justify-between">
+    <div>
+        <h1 className="text-2xl font-bold text-gray-800">Mes demandes de navette</h1>
+        <p className="text-gray-500 text-sm mt-1">{enAttente.length} en attente · {historique.length} dans l'historique</p>
+    </div>
+    <button
+        onClick={() => navigate('/ddl/navettes/nouvelle')}
+        className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2.5 rounded-xl transition"
+    >
+        <Plus size={18} />
+        Nouvelle demande
+    </button>
+</div>
 
                 {/* Onglets */}
-                <div className="flex gap-2 border-b border-gray-200">
-                    <button
-                        onClick={() => setOnglet('attente')}
-                        className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition ${
-                            onglet === 'attente'
-                                ? 'border-blue-700 text-blue-700'
-                                : 'border-transparent text-gray-500 hover:text-gray-700'
-                        }`}
-                    >
-                        En attente ({enAttente.length})
-                    </button>
-                    <button
-                        onClick={() => setOnglet('historique')}
-                        className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center gap-2 ${
-                            onglet === 'historique'
-                                ? 'border-blue-700 text-blue-700'
-                                : 'border-transparent text-gray-500 hover:text-gray-700'
-                        }`}
-                    >
-                        <History size={15} />
-                        Historique ({historique.length})
-                    </button>
-                </div>
-
+            <div className="flex gap-2 border-b border-gray-200">
+    <button
+        onClick={() => setOnglet('attente')}
+        className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition ${
+            onglet === 'attente'
+                ? 'border-blue-700 text-blue-700'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+        }`}
+    >
+        En attente ({enAttente.length})
+    </button>
+    <button
+        onClick={() => setOnglet('historique')}
+        className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center gap-2 ${
+            onglet === 'historique'
+                ? 'border-blue-700 text-blue-700'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+        }`}
+    >
+        <History size={15} />
+        Historique ({historique.length})
+    </button>
+</div>
                 {loading ? (
                     <div className="flex justify-center py-20">
                         <div className="w-8 h-8 border-4 border-blue-700 border-t-transparent rounded-full animate-spin" />

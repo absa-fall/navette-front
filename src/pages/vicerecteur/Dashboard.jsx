@@ -2,7 +2,7 @@ import Layout from '../../components/Layout'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
-import { MapPin, FileText, CheckCircle, Clock, Plus, Users } from 'lucide-react'
+import { MapPin, FileText, CheckCircle, Clock, Plus } from 'lucide-react'
 
 export default function ViceRecteurDashboard() {
     const navigate = useNavigate()
@@ -10,7 +10,6 @@ export default function ViceRecteurDashboard() {
         voyagesEnAttente: 0,
         voyagesDefinitifs: 0,
         rapportsAValider: 0,
-        autorisationsEnAttente: 0,
     })
     const [loading, setLoading] = useState(true)
 
@@ -27,9 +26,6 @@ export default function ViceRecteurDashboard() {
                     voyagesEnAttente: voyages.filter(v => v.statut_liste === 'publiee').length,
                     voyagesDefinitifs: voyages.filter(v => v.statut_liste === 'definitive').length,
                     rapportsAValider: sidebarRes.data.viceRecteurRapports || 0,
-                    autorisationsEnAttente: voyages.reduce((sum, v) => {
-                        return sum + (v.beneficiaires?.filter(b => b.statut_autorisation === 'envoye_vr').length || 0)
-                    }, 0),
                 })
             } catch (error) {
                 console.error('Erreur stats Vice-Recteur:', error)
@@ -49,7 +45,7 @@ export default function ViceRecteurDashboard() {
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <div
                         onClick={() => navigate('/vice-recteur/voyages-etudes')}
                         className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
@@ -73,25 +69,14 @@ export default function ViceRecteurDashboard() {
                     </div>
 
                     <div
-                        onClick={() => navigate('/vice-recteur/rapports-a-valider')}
+                        onClick={() => navigate('/vice-recteur/voyages-etudes?tab=dossiers')}
                         className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
                     >
                         <div className="bg-blue-100 p-2 rounded-xl w-fit mb-3">
                             <FileText size={20} className="text-blue-700" />
                         </div>
                         <p className="text-2xl font-bold text-gray-800">{stats.rapportsAValider}</p>
-                        <p className="text-sm text-gray-500 mt-1">Rapports a valider</p>
-                    </div>
-
-                    <div
-                       onClick={() => navigate('/vice-recteur/voyages-etudes')}
-                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
-                    >
-                        <div className="bg-purple-100 p-2 rounded-xl w-fit mb-3">
-                            <Users size={20} className="text-purple-700" />
-                        </div>
-                        <p className="text-2xl font-bold text-gray-800">{stats.autorisationsEnAttente}</p>
-                        <p className="text-sm text-gray-500 mt-1">Autorisations en attente</p>
+                        <p className="text-sm text-gray-500 mt-1">Dossiers a valider</p>
                     </div>
                 </div>
 

@@ -204,14 +204,14 @@ export default function ChauffeurReservations() {
         <Layout>
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-800">Réservations passagers</h1>
-                        <p className="text-gray-500 text-sm mt-1">{enAttente.length} en attente · {annulees.length} annulée(s)</p>
-                    </div>
-                    <button onClick={fetchReservations}
-                        className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 border border-blue-200 px-4 py-2 rounded-xl">
-                        <RefreshCw size={14} /> Actualiser
-                    </button>
+                  <div>
+    <h1 className="text-2xl font-bold text-gray-800">Réservations passagers</h1>
+    <p className="text-gray-500 text-sm mt-1">{enAttente.length} en attente · {annulees.length} annulée(s)</p>
+</div>
+                   <button onClick={fetchReservations}
+    className="flex items-center gap-2 text-sm text-blue-700 hover:text-blue-900 bg-white border border-blue-200 shadow-sm px-4 py-2 rounded-xl transition">
+    <RefreshCw size={14} /> Actualiser
+</button>
                 </div>
 
                 {message && (
@@ -225,19 +225,19 @@ export default function ChauffeurReservations() {
                     </div>
                 )}
 
-                {/* Onglets */}
-                <div className="flex gap-2 border-b border-gray-200 overflow-x-auto">
-                    {[
-                        { key: 'attente',    label: 'En attente',  count: enAttente.length },
-                        { key: 'confirmees', label: 'Confirmées',  count: confirmees.length },
-                        { key: 'encours',    label: 'En cours',    count: enCours.length },
-                        { key: 'terminees',  label: 'Terminées',   count: terminees.length },
-                        { key: 'annulees',   label: 'Annulées',    count: annulees.length },
-                    ].map(({ key, label, count }) => (
-                        <button key={key} onClick={() => setOnglet(key)}
-                            className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition whitespace-nowrap ${
-                                onglet === key ? 'border-blue-700 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'
-                            }`}>
+              {/* Onglets */}
+<div className="flex gap-2 border-b border-gray-200 overflow-x-auto">
+    {[
+        { key: 'attente',    label: 'En attente',  count: enAttente.length },
+        { key: 'confirmees', label: 'Confirmées',  count: confirmees.length },
+        { key: 'encours',    label: 'En cours',    count: enCours.length },
+        { key: 'terminees',  label: 'Terminées',   count: terminees.length },
+        { key: 'annulees',   label: 'Annulées',    count: annulees.length },
+    ].map(({ key, label, count }) => (
+        <button key={key} onClick={() => setOnglet(key)}
+            className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition whitespace-nowrap ${
+    onglet === key ? 'border-blue-700 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+}`}>
                             {label} ({count})
                         </button>
                     ))}

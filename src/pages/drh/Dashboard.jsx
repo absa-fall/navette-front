@@ -119,7 +119,7 @@ export default function DRHDashboard() {
                     className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
                 >
                     <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                        Ordres en attente
+                        Ordres
                     </h2>
 
                     <div className="flex flex-col items-center justify-center py-10 text-gray-400">
@@ -130,8 +130,8 @@ export default function DRHDashboard() {
 
                         <p className="text-sm">
                             {stats.enAttente > 0
-                                ? `${stats.enAttente} ordre(s) en attente`
-                                : 'Aucun ordre en attente'}
+                                ? `${stats.enAttente} ordre(s) à traiter`
+                                : 'Aucun ordre à traiter pour le moment'}
                         </p>
                     </div>
                 </div>

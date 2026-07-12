@@ -120,12 +120,10 @@ const handleChauffeurChange = (e) => {
     return (
         <Layout>
             <div className="max-w-2xl mx-auto space-y-6">
-
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Nouvelle demande de navette</h1>
-                    <p className="text-gray-500 text-sm mt-1">Remplissez l'ordre de mission</p>
-                </div>
-
+<div>
+    <h1 className="text-2xl font-bold text-gray-800">Nouvelle demande de navette</h1>
+    <p className="text-gray-500 text-sm mt-1">Remplissez l'ordre de mission</p>
+</div>
                 {error && (
                     <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-4 text-sm">
                         {error}
@@ -189,7 +187,7 @@ const handleChauffeurChange = (e) => {
                         />
                     </div>
 
-                    {/* Trajet — ✅ label simplifié, heure_depart supprimée */}
+                    {/* Trajet — label simplifié, heure_depart supprimée */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             <MapPin size={14} className="inline mr-1" />

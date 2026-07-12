@@ -37,6 +37,7 @@ const slides = [
         titre: 'Simple, rapide, fiable',
         sous_titre: 'Réservez, scannez, montez — c\'est tout',
     },
+
 ]
 const trajets = [
     { depart: 'Bambey',    arrivee: 'Dakar'      },

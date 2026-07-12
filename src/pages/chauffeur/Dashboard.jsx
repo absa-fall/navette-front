@@ -40,19 +40,17 @@ export default function ChauffeurDashboard() {
     return (
         <Layout>
             <div className="space-y-6">
+<div>
+    <h1 className="text-2xl font-bold text-gray-800">
+        Dashboard Chauffeur
+    </h1>
 
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800">
-                        Dashboard Chauffeur
-                    </h1>
-
-                    <p className="text-gray-500 text-sm mt-1">
-                        Gestion de vos trajets
-                    </p>
-                </div>
-
-                {/* Statistiques */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+    <p className="text-gray-500 text-sm mt-1">
+        Gestion de vos trajets
+    </p>
+</div>
+                {/* Statistiques — 4 cards sur une seule ligne, plus de bloc "Refusés" séparé en dessous */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
 
                     <div
                         onClick={() => navigate('/chauffeur/trajets?statut=assignes')}
@@ -105,95 +103,78 @@ export default function ChauffeurDashboard() {
                         </p>
                     </div>
 
-                </div>
-                <div
-    onClick={() => navigate('/chauffeur/trajets?statut=refuse')}
-    className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
->
-    <div className="bg-red-100 p-2 rounded-xl w-fit mb-3">
-        <XCircle size={20} className="text-red-700" />
-    </div>
-
-    <p className="text-2xl font-bold text-gray-800">
-        {stats.trajetsRefuses}
-    </p>
-
-    <p className="text-sm text-gray-500 mt-1">
-        Refusés
-    </p>
-</div>
-
-                {/* Réservations */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                    <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                        Réservations
-                    </h2>
-
-                    <p className="text-gray-500 text-sm mb-4">
-                        Voir et valider les réservations des passagers
-                    </p>
-
-                    <button
-                        onClick={() => navigate('/chauffeur/reservations')}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition flex items-center gap-2"
+                    <div
+                        onClick={() => navigate('/chauffeur/trajets?statut=refuse')}
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
                     >
-                        <ClipboardList size={18} />
-                        Voir les réservations
-                    </button>
-                </div>
-                {/* Mon bus */}
-<div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-    <h2 className="text-lg font-semibold text-gray-800 mb-4">
-        Mon bus
-    </h2>
-    <p className="text-gray-500 text-sm mb-4">
-        Afficher et imprimer le QR code de votre bus
-    </p>
-    <button
-        onClick={() => navigate('/chauffeur/mon-bus')}
-        className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold transition flex items-center gap-2"
-    >
-        <QrCode size={18} />
-        Voir le QR de mon bus
-    </button>
-</div>
-{/* Scanner passager */}
-<div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-    <h2 className="text-lg font-semibold text-gray-800 mb-4">
-        Scanner un passager
-    </h2>
-    <p className="text-gray-500 text-sm mb-4">
-        Si le passager n'a pas de connexion, scannez son QR code pour valider sa montée
-    </p>
-    <button
-        onClick={() => navigate('/chauffeur/scanner')}
-        className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition flex items-center gap-2"
-    >
-        <QrCode size={18} />
-        Scanner le QR du passager
-    </button>
-</div>
-                {/* Mes trajets du jour */}
-                <div
-                    onClick={() => navigate('/chauffeur/trajets')}
-                    className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
-                >
-                    <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                        Mes trajets du jour
-                    </h2>
+                        <div className="bg-red-100 p-2 rounded-xl w-fit mb-3">
+                            <XCircle size={20} className="text-red-700" />
+                        </div>
 
-                    <div className="flex flex-col items-center justify-center py-10 text-gray-400">
-                        <ClipboardList
-                            size={40}
-                            className="mb-3 opacity-30"
-                        />
+                        <p className="text-2xl font-bold text-gray-800">
+                            {stats.trajetsRefuses}
+                        </p>
 
-                        <p className="text-sm">
-                            {stats.trajetsAssignes > 0
-                                ? `${stats.trajetsAssignes} trajet(s) assigné(s)`
-                                : "Aucun trajet assigné aujourd'hui"}
+                        <p className="text-sm text-gray-500 mt-1">
+                            Refusés
                         </p>
                     </div>
+
+                </div>
+
+                {/* Réservations / Mon bus / Scanner — 3 colonnes, boutons unifiés en bleu, plus de "Mes trajets du jour" */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
+                        <h2 className="text-lg font-semibold text-gray-800 mb-2">
+                            Réservations
+                        </h2>
+
+                        <p className="text-gray-500 text-sm mb-4 flex-1">
+                            Voir et valider les réservations des passagers
+                        </p>
+
+                        <button
+                            onClick={() => navigate('/chauffeur/reservations')}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold transition flex items-center justify-center gap-2"
+                        >
+                            <ClipboardList size={18} />
+                            Voir les réservations
+                        </button>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
+                        <h2 className="text-lg font-semibold text-gray-800 mb-2">
+                            Mon bus
+                        </h2>
+                        <p className="text-gray-500 text-sm mb-4 flex-1">
+                            Afficher et imprimer le QR code de votre bus
+                        </p>
+                        <button
+                            onClick={() => navigate('/chauffeur/mon-bus')}
+                            className="border border-blue-200 hover:bg-blue-50 text-blue-700 px-5 py-2.5 rounded-xl font-semibold transition flex items-center justify-center gap-2"
+                        >
+                            <QrCode size={18} />
+                            Voir le QR de mon bus
+                        </button>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
+                        <h2 className="text-lg font-semibold text-gray-800 mb-2">
+                            Scanner un passager
+                        </h2>
+                        <p className="text-gray-500 text-sm mb-4 flex-1">
+                            Si le passager n'a pas de connexion, scannez son QR code pour valider sa montée
+                        </p>
+                        <button
+                            onClick={() => navigate('/chauffeur/scanner')}
+                            className="border border-blue-200 hover:bg-blue-50 text-blue-700 px-5 py-2.5 rounded-xl font-semibold transition flex items-center justify-center gap-2"
+                        >
+                            <QrCode size={18} />
+                            Scanner le QR du passager
+                        </button>
+                    </div>
+
                 </div>
 
             </div>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
-import { MapPin, FileText, Upload, CheckCircle, Clock, AlertCircle, X, Lock, Eye } from 'lucide-react'
+import { MapPin, FileText, Upload, CheckCircle, Clock, AlertCircle, X, Lock, Eye, Trash2 } from 'lucide-react'
 const statutJustifConfig = {
     en_attente:  { label: 'En attente',      color: 'bg-gray-100 text-gray-600' },
     soumis:      { label: 'Soumis au chef',  color: 'bg-blue-100 text-blue-700' },
@@ -29,6 +29,8 @@ export default function MesVoyagesEtudes() {
 const [actionLoading, setActionLoading] = useState(null)
     const [message, setMessage]             = useState('')
     const [error, setError]                 = useState('')
+    const [selected, setSelected] = useState([])
+const [deleteLoading, setDeleteLoading] = useState(false)
 
     useEffect(() => { fetchVoyages() }, [])
 
@@ -96,6 +98,29 @@ const demanderAutorisation = async (beneficiaireId) => {
         setActionLoading(null)
     }
 }
+const toggleSelect = (id) => {
+    setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
+}
+
+const toggleSelectAll = () => {
+    if (selected.length === beneficiaires.length) setSelected([])
+    else setSelected(beneficiaires.map(b => b.id))
+}
+
+const supprimerSelection = async (ids) => {
+    if (!confirm(`Retirer ${ids.length} voyage(s) de votre liste ?`)) return
+    setDeleteLoading(true)
+    try {
+        await Promise.all(ids.map(id => api.patch(`/voyages-etudes/beneficiaire/${id}/masquer`)))
+        setBeneficiaires(prev => prev.filter(b => !ids.includes(b.id)))
+        setSelected([])
+        showMsg('Voyage(s) retire(s) de votre liste')
+    } catch (err) {
+        showMsg('Erreur lors de la suppression', true)
+    } finally {
+        setDeleteLoading(false)
+    }
+}
     return (
         <Layout>
             <div className="space-y-6">
@@ -126,8 +151,32 @@ const demanderAutorisation = async (beneficiaireId) => {
                         <p className="text-gray-400 text-sm">Vous n'avez pas encore ete selectionne pour un voyage d'etudes</p>
                     </div>
                 ) : (
-                    <div className="space-y-4">
-                        {beneficiaires.map(b => {
+    <div className="space-y-4">
+        <div className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-2.5 shadow-sm">
+            <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                <input type="checkbox"
+                    checked={selected.length === beneficiaires.length && beneficiaires.length > 0}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 accent-blue-700 cursor-pointer" />
+                {selected.length > 0 ? `${selected.length} selectionne(s)` : 'Tout selectionner'}
+            </label>
+            <div className="flex gap-2">
+                {selected.length > 0 && (
+                    <button onClick={() => supprimerSelection(selected)} disabled={deleteLoading}
+                        className="flex items-center gap-1.5 text-xs bg-red-50 border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition disabled:opacity-50">
+                        {deleteLoading
+                            ? <div className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                            : <Trash2 size={13} />}
+                        Supprimer ({selected.length})
+                    </button>
+                )}
+                <button onClick={() => supprimerSelection(beneficiaires.map(b => b.id))} disabled={deleteLoading}
+                    className="flex items-center gap-1.5 text-xs bg-red-50 border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition disabled:opacity-50">
+                    <Trash2 size={13} /> Supprimer tout
+                </button>
+            </div>
+        </div>
+        {beneficiaires.map(b => {
                             const justif       = statutJustifConfig[b.statut_justificatif] || statutJustifConfig['en_attente']
                            const getStatutAutorisationAffiche = (b) => {
     const auto = b.autorisation_absence
@@ -155,15 +204,19 @@ const autorisation = getStatutAutorisationAffiche(b)
                             return (
                                 <div key={b.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                                     {/* Header */}
-                                    <div
-                                        className="p-5 cursor-pointer hover:bg-gray-50 transition"
-                                        onClick={() => setExpanded(isExpanded ? null : b.id)}
-                                    >
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex items-center gap-4">
-                                                <div className="bg-blue-100 p-3 rounded-xl">
-                                                    <MapPin size={20} className="text-blue-700" />
-                                                </div>
+                                   <div
+    className="p-5 cursor-pointer hover:bg-gray-50 transition"
+    onClick={() => setExpanded(isExpanded ? null : b.id)}
+>
+    <div className="flex items-start justify-between">
+        <div className="flex items-center gap-4">
+            <input type="checkbox" checked={selected.includes(b.id)}
+                onChange={(e) => { e.stopPropagation(); toggleSelect(b.id) }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-4 h-4 accent-blue-700 cursor-pointer mt-1" />
+            <div className="bg-blue-100 p-3 rounded-xl">
+                <MapPin size={20} className="text-blue-700" />
+            </div>
                                                 <div>
                                                     <p className="font-semibold text-gray-800">{b.voyage?.destination}</p>
                                                     <p className="text-sm text-gray-500 mt-0.5">
