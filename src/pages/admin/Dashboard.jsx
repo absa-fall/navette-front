@@ -16,12 +16,12 @@ export default function AdminDashboard() {
    useEffect(() => {
        const fetchStats = async () => {
            try {
-               const [users, vehicules, ordres, voyages] = await Promise.all([
-                   api.get('/users'),
-                   api.get('/vehicules'),
-                   api.get('/ordres-mission'),
-                   api.get('/voyages'),
-               ])
+              const [users, vehicules, ordres, voyages] = await Promise.all([
+    api.get('/users'),
+    api.get('/vehicules'),
+    api.get('/ordres-mission'),
+    api.get('/voyages-etudes'),
+])
                setStats({
                    utilisateurs: users.data.length,
                    vehicules: vehicules.data.length,
@@ -66,23 +66,28 @@ export default function AdminDashboard() {
                        <p className="text-sm text-gray-500 mt-1">Véhicules</p>
                    </div>
 
-                   <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                       <div className="bg-orange-100 p-2 rounded-xl w-fit mb-3">
-                           <FileText size={20} className="text-orange-700" />
-                       </div>
-                       <p className="text-2xl font-bold text-gray-800">{stats.ordres}</p>
-                       <p className="text-sm text-gray-500 mt-1">Ordres de mission</p>
-                   </div>
+                  <div
+    onClick={() => navigate('/admin/ordres-mission')}
+    className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
+>
+    <div className="bg-orange-100 p-2 rounded-xl w-fit mb-3">
+        <FileText size={20} className="text-orange-700" />
+    </div>
+    <p className="text-2xl font-bold text-gray-800">{stats.ordres}</p>
+    <p className="text-sm text-gray-500 mt-1">Ordres de mission</p>
+</div>
 
-                   <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                       <div className="bg-purple-100 p-2 rounded-xl w-fit mb-3">
-                           <Activity size={20} className="text-purple-700" />
-                       </div>
-                       <p className="text-2xl font-bold text-gray-800">{stats.voyages}</p>
-                       <p className="text-sm text-gray-500 mt-1">Voyages d'études</p>
-                   </div>
-               </div>
-
+                   <div
+    onClick={() => navigate('/admin/voyages-etudes')}
+    className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
+>
+    <div className="bg-purple-100 p-2 rounded-xl w-fit mb-3">
+        <Activity size={20} className="text-purple-700" />
+    </div>
+    <p className="text-2xl font-bold text-gray-800">{stats.voyages}</p>
+    <p className="text-sm text-gray-500 mt-1">Voyages d'études</p>
+</div>
+ </div>
                {/* Raccourcis */}
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                    <div

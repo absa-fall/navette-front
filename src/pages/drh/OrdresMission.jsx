@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
 import { Bus, CheckCircle, XCircle, Clock, FileText, History, Trash2 } from 'lucide-react'
@@ -21,6 +21,7 @@ const trajetLabels = {
 
 export default function DRHOrdres() {
     const [searchParams] = useSearchParams()
+    const navigate = useNavigate()
     const statutFiltre = searchParams.get('statut') // Récupère ?statut=... depuis l'URL
 
     const [ordres, setOrdres] = useState([])
@@ -285,13 +286,13 @@ export default function DRHOrdres() {
                 )}
 
                 <div className="flex gap-3 flex-wrap">
-                    <button
-                        onClick={() => voirOrdre(ordre)}
-                        className="flex items-center gap-2 border border-blue-200 text-blue-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-50 transition"
-                    >
-                        <FileText size={15} />
-                        Voir l'ordre
-                    </button>
+                   <button
+    onClick={() => navigate(`/ordres-mission/${ordre.id}/document`)}
+    className="flex items-center gap-2 border border-blue-200 text-blue-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-50 transition"
+>
+    <FileText size={15} />
+    Voir l'ordre
+</button>
 
                     {avecActions ? (
                         rejetId === ordre.id ? (

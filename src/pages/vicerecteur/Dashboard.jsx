@@ -14,27 +14,27 @@ export default function ViceRecteurDashboard() {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const [sidebarRes, voyagesRes] = await Promise.all([
-                    api.get('/notifications/sidebar'),
-                    api.get('/voyages-etudes'),
-                ])
+    const fetchStats = async () => {
+        try {
+            const [voyagesRes, dossiersRes] = await Promise.all([
+                api.get('/voyages-etudes'),
+                api.get('/voyages-etudes/dossiers-a-valider'),
+            ])
 
-                const voyages = voyagesRes.data
-                setStats({
-                    voyagesEnAttente: voyages.filter(v => v.statut_liste === 'publiee').length,
-                    voyagesDefinitifs: voyages.filter(v => v.statut_liste === 'definitive').length,
-                    rapportsAValider: sidebarRes.data.viceRecteurRapports || 0,
-                })
-            } catch (error) {
-                console.error('Erreur stats Vice-Recteur:', error)
-            } finally {
-                setLoading(false)
-            }
+            const voyages = voyagesRes.data
+            setStats({
+                voyagesEnAttente: voyages.filter(v => v.statut_liste === 'publiee').length,
+                voyagesDefinitifs: voyages.filter(v => v.statut_liste === 'definitive').length,
+                rapportsAValider: dossiersRes.data.length,
+            })
+        } catch (error) {
+            console.error('Erreur stats Vice-Recteur:', error)
+        } finally {
+            setLoading(false)
         }
-        fetchStats()
-    }, [])
+    }
+    fetchStats()
+}, [])
 
     return (
         <Layout>

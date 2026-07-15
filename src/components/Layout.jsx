@@ -5,19 +5,21 @@ import { useAuth } from '../context/AuthContext'
 import {
     Bus, MapPin, FileText, Users, LayoutDashboard, LogOut,
     Menu, X, ChevronRight, Bell, Trash2, CheckCheck, BarChart2, Camera, 
-    CheckCircle, Clock, XCircle, Calendar,
+    CheckCircle, Clock, XCircle, Calendar, Truck, Lock,
 } from 'lucide-react'
 const menuParRole = {
     admin: [
         { label: 'Dashboard',     icon: LayoutDashboard, path: '/admin/dashboard' },
         { label: 'Utilisateurs',  icon: Users,           path: '/admin/utilisateurs' },
-        { label: 'Véhicules',     icon: Bus,             path: '/admin/vehicules' },
+       
     ],
     ddl: [
         { label: 'Dashboard',          icon: LayoutDashboard, path: '/ddl/dashboard' },
         { label: 'Mes navettes',       icon: Bus,             path: '/ddl/navettes' },
         { label: 'En attente',         icon: Clock,           path: '/ddl/en-attente' },
         { label: 'Demandes rejetées',  icon: XCircle,         path: '/ddl/demandes-rejetees' },
+        { label: 'Véhicules',          icon: Truck,           path: '/ddl/vehicules' },
+        { label: 'Chauffeurs',         icon: Users,           path: '/ddl/chauffeurs' },
     ],
     enseignant: [
         { label: 'Dashboard',        icon: LayoutDashboard, path: '/enseignant/dashboard' },
@@ -50,7 +52,7 @@ const menuParRole = {
     chef_departement: [
         { label: 'Dashboard',               icon: LayoutDashboard, path: '/chef-departement/dashboard' },
         { label: 'Nouvelles listes',        icon: Bell,            path: '/chef-departement/dashboard?tab=listes' },
-        { label: 'Justificatifs reçus',     icon: FileText,        path: '/chef-departement/dashboard?tab=justificatifs' },
+      
         { label: "Demandes d'autorisation", icon: CheckCircle,     path: '/chef-departement/dashboard?tab=autorisations' },
     ],
     directeur_ufr: [
@@ -130,6 +132,7 @@ const notifNavigation = {
     chauffeur:        '/chauffeur/trajets',
     drh:              '/drh/ordres',
     sg_drh:           '/sg-drh/ordres',
+    sg_vr:            '/sg-vr/dashboard',
     vice_recteur:     '/vice-recteur/voyages-etudes',
     chef_departement: '/chef-departement/dashboard',
     directeur_ufr:    '/directeur-ufr/dashboard',
@@ -138,7 +141,6 @@ const notifNavigation = {
     enseignant:       '/enseignant/voyages-etudes',
     usager:           '/usager/dashboard',
 }
-
 function AvatarImg({ avatar, prenom, nom, size = 'md', className = '' }) {
     const sizes = { sm: 'w-8 h-8 text-xs', md: 'w-9 h-9 text-sm', lg: 'w-16 h-16 text-xl' }
     const initials = `${prenom?.[0] ?? ''}${nom?.[0] ?? ''}`
@@ -164,6 +166,11 @@ export default function Layout({ children }) {
     const [profileOpen, setProfileOpen] = useState(false)
     const [uploading, setUploading]     = useState(false)
     const [uploadMsg, setUploadMsg]     = useState('')
+    const [passwordModalOpen, setPasswordModalOpen] = useState(false)
+const [passwordForm, setPasswordForm] = useState({ current_password: '', new_password: '', new_password_confirmation: '' })
+const [passwordLoading, setPasswordLoading] = useState(false)
+const [passwordMsg, setPasswordMsg] = useState('')
+const [passwordError, setPasswordError] = useState('')
     const [badges, setBadges]           = useState({
         drhOrdres: 0, sgDrhOrdres: 0,
         viceRecteurVoyages: 0, viceRecteurRapports: 0,
@@ -171,7 +178,7 @@ export default function Layout({ children }) {
     })
     const [notifOpen, setNotifOpen]         = useState(false)
     const [notifications, setNotifications] = useState([])
-
+const [selectedNotif, setSelectedNotif] = useState(null)
     const totalNotifs = notifications.filter(n => !n.lu).length
     const totalLues   = notifications.filter(n => n.lu).length
 
@@ -262,7 +269,25 @@ export default function Layout({ children }) {
         setTimeout(() => setUploadMsg(''), 3000)
     }
 }
-
+const handleChangePassword = async (e) => {
+    e.preventDefault()
+    setPasswordLoading(true)
+    setPasswordMsg('')
+    setPasswordError('')
+    try {
+        const res = await api.put('/profile/password', passwordForm)
+        setPasswordMsg(res.data.message || 'Mot de passe modifié avec succès')
+        setPasswordForm({ current_password: '', new_password: '', new_password_confirmation: '' })
+        setTimeout(() => {
+            setPasswordModalOpen(false)
+            setPasswordMsg('')
+        }, 1500)
+    } catch (err) {
+        setPasswordError(err.response?.data?.message || 'Erreur lors du changement de mot de passe')
+    } finally {
+        setPasswordLoading(false)
+    }
+}
     const marquerLu = async (id) => {
         try {
             await api.patch(`/notifications/${id}/lu`)
@@ -299,12 +324,17 @@ export default function Layout({ children }) {
         } catch {}
     }
 
-    const handleNotifClick = (notif) => {
-        if (!notif.lu) marquerLu(notif.id)
-        setNotifOpen(false)
-        const dest = notifNavigation[user?.role]
-        if (dest) navigate(dest)
-    }
+   const handleNotifClick = (notif) => {
+    if (!notif.lu) marquerLu(notif.id)
+    setNotifOpen(false)
+    setSelectedNotif(notif)   
+}
+
+const allerVersPage = () => {
+    const dest = notifNavigation[user?.role]
+    setSelectedNotif(null)
+    if (dest) navigate(dest)
+}
 
     const handleLogout = async () => {
         await logout()
@@ -578,7 +608,12 @@ export default function Layout({ children }) {
             Supprimer la photo
         </button>
     )}
-
+<button
+    onClick={() => { setProfileOpen(false); setPasswordModalOpen(true) }}
+    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 text-sm text-slate-700 transition-colors duration-150">
+    <Lock size={16} className="text-blue-600" />
+    Changer le mot de passe
+</button>
     {uploadMsg && (
         <p className={`text-xs px-3 py-1.5 rounded-lg ${uploadMsg.includes('Erreur') ? 'text-red-500 bg-red-50' : 'text-green-600 bg-green-50'}`}>
             {uploadMsg}
@@ -603,7 +638,107 @@ export default function Layout({ children }) {
                     {children}
                 </main>
             </div>
+{passwordModalOpen && (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                <h2 className="text-lg font-bold text-gray-800">Changer le mot de passe</h2>
+                <button onClick={() => { setPasswordModalOpen(false); setPasswordError(''); setPasswordMsg('') }}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition">
+                    <X size={18} />
+                </button>
+            </div>
 
+            <form onSubmit={handleChangePassword} className="p-6 space-y-4">
+                {passwordMsg && (
+                    <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl p-3 text-sm">
+                        {passwordMsg}
+                    </div>
+                )}
+                {passwordError && (
+                    <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-3 text-sm">
+                        {passwordError}
+                    </div>
+                )}
+
+                <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Mot de passe actuel</label>
+                    <input type="password" required
+                        value={passwordForm.current_password}
+                        onChange={e => setPasswordForm(prev => ({ ...prev, current_password: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+
+                <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Nouveau mot de passe</label>
+                    <input type="password" required minLength={6}
+                        value={passwordForm.new_password}
+                        onChange={e => setPasswordForm(prev => ({ ...prev, new_password: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+
+                <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Confirmer le nouveau mot de passe</label>
+                    <input type="password" required minLength={6}
+                        value={passwordForm.new_password_confirmation}
+                        onChange={e => setPasswordForm(prev => ({ ...prev, new_password_confirmation: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                    <button type="button" onClick={() => setPasswordModalOpen(false)}
+                        className="flex-1 border border-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl hover:bg-gray-50 transition text-sm">
+                        Annuler
+                    </button>
+                    <button type="submit" disabled={passwordLoading}
+                        className="flex-1 bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-xl transition disabled:opacity-50 text-sm flex items-center justify-center gap-2">
+                        {passwordLoading
+                            ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            : 'Modifier'}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+)}
+{selectedNotif && (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                <h2 className="text-lg font-bold text-gray-800">{selectedNotif.titre}</h2>
+                <button onClick={() => setSelectedNotif(null)}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition">
+                    <X size={18} />
+                </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+                <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                    {selectedNotif.message}
+                </p>
+                <p className="text-xs text-gray-400">
+                    {new Date(selectedNotif.created_at).toLocaleDateString('fr-FR', {
+                        day: 'numeric', month: 'short', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                    })}
+                </p>
+
+                <div className="flex gap-3 pt-2">
+                    <button onClick={() => setSelectedNotif(null)}
+                        className="flex-1 border border-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl hover:bg-gray-50 transition text-sm">
+                        Fermer
+                    </button>
+                    {notifNavigation[user?.role] && (
+                        <button onClick={allerVersPage}
+                            className="flex-1 bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-xl transition text-sm">
+                            Voir la page
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    </div>
+)}
             <input
                 ref={fileInputRef}
                 type="file"

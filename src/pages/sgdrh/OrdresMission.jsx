@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
 import { Bus, PenLine, CheckCircle, Send, FileText, Clock, XCircle, History, Truck, Trash2 } from 'lucide-react'
@@ -19,54 +19,9 @@ const trajetLabels = {
     autres: 'Autres',
 }
 
-// Signature électronique SVG du SG/DRH — M. Hammadou BALDÉ
-// Reproduit fidèlement : cachet rond UAD + signature manuscrite + tampon nom
-const SIGNATURE_SVG = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 160" width="220" height="160">
-  <!-- Cachet rond Université Alioune Diop -->
-  <circle cx="90" cy="80" r="60" fill="none" stroke="#1a3a8f" stroke-width="2.5"/>
-  <circle cx="90" cy="80" r="54" fill="none" stroke="#1a3a8f" stroke-width="1"/>
-
-  <!-- Texte circulaire haut : UNIVERSITE ALIOUNE DIOP -->
-  <path id="arcHaut" d="M 40,80 A 50,50 0 0,1 140,80" fill="none"/>
-  <text font-family="Times New Roman, serif" font-size="7.5" fill="#1a3a8f" font-weight="bold">
-    <textPath href="#arcHaut" startOffset="5%">UNIVERSITE ALIOUNE DIOP</textPath>
-  </text>
-
-  <!-- Texte circulaire bas : U . A . D -->
-  <path id="arcBas" d="M 38,88 A 52,52 0 0,0 142,88" fill="none"/>
-  <text font-family="Times New Roman, serif" font-size="8" fill="#1a3a8f" font-weight="bold">
-    <textPath href="#arcBas" startOffset="28%">U . A . D</textPath>
-  </text>
-
-  <!-- Texte centre -->
-  <text x="90" y="72" text-anchor="middle" font-family="Times New Roman, serif" font-size="7" fill="#1a3a8f">Le Secrétaire</text>
-  <text x="90" y="83" text-anchor="middle" font-family="Times New Roman, serif" font-size="7" fill="#1a3a8f">général</text>
-
-  <!-- Étoiles décoratives -->
-  <text x="46" y="118" font-size="7" fill="#1a3a8f">★</text>
-  <text x="128" y="118" font-size="7" fill="#1a3a8f">★</text>
-
-  <!-- Signature manuscrite stylisée de M. Hammadou BALDÉ -->
-  <g transform="translate(50, 40)" stroke="#1a3a8f" stroke-width="1.4" fill="none" opacity="0.9">
-    <!-- Courbe principale de la signature -->
-    <path d="M 5,45 C 15,30 25,25 35,32 C 42,37 38,48 30,50 C 22,52 18,44 25,40 C 32,36 45,38 55,30 C 65,22 70,28 68,38 C 66,46 58,50 52,48"/>
-    <path d="M 52,48 C 60,46 72,42 80,35"/>
-    <!-- Trait bas signature -->
-    <line x1="5" y1="55" x2="80" y2="55" stroke-width="0.8" opacity="0.4"/>
-  </g>
-
-  <!-- Tampon rectangulaire nom -->
-  <rect x="130" y="100" width="82" height="32" rx="3" fill="none" stroke="#1a3a8f" stroke-width="1.5"/>
-  <text x="171" y="113" text-anchor="middle" font-family="Times New Roman, serif" font-size="7" fill="#1a3a8f" font-weight="bold">M. Hammadou</text>
-  <text x="171" y="124" text-anchor="middle" font-family="Times New Roman, serif" font-size="8" fill="#1a3a8f" font-weight="bold">BALDÉ</text>
-</svg>
-`
-
-const SIGNATURE_BASE64 = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(SIGNATURE_SVG)))}`
-
 export default function SGDRHOrdres() {
     const [searchParams] = useSearchParams()
+    const navigate = useNavigate()
     const statutFiltre = searchParams.get('statut')
 
     const [ordres, setOrdres] = useState([])
@@ -171,190 +126,101 @@ const signer = async (id) => {
         setActionLoading(null)
     }
 }
-    const voirOrdre = (ordre) => {
-        const dateDepart = new Date(ordre.date_depart).toLocaleDateString('fr-FR')
-        const dateRetour = ordre.date_retour
-            ? new Date(ordre.date_retour).toLocaleDateString('fr-FR')
-            : '___________'
-
-        // Signature SVG encodée en base64 pour l'embarquer dans le HTML imprimable
-        const signatureSrc = SIGNATURE_BASE64
-
-        const html = `
-        <!DOCTYPE html>
-        <html lang="fr">
-        <head>
-            <meta charset="UTF-8" />
-            <title>Ordre de Mission</title>
-            <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body { font-family: 'Times New Roman', serif; font-size: 13px; padding: 40px; color: #000; }
-                .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-                .header-left { font-size: 11px; line-height: 1.6; }
-                .header-right { text-align: right; font-size: 12px; }
-                .institution { text-align: center; font-weight: bold; font-size: 12px; margin-top: 5px; line-height: 1.5; }
-                .divider { border-top: 1px solid #000; margin: 10px 0; }
-                .title { text-align: center; font-size: 16px; font-weight: bold; text-decoration: underline; margin: 20px 0 25px; letter-spacing: 1px; }
-                .field { display: flex; align-items: baseline; margin-bottom: 14px; }
-                .field-label { min-width: 200px; font-size: 13px; }
-                .field-line { flex: 1; border-bottom: 1px solid #000; padding-bottom: 2px; padding-left: 8px; font-size: 13px; font-weight: bold; }
-                .mention { margin-top: 30px; font-size: 12px; line-height: 1.8; }
-                .signature-section { display: flex; justify-content: flex-end; margin-top: 20px; }
-                .signature-box { text-align: center; font-size: 12px; }
-                .signature-box img { width: 220px; height: 160px; display: block; margin: 8px auto 0; }
-                .ampliations { margin-top: 40px; font-size: 11px; }
-                .footer { margin-top: 40px; border-top: 1px solid #000; padding-top: 8px; text-align: center; font-size: 10px; }
-                .print-btn { position: fixed; bottom: 20px; right: 20px; background: #1d4ed8; color: white; border: none; padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer; }
-                @media print { .print-btn { display: none; } }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <div class="header-left">
-                    <strong>REPUBLIQUE DU SENEGAL</strong><br/>
-                    Un Peuple-Un But-Une Foi<br/>
-                    Ministère de l'Enseignement supérieur,<br/>
-                    de la Recherche et de l'Innovation<br/><br/>
-                    <strong>UNIVERSITE ALIOUNE DIOP</strong><br/>
-                    <em>« L'excellence est ma constance, l'éthique ma vertu »</em>
-                </div>
-                <div class="header-right">
-                    <strong>N° ______ UAD/R/SG/DRH</strong><br/><br/>
-                    Bambey, le ${dateDepart}
-                </div>
-            </div>
-            <div class="institution">RECTORAT<br/>SECRETARIAT GENERAL<br/><span style="font-size:11px;font-weight:normal">DDrm</span></div>
-            <div style="text-align:right;font-size:12px;margin-top:5px;">Le Secrétaire général</div>
-            <div class="divider"></div>
-            <div class="title">ORDRE DE MISSION</div>
-            <div class="field"><span class="field-label">Monsieur :</span><span class="field-line">${ordre.chauffeur_prenom || ''} ${ordre.chauffeur_nom || ''}</span></div>
-            <div class="field"><span class="field-label">De nationalité :</span><span class="field-line">${ordre.nationalite || 'Sénégalais(e)'}</span></div>
-            <div class="field"><span class="field-label">Grade et fonction :</span><span class="field-line">${ordre.grade_fonction || 'Chauffeur'}</span></div>
-            <div class="field"><span class="field-label">Se rend à :</span><span class="field-line">${ordre.destination || ''}</span></div>
-            <div class="field"><span class="field-label">Objet de la mission :</span><span class="field-line">${ordre.objet_mission || "conduit la navette de l'UAD"}</span></div>
-            <div class="field"><span class="field-label">Moyen de transport :</span><span class="field-line">${ordre.moyen_transport || ordre.vehicule?.immatriculation || '___________'}</span></div>
-            <div class="field"><span class="field-label">Date de départ :</span><span class="field-line">${dateDepart}</span></div>
-            <div class="field"><span class="field-label">Date de retour :</span><span class="field-line">${dateRetour}</span></div>
-            <div class="field"><span class="field-label">Frais de transport :</span><span class="field-line">${ordre.frais_transport || 'Appui en carburant'}</span></div>
-            <div class="field"><span class="field-label">Indemnité de déplacement :</span><span class="field-line">${ordre.indemnite_deplacement || 'Néant'}</span></div>
-            <div class="mention">
-                Les autorités civiles et militaires des localités traversées sont priées de faciliter à
-                <strong>Monsieur ${ordre.chauffeur_prenom || ''} ${ordre.chauffeur_nom || ''}</strong> l'accomplissement de son voyage.
-            </div>
-            <div class="signature-section">
-                <div class="signature-box">
-                    Le Secrétaire Général
-                    <img src="${signatureSrc}" alt="Signature SG/DRH" />
-                </div>
-            </div>
-            <div class="ampliations"><strong>Ampliations :</strong><br/>- CM/DDL/DRH.<br/>- Intéressé/Chrono.</div>
-            <div class="footer">Tél. : (221) 33 973 30 86. // Fax : (221) 33 973 30 93 // B.P. : 30 – Bambey (République du Sénégal)<br/>Internet : www.uadb.edu.sn // Courriel : rectorat@uadb.edu.sn</div>
-            <button class="print-btn" onclick="window.print()">Imprimer / Sauvegarder PDF</button>
-        </body>
-        </html>`
-
-        const win = window.open('', '_blank')
-        win.document.write(html)
-        win.document.close()
-    }
 
     const toutSelectionne = historiqueFiltre().length > 0 && historiqueFiltre().every(o => selected.includes(o.id))
-
+const aUneSignatureLocale = (ordreId) => {
+    const saved = localStorage.getItem(`signature_sg_drh_${ordreId}`)
+    return !!(saved && saved.startsWith('data:image'))
+}
     const renderOrdre = (ordre, avecAction = true) => {
-        const statut = statutConfig[ordre.statut] || statutConfig['approuve_drh']
-        const Icon = statut.icon
-        return (
-            <div key={ordre.id} className={`bg-white rounded-2xl p-5 border shadow-sm ${!avecAction && selected.includes(ordre.id) ? 'border-red-200 bg-red-50' : 'border-gray-100'}`}>
-                <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-4">
-                        {!avecAction && (
-                            <input
-                                type="checkbox"
-                                checked={selected.includes(ordre.id)}
-                                onChange={() => toggleSelect(ordre.id)}
-                                className="w-4 h-4 rounded border-gray-300 text-blue-600 mt-1"
-                            />
-                        )}
-                        <div className="bg-blue-100 p-3 rounded-xl">
-                            <Bus size={20} className="text-blue-700" />
-                        </div>
-                        <div>
-                            <p className="font-semibold text-gray-800">
-                                {ordre.destination || trajetLabels[ordre.trajet] || ordre.trajet}
-                            </p>
-                            <p className="text-sm text-gray-500 mt-0.5">
-                                Départ : {new Date(ordre.date_depart).toLocaleDateString('fr-FR')}
-                            </p>
-                            <p className="text-xs text-gray-400 mt-0.5">
-                                Chauffeur : {ordre.chauffeur_prenom} {ordre.chauffeur_nom}
-                            </p>
-                            <p className="text-xs text-gray-400 mt-0.5">
-                                Demandé par : {ordre.ddl?.prenom} {ordre.ddl?.nom}
-                            </p>
-                        </div>
+    const statut = statutConfig[ordre.statut] || statutConfig['approuve_drh']
+    const Icon = statut.icon
+    return (
+        <div key={ordre.id} className={`bg-white rounded-2xl p-5 border shadow-sm ${!avecAction && selected.includes(ordre.id) ? 'border-red-200 bg-red-50' : 'border-gray-100'}`}>
+            <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-4">
+                    {!avecAction && (
+                        <input
+                            type="checkbox"
+                            checked={selected.includes(ordre.id)}
+                            onChange={() => toggleSelect(ordre.id)}
+                            className="w-4 h-4 rounded border-gray-300 text-blue-600 mt-1"
+                        />
+                    )}
+                    <div className="bg-blue-100 p-3 rounded-xl">
+                        <Bus size={20} className="text-blue-700" />
                     </div>
-                    <span className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${statut.color}`}>
-                        <Icon size={12} />
-                        {statut.label}
-                    </span>
+                    <div>
+                        <p className="font-semibold text-gray-800">
+                            {ordre.destination || trajetLabels[ordre.trajet] || ordre.trajet}
+                        </p>
+                        <p className="text-sm text-gray-500 mt-0.5">
+                            Départ : {new Date(ordre.date_depart).toLocaleDateString('fr-FR')}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                            Chauffeur : {ordre.chauffeur_prenom} {ordre.chauffeur_nom}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                            Demandé par : {ordre.ddl?.prenom} {ordre.ddl?.nom}
+                        </p>
+                    </div>
                 </div>
+                <span className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${statut.color}`}>
+                    <Icon size={12} />
+                    {statut.label}
+                </span>
+            </div>
 
-                <p className="text-sm text-gray-600 mb-4 bg-gray-50 rounded-xl p-3">{ordre.motif}</p>
+            <p className="text-sm text-gray-600 mb-4 bg-gray-50 rounded-xl p-3">{ordre.motif}</p>
 
-                <div className="flex gap-3">
-                    <button
-                        onClick={() => voirOrdre(ordre)}
-                        className="flex items-center gap-2 border border-blue-200 text-blue-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-50 transition"
-                    >
-                        <FileText size={15} />
-                        Aperçu
-                    </button>
-
-                    {avecAction ? (
-                        signerModal === ordre.id ? (
-                            <>
-                                <button
-                                    onClick={() => setSignerModal(null)}
-                                    className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition"
-                                >
-                                    Annuler
-                                </button>
-                                <button
-                                    onClick={() => signer(ordre.id)}
-                                    disabled={actionLoading === ordre.id}
-                                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-50 flex items-center justify-center gap-2"
-                                >
-                                    {actionLoading === ordre.id && <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                                    <Send size={14} />
-                                    Confirmer
-                                </button>
-                            </>
-                        ) : (
-                            <button
-                                onClick={() => setSignerModal(ordre.id)}
-                                className="flex-1 flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl text-sm font-semibold transition"
-                            >
-                                <PenLine size={16} />
-                                Signer l'ordre
-                            </button>
-                        )
+            <div className="flex gap-3">
+                <button
+                    onClick={() => navigate(`/ordres-mission/${ordre.id}/document`)}
+                    className="flex items-center gap-2 border border-blue-200 text-blue-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-50 transition"
+                >
+                    <FileText size={15} />
+                    Aperçu
+                </button>
+                {avecAction ? (
+                    aUneSignatureLocale(ordre.id) ? (
+                        <button
+                            onClick={() => signer(ordre.id)}
+                            disabled={actionLoading === ordre.id}
+                            className="flex-1 flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-50"
+                        >
+                            {actionLoading === ordre.id
+                                ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                : <Send size={16} />
+                            }
+                            Transmettre au chauffeur
+                        </button>
                     ) : (
                         <button
-                            onClick={() => supprimerHistorique(ordre.id)}
-                            disabled={deleteLoading === ordre.id}
-                            className="flex items-center gap-1.5 border border-red-200 text-red-600 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-50 transition disabled:opacity-50"
+                            onClick={() => navigate(`/ordres-mission/${ordre.id}/document`)}
+                            className="flex-1 flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl text-sm font-semibold transition"
                         >
-                            {deleteLoading === ordre.id
-                                ? <div className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                                : <Trash2 size={15} />
-                            }
-                            Supprimer
+                            <PenLine size={16} />
+                            Signer l'ordre
                         </button>
-                    )}
-                </div>
+                    )
+                ) : (
+                    <button
+                        onClick={() => supprimerHistorique(ordre.id)}
+                        disabled={deleteLoading === ordre.id}
+                        className="flex items-center gap-1.5 border border-red-200 text-red-600 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-50 transition disabled:opacity-50"
+                    >
+                        {deleteLoading === ordre.id
+                            ? <div className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                            : <Trash2 size={15} />
+                        }
+                        Supprimer
+                    </button>
+                )}
             </div>
-        )
-    }
+        </div>
+    )
+}
+   
 
     const getTitre = () => {
         if (statutFiltre === 'a_signer') return 'Ordres à signer'

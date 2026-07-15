@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
-import { Printer, Loader2 } from 'lucide-react'
+import { Printer, Loader2, Send } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
+import SignaturePad from '../../components/SignaturePad'
 
 
 function formatDate(d) {
@@ -21,8 +23,12 @@ function formatMontant(m) {
 
 export default function ArreteVoyageDocument() {
     const { voyageId } = useParams()
+    const navigate = useNavigate()
+    const { user } = useAuth()
     const [data, setData] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [signature, setSignature] = useState(null)
+    const [transmission, setTransmission] = useState(false)
 
     useEffect(() => {
         api.get(`/voyages-etudes/${voyageId}/arrete`)
@@ -30,6 +36,22 @@ export default function ArreteVoyageDocument() {
             .catch(() => {})
             .finally(() => setLoading(false))
     }, [voyageId])
+
+    const estBrouillon = data?.statut === 'brouillon'
+    const peutSigner = user?.role === 'recteur'
+
+    const transmettre = async () => {
+        if (!signature) return
+        setTransmission(true)
+        try {
+            await api.patch(`/arretes/${data.id}/transmettre`, { signature })
+            setData(prev => ({ ...prev, statut: 'transmis' }))
+        } catch (err) {
+            alert(err.response?.data?.message || 'Erreur lors de la transmission')
+        } finally {
+            setTransmission(false)
+        }
+    }
 
     if (loading) {
         return (
@@ -51,23 +73,44 @@ export default function ArreteVoyageDocument() {
     const annee = data.date_arrete ? new Date(data.date_arrete).getFullYear() : new Date().getFullYear()
 
     return (
-        <div className="min-h-screen bg-gray-100 py-8 px-4">
+        <div className="min-h-screen bg-gray-100 print:bg-white py-8 px-4 print:py-0 print:px-0">
 
-            {/* Bouton imprimer */}
-            <div className="flex justify-center mb-6 print:hidden">
+            {/* Style impression : format A4 propre */}
+            <style>{`
+                @media print {
+                    @page { size: A4; margin: 8mm; }
+                    html, body { height: auto !important; }
+                }
+            `}</style>
+
+            {/* Boutons d'action */}
+            <div className="flex justify-center gap-3 mb-6 print:hidden">
                 <button
                     onClick={() => window.print()}
                     className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white font-semibold px-6 py-2.5 rounded-xl transition"
                 >
                     <Printer size={16} /> Imprimer / Télécharger
                 </button>
+
+                {estBrouillon && (
+                    <button
+                        onClick={transmettre}
+                        disabled={!signature || transmission}
+                        className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white font-semibold px-6 py-2.5 rounded-xl transition disabled:opacity-50"
+                    >
+                        {transmission
+                            ? <Loader2 size={16} className="animate-spin" />
+                            : <Send size={16} />}
+                        Transmettre l'arrêté
+                    </button>
+                )}
             </div>
 
             {/* Document */}
-            <div className="max-w-3xl mx-auto bg-white border border-gray-200 shadow-sm rounded-xl px-12 py-10 print:shadow-none print:border-none print:rounded-none print:max-w-full font-serif text-gray-900">
+            <div className="max-w-3xl mx-auto bg-white border border-gray-200 shadow-sm rounded-xl px-12 py-10 print:shadow-none print:border-none print:rounded-none print:max-w-full print:px-8 print:py-4 font-serif text-gray-900">
 
                 {/* En-tête */}
-                <div className="flex justify-between items-start mb-6">
+                <div className="flex justify-between items-start mb-6 print:mb-4">
                     {/* Gauche */}
                     <div className="text-[12px] leading-relaxed">
                         <p className="font-bold">REPUBLIQUE DU SENEGAL</p>
@@ -99,27 +142,27 @@ export default function ArreteVoyageDocument() {
                     </div>
                 </div>
 
-                <hr className="border-gray-800 mb-5" />
+                <hr className="border-gray-800 mb-5 print:mb-3" />
 
                 {/* LE RECTEUR */}
-                <div className="text-center font-bold text-[13px] mb-4">
+                <div className="text-center font-bold text-[13px] mb-4 print:mb-3">
                     LE RECTEUR, PRESIDENT DU CONSEIL ACADEMIQUE
                 </div>
 
                 {/* Visas */}
-                <div className="mb-4 text-[12px] leading-loose">
+                <div className="mb-4 print:mb-3 text-[12px] leading-loose print:leading-relaxed">
                     {data.visas?.split('\n').map((line, i) => (
                         <p key={i}>{line}</p>
                     ))}
                 </div>
 
                 {/* ARRETE */}
-                <div className="text-center font-bold text-[13px] tracking-widest my-5">
+                <div className="text-center font-bold text-[13px] tracking-widest my-5 print:my-3">
                     A R R E T E
                 </div>
 
                 {/* Article premier */}
-                <div className="mb-4 text-[12px] leading-relaxed">
+                <div className="mb-4 print:mb-3 text-[12px] leading-relaxed">
                     <p>
                         <span className="font-bold">Article premier.</span> - Au titre de l'année {annee}, un voyage d'études est accordé aux
                         enseignants-chercheurs de l'Université Alioune Diop désignés ci-dessous :
@@ -127,7 +170,7 @@ export default function ArreteVoyageDocument() {
                 </div>
 
                 {/* Tableau bénéficiaires */}
-                <table className="w-full border-collapse text-[11px] mb-4">
+                <table className="w-full border-collapse text-[11px] mb-4 print:mb-3">
                     <thead>
                         <tr>
                             <th className="border border-gray-800 px-3 py-1.5 text-left">N°</th>
@@ -147,52 +190,56 @@ export default function ArreteVoyageDocument() {
                         ))}
                     </tbody>
                 </table>
-{/* Article 2 */}
-<div className="mb-4 text-[12px] leading-relaxed">
-    <p><span className="font-bold">Article 2.-</span> Les intéressés bénéficient chacun :</p>
-    <ul className="mt-1 ml-4 space-y-1">
-        <li>- d'une autorisation d'absence pour la période du voyage ;</li>
-        <li>- de <span className="font-bold">{formatMontant(data.montant_billet)} francs CFA</span>, à titre de contribution pour l'achat d'un billet d'avion (aller-retour) ;</li>
-        <li>- d'une indemnité forfaitaire de <span className="font-bold">{formatMontant(data.montant_indemnite)} francs CFA</span>.</li>
-    </ul>
-    <p className="mt-1">L'assurance voyage est prise en charge par l'Université Alioune Diop.</p>
-</div>
 
-{/* Article 3 */}
-<div className="mb-4 text-[12px] leading-relaxed">
-    <p>
-        <span className="font-bold">Article 3.-</span> La dépense est imputable sur le budget du Rectorat de l'Université Alioune Diop,
-        respectivement aux comptes <span className="font-bold">61811-voyages d'études</span> et <span className="font-bold">6385-perdiems voyages d'études et voyages assimilés</span>.
-    </p>
-</div>
+                {/* Article 2 */}
+                <div className="mb-4 print:mb-3 text-[12px] leading-relaxed">
+                    <p><span className="font-bold">Article 2.-</span> Les intéressés bénéficient chacun :</p>
+                    <ul className="mt-1 ml-4 space-y-1">
+                        <li>- d'une autorisation d'absence pour la période du voyage ;</li>
+                        <li>- de <span className="font-bold">{formatMontant(data.montant_billet)} francs CFA</span>, à titre de contribution pour l'achat d'un billet d'avion (aller-retour) ;</li>
+                        <li>- d'une indemnité forfaitaire de <span className="font-bold">{formatMontant(data.montant_indemnite)} francs CFA</span>.</li>
+                    </ul>
+                    <p className="mt-1">L'assurance voyage est prise en charge par l'Université Alioune Diop.</p>
+                </div>
 
-{/* Article 4 */}
-<div className="mb-8 text-[12px] leading-relaxed">
-    <p>
-        <span className="font-bold">Article 4.-</span> Le Secrétaire général et l'Agent comptable de l'Université Alioune Diop sont
-        chargés, chacun en ce qui le concerne, de l'exécution du présent arrêté.
-    </p>
-</div>
+                {/* Article 3 */}
+                <div className="mb-4 print:mb-3 text-[12px] leading-relaxed">
+                    <p>
+                        <span className="font-bold">Article 3.-</span> La dépense est imputable sur le budget du Rectorat de l'Université Alioune Diop,
+                        respectivement aux comptes <span className="font-bold">61811-voyages d'études</span> et <span className="font-bold">6385-perdiems voyages d'études et voyages assimilés</span>.
+                    </p>
+                </div>
 
-{/* Ampliations + Signature */}
-<div className="flex justify-between items-start mt-6">
-    <div className="text-[12px]">
-        <p className="font-bold underline">Ampliations :</p>
-        <p>- VRIREP/SG/AC ;</p>
-        <p>- DRH/DF/UFRs/ISFAR ;</p>
-        <p>- Intéressés/Chrono.</p>
-    </div>
-    <div className="text-center text-[12px]">
-        <p className="font-bold">LE RECTEUR,</p>
-        <p className="font-bold">PRESIDENT DU CONSEIL ACADEMIQUE</p>
-        <br /><br /><br />
-        <p>{data.recteur?.prenom} {data.recteur?.nom?.toUpperCase()}</p>
-    </div>
-</div>
-                
+                {/* Article 4 */}
+                <div className="mb-8 print:mb-5 text-[12px] leading-relaxed">
+                    <p>
+                        <span className="font-bold">Article 4.-</span> Le Secrétaire général et l'Agent comptable de l'Université Alioune Diop sont
+                        chargés, chacun en ce qui le concerne, de l'exécution du présent arrêté.
+                    </p>
+                </div>
+
+                {/* Ampliations + Signature */}
+                <div className="flex justify-between items-start mt-6 print:mt-4">
+                    <div className="text-[12px]">
+                        <p className="font-bold underline">Ampliations :</p>
+                        <p>- VRIREP/SG/AC ;</p>
+                        <p>- DRH/DF/UFRs/ISFAR ;</p>
+                        <p>- Intéressés/Chrono.</p>
+                    </div>
+                    <div className="text-center text-[12px]">
+                        <p className="font-bold">LE RECTEUR,</p>
+                        
+                       <SignaturePad
+                            storageKey={`signature_recteur_arrete_${data.id}`}
+                            label={`${data.recteur?.prenom || ''} ${data.recteur?.nom?.toUpperCase() || ''}`}
+                            onSaved={setSignature}
+                            readOnly={!(estBrouillon && peutSigner)}
+                        />
+                    </div>
+                </div>
 
                 {/* Pied de page */}
-                <div className="text-center text-[10px] text-gray-600 mt-12 border-t pt-3">
+                <div className="text-center text-[10px] text-gray-600 mt-12 print:mt-6 border-t pt-3 print:pt-2">
                     <p>Tél. : (221) 33 973 30 86 // Fax : (221) 33 973 30 93 // B.P. : 30 – Bambey (République du Sénégal)</p>
                     <p>Internet : www.uadb.sn // Courriel : rectorat@uadb.edu.sn</p>
                 </div>

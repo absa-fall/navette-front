@@ -2,6 +2,7 @@ import Layout from '../../components/Layout'
 import { useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
+import MissionEnCours from '../../components/MissionEnCours'
 import { Bus, ClipboardList, CheckCircle, Clock, XCircle, QrCode } from 'lucide-react'
 
 export default function ChauffeurDashboard() {
@@ -11,7 +12,7 @@ export default function ChauffeurDashboard() {
     trajetsAssignes: 0,
     enAttente: 0,
     trajetsEffectues: 0,
-    trajetsRefuses: 0,
+    
 })
 
     useEffect(() => {
@@ -23,7 +24,7 @@ export default function ChauffeurDashboard() {
     trajetsAssignes: res.data.trajetsAssignes || 0,
     enAttente: res.data.enAttente || 0,
     trajetsEffectues: res.data.trajetsEffectues || 0,
-    trajetsRefuses: res.data.trajetsRefuses || 0,
+    
 })
             } catch (error) {
                 console.error('Erreur stats chauffeur:', error)
@@ -40,17 +41,20 @@ export default function ChauffeurDashboard() {
     return (
         <Layout>
             <div className="space-y-6">
+
 <div>
     <h1 className="text-2xl font-bold text-gray-800">
         Dashboard Chauffeur
     </h1>
-
     <p className="text-gray-500 text-sm mt-1">
         Gestion de vos trajets
     </p>
 </div>
-                {/* Statistiques — 4 cards sur une seule ligne, plus de bloc "Refusés" séparé en dessous */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+
+<MissionEnCours />
+
+<div className="grid grid-cols-1 md:grid-cols-3 gap-5"></div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
                     <div
                         onClick={() => navigate('/chauffeur/trajets?statut=assignes')}
@@ -103,24 +107,7 @@ export default function ChauffeurDashboard() {
                         </p>
                     </div>
 
-                    <div
-                        onClick={() => navigate('/chauffeur/trajets?statut=refuse')}
-                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
-                    >
-                        <div className="bg-red-100 p-2 rounded-xl w-fit mb-3">
-                            <XCircle size={20} className="text-red-700" />
-                        </div>
-
-                        <p className="text-2xl font-bold text-gray-800">
-                            {stats.trajetsRefuses}
-                        </p>
-
-                        <p className="text-sm text-gray-500 mt-1">
-                            Refusés
-                        </p>
                     </div>
-
-                </div>
 
                 {/* Réservations / Mon bus / Scanner — 3 colonnes, boutons unifiés en bleu, plus de "Mes trajets du jour" */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">

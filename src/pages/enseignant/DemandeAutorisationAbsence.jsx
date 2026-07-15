@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
-import { MapPin, Calendar, FileText, CheckCircle, Building2, ShieldCheck, Clock, XCircle, ChevronDown, ChevronUp, Trash2, AlertCircle, Eye } from 'lucide-react'
+import SignaturePad from '../../components/SignaturePad'
+import { MapPin, Calendar, FileText, CheckCircle, Building2, ShieldCheck, Clock, XCircle, ChevronDown, ChevronUp, Trash2, AlertCircle, Eye, PenLine, Send } from 'lucide-react'
 
 const statutConfig = {
+    brouillon:             { label: 'Brouillon',              color: 'bg-gray-100 text-gray-600',     icon: FileText },
+    signee:                { label: 'Signée, a transmettre',  color: 'bg-indigo-100 text-indigo-700', icon: PenLine },
     soumise:               { label: 'En attente Chef Dép',   color: 'bg-yellow-100 text-yellow-700', icon: Clock },
     avis_chef_departement: { label: 'Chez Directeur UFR',    color: 'bg-orange-100 text-orange-700', icon: Clock },
     avis_directeur_ufr:    { label: 'Chez le Recteur',       color: 'bg-purple-100 text-purple-700', icon: Clock },
@@ -24,15 +27,23 @@ export default function DemandeAutorisationAbsence() {
         periode_fin:      '',
         organisme_charge: "Université Alioune Diop de Bambey (Voyage d'études)",
     })
+    const [justificatif, setJustificatif] = useState(null)
     const [loading, setLoading] = useState(false)
     const [success, setSuccess] = useState(false)
     const [error, setError]     = useState('')
+
+    // Etape apres creation : brouillon a relire, puis signer, puis transmettre
+    const [autorisationCree, setAutorisationCree] = useState(null)
+    const [signLoading, setSignLoading]           = useState(false)
+    const [transmitLoading, setTransmitLoading]   = useState(false)
+    const [signatureEnseignant, setSignatureEnseignant] = useState(null)
 
     const [autorisations, setAutorisations] = useState([])
     const [loadingList, setLoadingList]     = useState(true)
     const [expanded, setExpanded]           = useState(null)
     const [selected, setSelected]           = useState([])
     const [deleteMsg, setDeleteMsg]         = useState('')
+    const [itemActionLoading, setItemActionLoading] = useState(null) // `${id}_signer` | `${id}_transmettre`
 
     useEffect(() => {
         api.get('/autorisations-absence')
@@ -63,21 +74,96 @@ export default function DemandeAutorisationAbsence() {
         }
     }
 
-    const handleSubmit = async () => {
-        if (!form.lieu_deplacement || !form.periode_debut || !form.periode_fin || !form.organisme_charge.trim()) {
-            setError('Veuillez remplir tous les champs obligatoires')
+   const handleSubmit = async () => {
+    if (!form.lieu_deplacement || !form.periode_debut || !form.periode_fin || !form.organisme_charge.trim()) {
+        setError('Veuillez remplir tous les champs obligatoires')
+        return
+    }
+    if (!justificatif) {
+        setError('Veuillez joindre votre justificatif')
+        return
+    }
+    setLoading(true)
+    setError('')
+    try {
+        const data = new FormData()
+        data.append('motif_mission', form.motif_mission)
+        data.append('lieu_deplacement', form.lieu_deplacement)
+        data.append('periode_debut', form.periode_debut)
+        data.append('periode_fin', form.periode_fin)
+        data.append('organisme_charge', form.organisme_charge)
+        data.append('justificatif', justificatif)
+
+        const res = await api.post(
+            `/voyages-etudes/beneficiaire/${beneficiaireId}/autorisation-absence`,
+            data,
+            { headers: { 'Content-Type': 'multipart/form-data' } }
+        )
+        setAutorisationCree(res.data.autorisation)
+    } catch (err) {
+        setError(err.response?.data?.message || 'Erreur lors de la soumission')
+    } finally {
+        setLoading(false)
+    }
+}
+
+    const handleSigner = async () => {
+        if (!signatureEnseignant) {
+            setError('Veuillez signer avant de continuer')
             return
         }
-        setLoading(true)
+        setSignLoading(true)
         setError('')
         try {
-            await api.post(`/voyages-etudes/beneficiaire/${beneficiaireId}/autorisation-absence`, form)
+            const res = await api.patch(`/autorisations-absence/${autorisationCree.id}/signer`, {
+                signature: signatureEnseignant
+            })
+            setAutorisationCree(res.data.autorisation)
+        } catch (err) {
+            setError(err.response?.data?.message || 'Erreur lors de la signature')
+        } finally {
+            setSignLoading(false)
+        }
+    }
+
+    const handleTransmettre = async () => {
+        setTransmitLoading(true)
+        setError('')
+        try {
+            await api.patch(`/autorisations-absence/${autorisationCree.id}/transmettre-vers-chef`)
             setSuccess(true)
             setTimeout(() => navigate('/enseignant/voyages-etudes'), 2000)
         } catch (err) {
-            setError(err.response?.data?.message || 'Erreur lors de la soumission')
+            setError(err.response?.data?.message || 'Erreur lors de la transmission')
         } finally {
-            setLoading(false)
+            setTransmitLoading(false)
+        }
+    }
+
+    // Signer / transmettre une demande brouillon deja existante (liste "Mes autorisations precedentes")
+    const handleSignerItem = async (id) => {
+        setItemActionLoading(id + '_signer')
+        try {
+            const res = await api.patch(`/autorisations-absence/${id}/signer`)
+            setAutorisations(prev => prev.map(a => a.id === id ? res.data.autorisation : a))
+        } catch (err) {
+            setDeleteMsg(err.response?.data?.message || 'Erreur lors de la signature')
+            setTimeout(() => setDeleteMsg(''), 3000)
+        } finally {
+            setItemActionLoading(null)
+        }
+    }
+
+    const handleTransmettreItem = async (id) => {
+        setItemActionLoading(id + '_transmettre')
+        try {
+            const res = await api.patch(`/autorisations-absence/${id}/transmettre-vers-chef`)
+            setAutorisations(prev => prev.map(a => a.id === id ? res.data.autorisation : a))
+        } catch (err) {
+            setDeleteMsg(err.response?.data?.message || 'Erreur lors de la transmission')
+            setTimeout(() => setDeleteMsg(''), 3000)
+        } finally {
+            setItemActionLoading(null)
         }
     }
 
@@ -88,8 +174,122 @@ export default function DemandeAutorisationAbsence() {
                     <div className="bg-green-100 p-5 rounded-full mb-4">
                         <CheckCircle size={48} className="text-green-600" />
                     </div>
-                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Demande soumise !</h2>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Demande transmise !</h2>
                     <p className="text-gray-500">Votre demande a été transmise au Chef de Département.</p>
+                </div>
+            </Layout>
+        )
+    }
+
+    // ===================== ETAPE RELECTURE (VRAI DOCUMENT) / SIGNATURE / TRANSMISSION =====================
+    if (autorisationCree) {
+        const estBrouillon = autorisationCree.statut === 'brouillon'
+        const estSignee     = autorisationCree.statut === 'signee'
+
+        const periodeDebut = autorisationCree.periode_debut
+            ? new Date(autorisationCree.periode_debut).toLocaleDateString('fr-FR')
+            : '___________'
+        const periodeFin = autorisationCree.periode_fin
+            ? new Date(autorisationCree.periode_fin).toLocaleDateString('fr-FR')
+            : '___________'
+
+        return (
+            <Layout>
+                <div className="max-w-3xl mx-auto space-y-6">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-800">Relecture de votre demande</h1>
+                        <p className="text-gray-500 text-sm mt-1">
+                            {estBrouillon
+                                ? 'Vérifiez attentivement les informations ci-dessous. Corrigez si besoin, puis signez.'
+                                : 'Demande signée. Vous pouvez maintenant la transmettre au Chef de Département.'}
+                        </p>
+                    </div>
+
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-4 text-sm flex items-center gap-2">
+                            <AlertCircle size={16} /> {error}
+                        </div>
+                    )}
+
+                    {/* Document officiel */}
+                    <div className="bg-white border border-gray-200 shadow-sm rounded-xl px-12 py-10 font-serif text-gray-900">
+                        <div className="flex justify-between items-start mb-5">
+                            <div className="text-[11px] leading-relaxed">
+                                <p className="font-bold">REPUBLIQUE DU SENEGAL</p>
+                                <p className="italic">Un Peuple-Un But-Une Foi</p>
+                                <p>Ministère de l'Enseignement supérieur,</p>
+                                <p>de la Recherche et de l'Innovation</p>
+                                <br />
+                                <p className="font-bold">UNIVERSITE ALIOUNE DIOP</p>
+                                <p className="italic text-[10px]">« L'excellence est ma constance, l'éthique ma vertu »</p>
+                            </div>
+                            <div className="text-right text-[12px]">
+                                <p className="font-bold">N° {autorisationCree.numero || '______'}</p>
+                            </div>
+                        </div>
+
+                        <hr className="border-gray-800 mb-4" />
+
+                        <div className="text-center font-bold text-[16px] underline tracking-wide mb-6">
+                            AUTORISATION D'ABSENCE
+                        </div>
+
+                        <div className="space-y-3 text-[13px] mb-8">
+                            <div className="flex items-baseline gap-2">
+                                <span className="min-w-[220px]">Motif de la mission :</span>
+                                <span className="flex-1 border-b border-gray-800 font-bold pb-0.5">{autorisationCree.motif_mission}</span>
+                            </div>
+                            <div className="flex items-baseline gap-2">
+                                <span className="min-w-[220px]">Lieu du déplacement :</span>
+                                <span className="flex-1 border-b border-gray-800 font-bold pb-0.5">{autorisationCree.lieu_deplacement}</span>
+                            </div>
+                            <div className="flex items-baseline gap-2">
+                                <span className="min-w-[220px]">Période :</span>
+                                <span className="flex-1 border-b border-gray-800 font-bold pb-0.5">{periodeDebut} → {periodeFin}</span>
+                            </div>
+                            <div className="flex items-baseline gap-2">
+                                <span className="min-w-[220px]">Organisme prenant en charge :</span>
+                                <span className="flex-1 border-b border-gray-800 font-bold pb-0.5">{autorisationCree.organisme_charge}</span>
+                            </div>
+                        </div>
+
+                        {/* Signature enseignant — modifiable seulement si brouillon, lecture seule une fois signee */}
+                        <div className="flex justify-end mt-10">
+                            <SignaturePad
+                                storageKey={`signature_enseignant_${autorisationCree.id}`}
+                                label="Signature de l'enseignant"
+                                readOnly={!estBrouillon}
+                                onSaved={setSignatureEnseignant}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                        {estBrouillon && (
+                            <>
+                                <button onClick={() => setAutorisationCree(null)}
+                                    className="flex-1 border border-gray-300 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-50 transition">
+                                    Modifier / Corriger
+                                </button>
+                                <button onClick={handleSigner} disabled={signLoading || !signatureEnseignant}
+                                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
+                                    {signLoading
+                                        ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        : <PenLine size={16} />}
+                                    {signLoading ? 'Signature...' : 'Signer'}
+                                </button>
+                            </>
+                        )}
+                        {estSignee && (
+                            <button onClick={handleTransmettre} disabled={transmitLoading}
+                                className="flex-1 bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
+                                {transmitLoading
+                                    ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    : <Send size={16} />}
+                                {transmitLoading ? 'Transmission...' : 'Transmettre au Chef de Département'}
+                            </button>
+                        )}
+                    </div>
                 </div>
             </Layout>
         )
@@ -102,7 +302,7 @@ export default function DemandeAutorisationAbsence() {
                 {/* ===================== FORMULAIRE ===================== */}
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Demande d'autorisation d'absence</h1>
-                    <p className="text-gray-500 text-sm mt-1">Cette demande sera transmise au Chef de Département puis suivra le circuit de validation.</p>
+                    <p className="text-gray-500 text-sm mt-1">Vous pourrez relire et signer votre demande avant qu'elle soit transmise au Chef de Département.</p>
                 </div>
 
                 {error && (
@@ -170,6 +370,21 @@ export default function DemandeAutorisationAbsence() {
                             className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                         />
                     </div>
+                    <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+        <FileText size={14} className="inline mr-1" />
+        Justificatif (PDF, JPG, PNG - 5 Mo max) <span className="text-red-500">*</span>
+    </label>
+    <input
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png"
+        onChange={e => setJustificatif(e.target.files[0])}
+        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 file:text-sm file:font-semibold"
+    />
+    {justificatif && (
+        <p className="text-xs text-gray-500 mt-1.5">Fichier sélectionné : {justificatif.name}</p>
+    )}
+</div>
                 </div>
 
                 <div className="flex gap-3">
@@ -180,7 +395,7 @@ export default function DemandeAutorisationAbsence() {
                     <button onClick={handleSubmit} disabled={loading}
                         className="flex-1 bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
                         {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                        {loading ? 'Envoi...' : 'Soumettre la demande'}
+                        {loading ? 'Envoi...' : 'Continuer'}
                     </button>
                 </div>
 
@@ -289,13 +504,43 @@ export default function DemandeAutorisationAbsence() {
                                             {open && (
                                                 <div className="border-t border-gray-100 p-4 space-y-3">
 
-                                                    {/* Bouton voir document */}
-                                                    <button
-                                                        onClick={() => navigate(`/autorisation-absence/${a.id}/document`)}
-                                                        className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-2.5 rounded-xl transition"
-                                                    >
-                                                        <Eye size={14} /> Voir le document
-                                                    </button>
+                                                    {/* Brouillon non signe : reprendre la signature */}
+                                                    {a.statut === 'brouillon' && (
+                                                        <button
+                                                            onClick={() => handleSignerItem(a.id)}
+                                                            disabled={itemActionLoading === a.id + '_signer'}
+                                                            className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold py-2.5 rounded-xl transition disabled:opacity-50"
+                                                        >
+                                                            {itemActionLoading === a.id + '_signer'
+                                                                ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                                : <PenLine size={14} />}
+                                                            Signer cette demande
+                                                        </button>
+                                                    )}
+
+                                                    {/* Signee mais pas encore transmise */}
+                                                    {a.statut === 'signee' && (
+                                                        <button
+                                                            onClick={() => handleTransmettreItem(a.id)}
+                                                            disabled={itemActionLoading === a.id + '_transmettre'}
+                                                            className="w-full flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2.5 rounded-xl transition disabled:opacity-50"
+                                                        >
+                                                            {itemActionLoading === a.id + '_transmettre'
+                                                                ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                                : <Send size={14} />}
+                                                            Transmettre au Chef de Département
+                                                        </button>
+                                                    )}
+
+                                                    {/* Bouton voir document (uniquement une fois le circuit engage) */}
+                                                    {!['brouillon', 'signee'].includes(a.statut) && (
+                                                        <button
+                                                            onClick={() => navigate(`/autorisation-absence/${a.id}/document`)}
+                                                            className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-2.5 rounded-xl transition"
+                                                        >
+                                                            <Eye size={14} /> Voir le document
+                                                        </button>
+                                                    )}
 
                                                     <div className="grid grid-cols-2 gap-2">
                                                         <div className="bg-gray-50 rounded-xl p-3">

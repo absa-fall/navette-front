@@ -5,11 +5,19 @@ import api from '../../api/axios'
 import { MapPin, FileText, Upload, CheckCircle, Clock, AlertCircle, X, Lock, Eye, Trash2 } from 'lucide-react'
 const statutJustifConfig = {
     en_attente:  { label: 'En attente',      color: 'bg-gray-100 text-gray-600' },
-    soumis:      { label: 'Soumis au chef',  color: 'bg-blue-100 text-blue-700' },
+    soumis:      { label: 'Soumis au VR/Commission',  color: 'bg-blue-100 text-blue-700' },
     transmis_vr: { label: 'Transmis au VR',  color: 'bg-purple-100 text-purple-700' },
     valide:      { label: 'Valide',           color: 'bg-green-100 text-green-700' },
     incomplet:   { label: 'Incomplet',        color: 'bg-red-100 text-red-700' },
 }
+
+// Ordre obligatoire des justificatifs (correspond a l'enumeration TypeJus)
+const TYPES_JUSTIFICATIFS = [
+    { key: 'rapport',      label: 'Rapport' },
+    { key: 'talons',       label: 'Talons' },
+    { key: 'caches_ent_sort', label: 'Caches Entrees/Sorties' },
+    { key: 'invitation',   label: 'Invitation' },
+]
 
 const statutAutorisationConfig = {
     non_demande:          { label: 'Non demande',          color: 'bg-gray-100 text-gray-600' },
@@ -24,7 +32,8 @@ export default function MesVoyagesEtudes() {
     const [beneficiaires, setBeneficiaires] = useState([])
     const [loading, setLoading]             = useState(true)
     const [expanded, setExpanded]           = useState(null)
-    const [fichiers, setFichiers]           = useState([])
+    const [fichiers, setFichiers]           = useState({}) // { rapport: File, talons: File, caches_ent_sort: File, invitation: File }
+    const [fichiersAutres, setFichiersAutres] = useState([]) // fichiers optionnels supplementaires
     const [uploadLoading, setUploadLoading] = useState(null)
 const [actionLoading, setActionLoading] = useState(null)
     const [message, setMessage]             = useState('')
@@ -51,33 +60,52 @@ const [deleteLoading, setDeleteLoading] = useState(false)
         setTimeout(() => { setMessage(''); setError('') }, 4000)
     }
 
-    const handleFichiersChange = (e) => {
-        const nouveaux = Array.from(e.target.files)
-        const total = [...fichiers, ...nouveaux]
-        if (total.length > 5) {
-            showMsg('Maximum 5 fichiers autorises', true)
-            return
-        }
-        setFichiers(total)
+    const handleFichierChange = (typeKey, e) => {
+        const fichier = e.target.files[0]
+        if (!fichier) return
+        setFichiers(prev => ({ ...prev, [typeKey]: fichier }))
     }
 
-    const retirerFichier = (index) => {
-        setFichiers(prev => prev.filter((_, i) => i !== index))
+    const retirerFichier = (typeKey) => {
+        setFichiers(prev => {
+            const copie = { ...prev }
+            delete copie[typeKey]
+            return copie
+        })
     }
+    const handleFichiersAutresChange = (e) => {
+    const nouveauxFichiers = Array.from(e.target.files)
+    if (nouveauxFichiers.length === 0) return
+    setFichiersAutres(prev => [...prev, ...nouveauxFichiers])
+    e.target.value = '' // permet de re-sélectionner le même fichier après suppression
+}
+
+const retirerFichierAutre = (index) => {
+    setFichiersAutres(prev => prev.filter((_, i) => i !== index))
+}
 const soumettreJustificatifs = async (beneficiaireId) => {
-    if (fichiers.length === 0) {
-        showMsg('Veuillez selectionner au moins un fichier PDF', true)
+    const manquants = TYPES_JUSTIFICATIFS.filter(t => !fichiers[t.key])
+    if (manquants.length > 0) {
+        showMsg(`Justificatifs obligatoires manquants : ${manquants.map(t => t.label).join(', ')}`, true)
         return
     }
     setUploadLoading(beneficiaireId)
     try {
         const formData = new FormData()
-        fichiers.forEach(f => formData.append('justificatifs[]', f))
+        // Envoi dans l'ordre obligatoire defini par TypeJus
+        TYPES_JUSTIFICATIFS.forEach(t => {
+            formData.append(`justificatifs[${t.key}]`, fichiers[t.key])
+        })
+        
+        fichiersAutres.forEach(fichier => {
+            formData.append('justificatifs_autres[]', fichier)
+        })
         await api.post(`/voyages-etudes/beneficiaire/${beneficiaireId}/justificatifs`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         })
-        showMsg('Justificatifs soumis avec succes au Chef de Departement')
-        setFichiers([])
+        showMsg('Justificatifs soumis avec succes au Vice-Recteur et a la Commission')
+        setFichiers({})
+        setFichiersAutres([])
         fetchVoyages()
     } catch (err) {
         showMsg(err.response?.data?.message || 'Erreur lors de la soumission', true)
@@ -288,7 +316,7 @@ const autorisation = getStatutAutorisationAffiche(b)
                                                     <p className="text-sm font-medium text-gray-700">
                                                         {b.statut_justificatif === 'incomplet'
                                                             ? 'Votre dossier est incomplet. Soumettez les justificatifs manquants :'
-                                                            : 'Soumettez vos justificatifs au Chef de Departement (rapport dernier voyage + autres pieces, 1 a 5 PDF) :'
+                                                            : 'Soumettez vos justificatifs au Vice-Recteur et a la Commission (rapport dernier voyage + autres pieces, 1 a 5 PDF obligatoires) :'
                                                         }
                                                     </p>
                                                     {b.statut_justificatif === 'incomplet' && (
@@ -296,37 +324,76 @@ const autorisation = getStatutAutorisationAffiche(b)
                                                             <AlertCircle size={14} /> Dossier juge incomplet par le VR ou sa commission
                                                         </div>
                                                     )}
-                                                    <input
-                                                        type="file"
-                                                        accept=".pdf"
-                                                        multiple
-                                                        onChange={handleFichiersChange}
-                                                        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none"
-                                                    />
-                                                    {fichiers.length > 0 && (
-                                                        <div className="space-y-1">
-                                                            {fichiers.map((f, i) => (
-                                                                <div key={i} className="flex items-center justify-between text-sm bg-blue-50 rounded-lg px-3 py-2">
-                                                                    <span className="flex items-center gap-2 text-blue-700 truncate">
-                                                                        <FileText size={14} /> {f.name}
+                                                    <div className="space-y-2">
+                                                        {TYPES_JUSTIFICATIFS.map((t, idx) => (
+                                                            <div key={t.key}>
+                                                                <label className="text-xs font-medium text-gray-500 flex items-center gap-1.5 mb-1">
+                                                                    <span className="w-4 h-4 rounded-full bg-blue-100 text-blue-700 text-[10px] flex items-center justify-center font-bold">
+                                                                        {idx + 1}
                                                                     </span>
-                                                                    <button onClick={() => retirerFichier(i)} className="text-gray-400 hover:text-red-500">
-                                                                        <X size={14} />
-                                                                    </button>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
+                                                                    {t.label} <span className="text-red-500">*</span>
+                                                                </label>
+                                                                {fichiers[t.key] ? (
+                                                                    <div className="flex items-center justify-between text-sm bg-blue-50 rounded-lg px-3 py-2">
+                                                                        <span className="flex items-center gap-2 text-blue-700 truncate">
+                                                                            <FileText size={14} /> {fichiers[t.key].name}
+                                                                        </span>
+                                                                        <button onClick={() => retirerFichier(t.key)} className="text-gray-400 hover:text-red-500">
+                                                                            <X size={14} />
+                                                                        </button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <input
+                                                                        type="file"
+                                                                        accept=".pdf"
+                                                                        required
+                                                                        onChange={(e) => handleFichierChange(t.key, e)}
+                                                                        className="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none"
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                        {/* Fichiers optionnels supplémentaires */}
+<div>
+    <label className="text-xs font-medium text-gray-500 flex flex-col gap-1 mb-1">
+        <span className="flex items-center gap-1.5">
+            Autres pièces justificatives <span className="text-gray-400">(optionnel)</span>
+        </span>
+        <span className="text-gray-400 font-normal normal-case">
+            Si vous avez avancé vos propres fonds pour des frais supplémentaires ou des déplacements urgents non couverts par votre indemnité, veuillez joindre les justificatifs correspondants afin de permettre leur remboursement.
+        </span>
+    </label>
+    <div className="space-y-2">
+        {fichiersAutres.map((fichier, index) => (
+            <div key={index} className="flex items-center justify-between text-sm bg-blue-50 rounded-lg px-3 py-2">
+                <span className="flex items-center gap-2 text-blue-700 truncate">
+                    <FileText size={14} /> {fichier.name}
+                </span>
+                <button onClick={() => retirerFichierAutre(index)} className="text-gray-400 hover:text-red-500">
+                    <X size={14} />
+                </button>
+            </div>
+        ))}
+        <input
+            type="file"
+            accept=".pdf"
+            multiple
+            onChange={handleFichiersAutresChange}
+            className="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none"
+        />
+    </div>
+</div>
+                                                    </div>
                                                     <button
                                                         onClick={() => soumettreJustificatifs(b.id)}
-                                                        disabled={uploadLoading === b.id || fichiers.length === 0}
+                                                        disabled={uploadLoading === b.id || TYPES_JUSTIFICATIFS.some(t => !fichiers[t.key])}
                                                         className="w-full flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl font-semibold text-sm transition disabled:opacity-50"
                                                     >
                                                         {uploadLoading === b.id
                                                             ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                                             : <Upload size={16} />
                                                         }
-                                                        Soumettre au Chef de Departement
+                                                        Soumettre au Vice-Recteur et a la Commission
                                                     </button>
                                                 </div>
                                             )}

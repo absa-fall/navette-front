@@ -173,18 +173,22 @@ heure_perso: ['07:30', '17:00'].includes(o.heure_depart) ? '' : o.heure_depart |
                             <User size={14} className="inline mr-1" />
                             Chauffeur <span className="text-red-500">*</span>
                         </label>
-                        <select
-                            value={form.chauffeur_id}
-                            onChange={handleChauffeurChange}
-                            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="">Sélectionner un chauffeur</option>
-                            {chauffeurs.map(c => (
-                                <option key={c.id} value={c.id}>
-                                    {c.prenom} {c.nom}
-                                </option>
-                            ))}
-                        </select>
+                       <select
+    value={form.chauffeur_id}
+    onChange={handleChauffeurChange}
+    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+>
+    <option value="">Sélectionner un chauffeur</option>
+    {chauffeurs.map(c => (
+        <option
+            key={c.id}
+            value={c.id}
+            disabled={!c.is_active && String(c.id) !== String(form.chauffeur_id)}
+        >
+            {c.prenom} {c.nom}{!c.is_active ? ' (Désactivé)' : ''}
+        </option>
+    ))}
+</select>
                     </div>
 
                     {/* Nationalité */}
@@ -285,31 +289,6 @@ heure_perso: ['07:30', '17:00'].includes(o.heure_depart) ? '' : o.heure_depart |
                         />
                     </div>
 
-                    {/* Heure départ */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            <Clock size={14} className="inline mr-1" />
-                            Heure de départ
-                        </label>
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                            <button onClick={() => setForm({ ...form, heure_depart: '07:30', heure_perso: '' })}
-                                className={`p-3 rounded-xl border-2 text-center transition ${form.heure_depart === '07:30' && !form.heure_perso ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-blue-300'}`}
-                            >
-                                <div className="text-lg font-bold text-gray-800">07:30</div>
-                                <div className="text-xs text-gray-500">Départ matinal</div>
-                            </button>
-                            <button onClick={() => setForm({ ...form, heure_depart: '17:00', heure_perso: '' })}
-                                className={`p-3 rounded-xl border-2 text-center transition ${form.heure_depart === '17:00' && !form.heure_perso ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-blue-300'}`}
-                            >
-                                <div className="text-lg font-bold text-gray-800">17:00</div>
-                                <div className="text-xs text-gray-500">Retour soir</div>
-                            </button>
-                        </div>
-                        <input type="time" value={form.heure_perso}
-                            onChange={e => setForm({ ...form, heure_perso: e.target.value })}
-                            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
 
                     {/* Date retour */}
                     <div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import Layout from '../../components/Layout'
+import html2pdf from 'html2pdf.js'
 import api from '../../api/axios'
 import {
     MapPin, Plus, Users, CheckCircle, ChevronDown, ChevronUp,
@@ -43,23 +44,39 @@ export default function VoyagesEtudes() {
 
     useEffect(() => { fetchVoyages(); fetchDossiers() }, [])
 
+    
     const fetchVoyages = async () => {
-        try {
-            const res = await api.get('/voyages-etudes')
-            setVoyages(res.data)
-        } catch (err) {
-            console.error(err)
-        } finally {
-            setLoading(false)
+    try {
+        const res = await api.get('/voyages-etudes')
+        const raw = res.data
+
+       
+        let liste = []
+        if (Array.isArray(raw)) {
+            liste = raw
+        } else if (Array.isArray(raw?.data)) {
+            liste = raw.data
+        } else if (Array.isArray(raw?.data?.data)) {
+            liste = raw.data.data
+        } else {
+            console.error('GET /voyages-etudes : format inattendu, reponse recue :', raw)
         }
+
+        setVoyages(liste)
+    } catch (err) {
+        console.error('Erreur fetchVoyages :', err.response?.status, err.response?.data || err.message)
+        setVoyages([])
+    } finally {
+        setLoading(false)
     }
+}
 
     const fetchDossiers = async () => {
         try {
             const res = await api.get('/voyages-etudes/dossiers-a-valider')
-            setDossiers(res.data)
+            setDossiers(Array.isArray(res.data) ? res.data : [])
         } catch (err) {
-            console.error(err)
+            console.error('Erreur fetchDossiers :', err.response?.status, err.response?.data || err.message)
         }
     }
 
@@ -123,6 +140,52 @@ export default function VoyagesEtudes() {
     }
 }
 
+    const exporterPDFDefinitif = (voyage) => {
+    const definitifs = voyage.beneficiaires?.filter(b => b.dans_liste_definitive) || []
+    const contenu = `
+        <div style="font-family: Arial, sans-serif; padding: 20px; font-size: 13px;">
+            <h1 style="color:#1d4ed8; font-size:16px;">Liste definitive des beneficiaires — ${voyage.destination}</h1>
+            <p style="color:#6b7280; margin-bottom:20px;">
+                Du ${new Date(voyage.date_debut).toLocaleDateString('fr-FR')} au ${new Date(voyage.date_fin).toLocaleDateString('fr-FR')}
+                — Total : ${definitifs.length} beneficiaire(s)
+            </p>
+            <table style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr>
+                        <th style="text-align:left; padding:8px; border-bottom:2px solid #e5e7eb;">N°</th>
+                        <th style="text-align:left; padding:8px; border-bottom:2px solid #e5e7eb;">Prenom</th>
+                        <th style="text-align:left; padding:8px; border-bottom:2px solid #e5e7eb;">Nom</th>
+                        <th style="text-align:left; padding:8px; border-bottom:2px solid #e5e7eb;">UFR</th>
+                        <th style="text-align:left; padding:8px; border-bottom:2px solid #e5e7eb;">Departement</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${definitifs.map((b, i) => `
+                        <tr>
+                            <td style="padding:8px; border-bottom:1px solid #e5e7eb;">${i + 1}</td>
+                            <td style="padding:8px; border-bottom:1px solid #e5e7eb;">${b.enseignant?.prenom || ''}</td>
+                            <td style="padding:8px; border-bottom:1px solid #e5e7eb;">${b.enseignant?.nom || ''}</td>
+                            <td style="padding:8px; border-bottom:1px solid #e5e7eb;">${b.enseignant?.ufr || '-'}</td>
+                            <td style="padding:8px; border-bottom:1px solid #e5e7eb;">${b.enseignant?.departement || '-'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            <div style="margin-top:30px; font-size:10px; color:#9ca3af; text-align:center;">
+                UADB Mobilite — Liste a valider avant redaction de l'arrete — Genere le ${new Date().toLocaleDateString('fr-FR')}
+            </div>
+        </div>
+    `
+    const element = document.createElement('div')
+    element.innerHTML = contenu
+    html2pdf().set({
+        margin: 10,
+        filename: `liste-definitive-${voyage.destination}-${voyage.id}.pdf`,
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }).from(element).save()
+}
+
     const donnerAvis = async (beneficiaireId, avis) => {
         setActionLoading('avis_' + beneficiaireId + '_' + avis)
         try {
@@ -174,9 +237,10 @@ export default function VoyagesEtudes() {
         return map[statut] || { label: statut || 'Non demande', color: 'bg-gray-100 text-gray-600' }
     }
 
-    const dossiersEnAttente = dossiers.filter(d =>
-        ['transmis_vr', 'valide', 'incomplet'].includes(d.statut_justificatif)
-    )
+
+const dossiersEnAttente = dossiers.filter(d =>
+    ['soumis', 'transmis_vr', 'valide', 'incomplet'].includes(d.statut_justificatif)
+)
 
     const getEligibilite = (b) => {
         const justifOK = ['transmis_vr', 'valide'].includes(b.statut_justificatif)
@@ -350,26 +414,43 @@ export default function VoyagesEtudes() {
                                                 {voyage.description && (
                                                     <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-3">{voyage.description}</p>
                                                 )}
-                                                {voyage.arrete_recteur && definitifs.length > 0 && (
+                                                <button onClick={() => navigate(`/voyages-etudes/${voyage.id}/liste-publiee`)}
+                                                    className="flex items-center gap-2 border border-blue-200 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm font-semibold transition">
+                                                    <Eye size={14} /> Voir liste publiée ({voyage.beneficiaires?.length || 0})
+                                                </button>
+                                                {definitifs.length > 0 && (
     <div className="flex gap-2 flex-wrap">
-        <button onClick={() => notifierBeneficiaires(voyage.id)}
-            disabled={actionLoading === 'notif_' + voyage.id}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
-            {actionLoading === 'notif_' + voyage.id
-                ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                : <Bell size={14} />}
-            Notifier les {definitifs.length} beneficiaire(s) definitif(s)
+        <button onClick={() => exporterPDFDefinitif(voyage)}
+            className="flex items-center gap-2 border border-blue-200 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm font-semibold transition">
+            <FileText size={14} /> Exporter PDF — Liste definitive ({definitifs.length})
         </button>
-        <button onClick={() => envoyerArrete(voyage.id)}
-            disabled={actionLoading === 'arrete_' + voyage.id}
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
-            {actionLoading === 'arrete_' + voyage.id
-                ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                : <FileText size={14} />}
-            Envoyer l'arrete par email
-        </button>
+        {voyage.arrete_recteur && (
+            <>
+                <button onClick={() => notifierBeneficiaires(voyage.id)}
+                    disabled={actionLoading === 'notif_' + voyage.id}
+                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
+                    {actionLoading === 'notif_' + voyage.id
+                        ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        : <Bell size={14} />}
+                    Notifier les {definitifs.length} beneficiaire(s) definitif(s)
+                </button>
+                <button onClick={() => envoyerArrete(voyage.id)}
+                    disabled={actionLoading === 'arrete_' + voyage.id}
+                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
+                    {actionLoading === 'arrete_' + voyage.id
+                        ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        : <FileText size={14} />}
+                    Envoyer l'arrete par email
+                </button>
+            </>
+        )}
     </div>
 )}
+                                                {!voyage.arrete_recteur && definitifs.length > 0 && (
+                                                    <p className="text-xs text-gray-500 bg-gray-50 rounded-xl p-3">
+                                                        Liste definitive transmise au Recteur — en attente de redaction et signature de l'arrete.
+                                                    </p>
+                                                )}
                                                 <h3 className="font-semibold text-gray-700 text-sm">Beneficiaires :</h3>
 
                                                 <div className="space-y-2">
@@ -422,7 +503,7 @@ export default function VoyagesEtudes() {
                                                                 </div>
                                                                 {b.autorisation_absence && b.autorisation_absence.id && (
     <div className="mt-2 pt-2 border-t border-gray-200">
-        <button onClick={(e) => { e.stopPropagation(); navigate('/autorisation-absence/' + b.autorisation_absence.id + '/document') }}
+        <button onClick={(e) => { e.stopPropagation(); navigate('/autorisation-absence/' + b.autorisation_absence.id) }}
                                                                             className="flex items-center gap-2 border border-green-600 text-green-600 hover:bg-green-50 px-4 py-2 rounded-xl text-sm font-semibold transition">
                                                                             <Eye size={14} /> Voir l'autorisation d'absence
                                                                         </button>
@@ -594,7 +675,7 @@ export default function VoyagesEtudes() {
                                                 </div>
                                             )}
                                           {d.autorisation_absence && d.autorisation_absence.id && (
-    <button onClick={() => navigate('/autorisation-absence/' + d.autorisation_absence.id + '/document')}
+    <button onClick={() => navigate('/autorisation-absence/' + d.autorisation_absence.id)}
         className="flex items-center gap-2 border border-green-600 text-green-600 hover:bg-green-50 px-4 py-2 rounded-xl text-sm font-semibold transition">
         <Eye size={14} /> Voir l'autorisation d'absence
     </button>

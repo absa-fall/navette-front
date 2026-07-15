@@ -1,7 +1,7 @@
 import Layout from '../../components/Layout'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-
+import ProchaineNavette from '../../components/ProchaineNavette'
 import { useState, useEffect } from 'react'
 import { MapPin, FileText, Clock, CheckCircle, AlertTriangle, Bus } from 'lucide-react'
 import api from '../../api/axios'
@@ -68,7 +68,7 @@ export default function EnseignantDashboard() {
                         </p>
                     </div>
                 )}
-
+<ProchaineNavette />
                 {/* Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 

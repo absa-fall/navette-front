@@ -237,6 +237,7 @@ export default function AdminUtilisateurs() {
                                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Role</th>
                                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">UFR</th>
                                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Statut</th>
+                                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Créé le</th>
                                     <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Actions</th>
                                 </tr>
                             </thead>
@@ -269,6 +270,9 @@ export default function AdminUtilisateurs() {
                                                 {u.is_active ? 'Actif' : 'Inactif'}
                                             </span>
                                         </td>
+                                        <td className="px-5 py-4 text-gray-500 text-xs">
+    {u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '-'}
+</td>
                                         <td className="px-5 py-4">
                                             <div className="flex items-center justify-end gap-2">
                                                 {/* Activer / Desactiver */}

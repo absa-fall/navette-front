@@ -16,7 +16,7 @@ const etatLabels = {
     en_panne: 'En panne',
 }
 
-export default function AdminVehicules() {
+export default function Vehicules() {
     const [vehicules, setVehicules] = useState([])
     const [loading, setLoading] = useState(true)
     const [modal, setModal] = useState(false)
@@ -380,7 +380,7 @@ export default function AdminVehicules() {
                                 {actionLoading === 'save' && <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                                 {editVehicule ? 'Modifier' : 'Ajouter'}
                             </button>
-               ac         </div>
+                        </div>
                     </div>
                 </div>
             )}

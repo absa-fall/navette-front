@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
-import { MapPin, Calendar, FileText, CheckCircle, Bus, User, Fuel, DollarSign } from 'lucide-react'
+import { MapPin, Calendar, FileText, CheckCircle, Bus, User, Fuel, DollarSign, Pencil, Send } from 'lucide-react'
 
 export default function NouvelleNavette() {
     const navigate = useNavigate()
@@ -30,6 +30,12 @@ export default function NouvelleNavette() {
     const [success, setSuccess] = useState(false)
     const [error, setError] = useState('')
 
+    // NOUVEAU : gestion des étapes
+    // 'form'    -> saisie/édition
+    // 'preview' -> aperçu de l'ordre avant transmission
+    const [step, setStep] = useState('form')
+    const [draftId, setDraftId] = useState(null)
+
     useEffect(() => {
         Promise.all([
             api.get('/chauffeurs'),
@@ -40,20 +46,18 @@ export default function NouvelleNavette() {
         }).catch(() => {})
     }, [])
 
-   
-   
-const handleChauffeurChange = (e) => {
-    const chauffeurId = e.target.value
-    const selectedChauffeur = chauffeurs.find(c => c.id === parseInt(chauffeurId))
-    setForm(prev => ({
-        ...prev,
-        chauffeur_id: chauffeurId,
-        chauffeur_nom: selectedChauffeur?.nom || '',
-        chauffeur_prenom: selectedChauffeur?.prenom || '',
-        nationalite: selectedChauffeur?.nationalite || 'Sénégalaise',
-        grade_fonction: selectedChauffeur?.grade_fonction || 'Chauffeur',
-    }))
-} 
+    const handleChauffeurChange = (e) => {
+        const chauffeurId = e.target.value
+        const selectedChauffeur = chauffeurs.find(c => c.id === parseInt(chauffeurId))
+        setForm(prev => ({
+            ...prev,
+            chauffeur_id: chauffeurId,
+            chauffeur_nom: selectedChauffeur?.nom || '',
+            chauffeur_prenom: selectedChauffeur?.prenom || '',
+            nationalite: selectedChauffeur?.nationalite || 'Sénégalaise',
+            grade_fonction: selectedChauffeur?.grade_fonction || 'Chauffeur',
+        }))
+    }
 
     const handleVehiculeChange = (e) => {
         const vehiculeId = e.target.value
@@ -65,43 +69,71 @@ const handleChauffeurChange = (e) => {
         }))
     }
 
-    const handleSubmit = async () => {
+    const buildPayload = () => ({
+        chauffeur_id: form.chauffeur_id,
+        chauffeur_nom: form.chauffeur_nom,
+        chauffeur_prenom: form.chauffeur_prenom,
+        nationalite: form.nationalite,
+        grade_fonction: form.grade_fonction,
+        destination: form.destination,
+        objet_mission: form.objet_mission,
+        moyen_transport: form.moyen_transport,
+        vehicule_id: form.vehicule_id || null,
+        date_depart: form.date_depart,
+        date_retour: form.date_retour,
+        frais_transport: form.frais_transport,
+        indemnite_deplacement: form.indemnite_deplacement,
+        trajet: form.trajet,
+        trajet_autre: form.trajet === 'autres' ? form.trajet_autre : null,
+        motif: form.motif,
+    })
+
+    // ÉTAPE 1 : Enregistrer en brouillon (crée si nouveau, met à jour si déjà enregistré)
+    const handleSave = async () => {
         if (!form.chauffeur_id || !form.destination || !form.date_retour || !form.motif.trim()) {
             setError('Veuillez remplir tous les champs obligatoires, y compris le motif')
             return
         }
 
-        const data = {
-            chauffeur_id: form.chauffeur_id,
-            chauffeur_nom: form.chauffeur_nom,
-            chauffeur_prenom: form.chauffeur_prenom,
-            nationalite: form.nationalite,
-            grade_fonction: form.grade_fonction,
-            destination: form.destination,
-            objet_mission: form.objet_mission,
-            moyen_transport: form.moyen_transport,
-            vehicule_id: form.vehicule_id || null,
-            date_depart: form.date_depart,
-            date_retour: form.date_retour,
-            frais_transport: form.frais_transport,
-            indemnite_deplacement: form.indemnite_deplacement,
-            trajet: form.trajet,
-            trajet_autre: form.trajet === 'autres' ? form.trajet_autre : null,
-            motif: form.motif,
-        }
-
         setLoading(true)
         setError('')
         try {
-            await api.post('/ordres-mission', data)
-            setSuccess(true)
-            setTimeout(() => navigate('/ddl/navettes'), 2000)
+            const data = { ...buildPayload(), statut: 'brouillon' }
+            if (draftId) {
+                await api.put(`/ordres-mission/${draftId}`, data)
+            } else {
+                const res = await api.post('/ordres-mission', data)
+setDraftId(res.data.ordre.id)   
+            }
+            setStep('preview')
         } catch (err) {
-            setError(err.response?.data?.message || 'Erreur lors de la soumission')
+            setError(err.response?.data?.message || "Erreur lors de l'enregistrement")
         } finally {
             setLoading(false)
         }
     }
+
+    // ÉTAPE 3 : Transmettre au DRH (seulement ici la notification part)
+    const handleTransmit = async () => {
+        setLoading(true)
+        setError('')
+        try {
+            await api.post(`/ordres-mission/${draftId}/transmettre`)
+            setSuccess(true)
+            setTimeout(() => navigate('/ddl/navettes'), 2000)
+        } catch (err) {
+            setError(err.response?.data?.message || 'Erreur lors de la transmission')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const chauffeurLabel = `${form.chauffeur_prenom} ${form.chauffeur_nom}`.trim() || '—'
+    const trajetLabel = form.trajet === 'autres' ? form.trajet_autre : {
+        dakar_bambey: 'Dakar → Bambey',
+        thies_bambey: 'Thiès → Bambey',
+        bambey_ngouniane: 'Bambey → Ngouniane',
+    }[form.trajet] || '—'
 
     if (success) {
         return (
@@ -110,20 +142,78 @@ const handleChauffeurChange = (e) => {
                     <div className="bg-green-100 p-5 rounded-full mb-4">
                         <CheckCircle size={48} className="text-green-600" />
                     </div>
-                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Demande soumise !</h2>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Demande transmise !</h2>
                     <p className="text-gray-500">Votre demande a été transmise au DRH.</p>
                 </div>
             </Layout>
         )
     }
 
+    // ÉTAPE 2 : Aperçu / modification avant transmission
+    if (step === 'preview') {
+        return (
+            <Layout>
+                <div className="max-w-2xl mx-auto space-y-6">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-800">Aperçu de l'ordre de mission</h1>
+                        <p className="text-gray-500 text-sm mt-1">Vérifiez les informations avant de transmettre au DRH</p>
+                    </div>
+
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-4 text-sm">
+                            {error}
+                        </div>
+                    )}
+
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4 text-sm">
+                        <Row label="Chauffeur" value={chauffeurLabel} />
+                        <Row label="Nationalité" value={form.nationalite} />
+                        <Row label="Grade et fonction" value={form.grade_fonction} />
+                        <Row label="Destination" value={form.destination} />
+                        <Row label="Trajet" value={trajetLabel} />
+                        <Row label="Objet de la mission" value={form.objet_mission} />
+                        <Row label="Véhicule" value={form.moyen_transport || '—'} />
+                        <Row label="Date de départ" value={form.date_depart || '—'} />
+                        <Row label="Date de retour" value={form.date_retour || '—'} />
+                        <Row label="Frais de transport" value={form.frais_transport} />
+                        <Row label="Indemnité de déplacement" value={form.indemnite_deplacement} />
+                        <Row label="Motif" value={form.motif} multiline />
+                    </div>
+
+                    <div className="flex gap-3">
+                        <button
+                            onClick={() => setStep('form')}
+                            className="flex-1 border border-gray-300 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-50 transition flex items-center justify-center gap-2"
+                        >
+                            <Pencil size={16} />
+                            Modifier
+                        </button>
+                        <button
+                            onClick={handleTransmit}
+                            disabled={loading}
+                            className="flex-1 bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {loading ? (
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                                <Send size={16} />
+                            )}
+                            {loading ? 'Transmission...' : 'Transmettre au DRH'}
+                        </button>
+                    </div>
+                </div>
+            </Layout>
+        )
+    }
+
+    // ÉTAPE 1 : Formulaire (inchangé, sauf le bouton du bas)
     return (
         <Layout>
             <div className="max-w-2xl mx-auto space-y-6">
-<div>
-    <h1 className="text-2xl font-bold text-gray-800">Nouvelle demande de navette</h1>
-    <p className="text-gray-500 text-sm mt-1">Remplissez l'ordre de mission</p>
-</div>
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-800">Nouvelle demande de navette</h1>
+                    <p className="text-gray-500 text-sm mt-1">Remplissez l'ordre de mission</p>
+                </div>
                 {error && (
                     <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-4 text-sm">
                         {error}
@@ -145,7 +235,14 @@ const handleChauffeurChange = (e) => {
                         >
                             <option value="">Sélectionner un chauffeur</option>
                             {chauffeurs.map(c => (
-                                <option key={c.id} value={c.id}>{c.prenom} {c.nom}</option>
+                                <option
+                                    key={c.id}
+                                    value={c.id}
+                                    disabled={!c.is_active}
+                                    className={!c.is_active ? 'text-gray-400' : ''}
+                                >
+                                    {c.prenom} {c.nom}{!c.is_active ? ' (Désactivé)' : ''}
+                                </option>
                             ))}
                         </select>
                     </div>
@@ -187,7 +284,7 @@ const handleChauffeurChange = (e) => {
                         />
                     </div>
 
-                    {/* Trajet — label simplifié, heure_depart supprimée */}
+                    {/* Trajet */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             <MapPin size={14} className="inline mr-1" />
@@ -267,7 +364,7 @@ const handleChauffeurChange = (e) => {
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             <Calendar size={14} className="inline mr-1" />
-                           Date de retour <span className="text-red-500">*</span>
+                            Date de retour <span className="text-red-500">*</span>
                         </label>
                         <input
                             type="date"
@@ -332,15 +429,24 @@ const handleChauffeurChange = (e) => {
                         Annuler
                     </button>
                     <button
-                        onClick={handleSubmit}
+                        onClick={handleSave}
                         disabled={loading}
                         className="flex-1 bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                         {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                        {loading ? 'Envoi...' : 'Soumettre la demande'}
+                        {loading ? 'Enregistrement...' : 'Enregistrer'}
                     </button>
                 </div>
             </div>
         </Layout>
+    )
+}
+
+function Row({ label, value, multiline }) {
+    return (
+        <div className={multiline ? '' : 'flex justify-between items-start gap-4'}>
+            <span className="text-gray-500 font-medium">{label}</span>
+            <span className={`text-gray-800 ${multiline ? 'block mt-1' : 'text-right'}`}>{value}</span>
+        </div>
     )
 }

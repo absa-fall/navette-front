@@ -10,7 +10,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       devOptions: {
-        enabled: true,
+        enabled: false, // <- seul changement : désactive le service worker en dev (npm run dev)
+                        //    En production (npm run build), le PWA fonctionne exactement comme avant.
       },
       manifest: {
         id: '/',

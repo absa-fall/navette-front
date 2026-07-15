@@ -53,24 +53,75 @@ export default function RecteurDashboard() {
         setTimeout(() => { setMessage(''); setError('') }, 3000)
     }
 
-    const creerArrete = async (voyageId) => {
-        if (!arreteForm.numero || !arreteForm.date_arrete || !arreteForm.visas || !arreteForm.montant_billet || !arreteForm.montant_indemnite) {
-            showMsg('Veuillez remplir tous les champs', true)
-            return
-        }
-        setActionLoading('arrete_' + voyageId)
-        try {
-            await api.post(`/voyages-etudes/${voyageId}/arrete`, arreteForm)
-            showMsg('Arrete redige et signe avec succes')
-            setArreteOuvert(null)
-            setArreteForm({ numero: '', date_arrete: '', visas: '', montant_billet: '', montant_indemnite: '' })
-            fetchAll()
-        } catch (err) {
-            showMsg(err.response?.data?.message || 'Erreur', true)
-        } finally {
-            setActionLoading(null)
-        }
+    const exporterPDFDefinitif = (voyage) => {
+        const definitifs = voyage.beneficiaires?.filter(b => b.dans_liste_definitive) || []
+        const contenu = `
+            <html><head><style>
+                body { font-family: Arial, sans-serif; padding: 30px; font-size: 13px; }
+                h1 { color: #1d4ed8; font-size: 16px; }
+                p { color: #6b7280; margin-bottom: 20px; }
+                table { width: 100%; border-collapse: collapse; }
+                th { background: #ffffff; color: #111827; padding: 8px; text-align: left; font-size: 12px; border-bottom: 2px solid #e5e7eb; }
+                td { padding: 8px; border-bottom: 1px solid #e5e7eb; font-size: 12px; }
+                tr:nth-child(even) { background: #f9fafb; }
+                .footer { margin-top: 30px; font-size: 10px; color: #9ca3af; text-align: center; }
+            </style></head><body>
+            <h1>Liste definitive des beneficiaires — ${voyage.destination}</h1>
+            <p>
+                Du ${new Date(voyage.date_debut).toLocaleDateString('fr-FR')} au ${new Date(voyage.date_fin).toLocaleDateString('fr-FR')}
+                — Total : ${definitifs.length} beneficiaire(s)
+            </p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>Prenom</th>
+                        <th>Nom</th>
+                        <th>UFR</th>
+                        <th>Departement</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${definitifs.map((b, i) => `
+                        <tr>
+                            <td>${i + 1}</td>
+                            <td>${b.enseignant?.prenom || ''}</td>
+                            <td>${b.enseignant?.nom || ''}</td>
+                            <td>${b.enseignant?.ufr || '-'}</td>
+                            <td>${b.enseignant?.departement || '-'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            <div class="footer">UADB Mobilite — Liste a valider avant redaction de l'arrete — Genere le ${new Date().toLocaleDateString('fr-FR')}</div>
+            <button onclick="window.print()" style="position:fixed;bottom:20px;right:20px;background:#1d4ed8;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;">
+                Imprimer / PDF
+            </button>
+            </body></html>
+        `
+        const win = window.open('', '_blank')
+        win.document.write(contenu)
+        win.document.close()
     }
+
+    const creerArrete = async (voyageId) => {
+    if (!arreteForm.numero || !arreteForm.date_arrete || !arreteForm.visas || !arreteForm.montant_billet || !arreteForm.montant_indemnite) {
+        showMsg('Veuillez remplir tous les champs', true)
+        return
+    }
+    setActionLoading('arrete_' + voyageId)
+    try {
+        await api.post(`/voyages-etudes/${voyageId}/arrete`, { ...arreteForm, statut: 'brouillon' })
+        setArreteOuvert(null)
+        setArreteForm({ numero: '', date_arrete: '', visas: '', montant_billet: '', montant_indemnite: '' })
+        // On redirige directement vers l'aperçu/signature de l'arrêté
+        navigate(`/voyages-etudes/${voyageId}/arrete`)
+    } catch (err) {
+        showMsg(err.response?.data?.message || 'Erreur', true)
+    } finally {
+        setActionLoading(null)
+    }
+}
 
     const signerAutorisationAbsence = async (autorisationId) => {
         setActionLoading(autorisationId + '_signer_absence')
@@ -100,9 +151,9 @@ const supprimerArretes = async (voyageIds) => {
     if (!confirm(`Supprimer ${voyageIds.length} arrete(s) ?`)) return
     try {
         for (const voyageId of voyageIds) {
-            const voyage = signes.find(v => v.id === voyageId)
-            if (voyage?.arrete?.id) {
-                await api.delete(`/arretes/${voyage.arrete.id}`)
+            const arreteRes = await api.get(`/voyages-etudes/${voyageId}/arrete`)
+            if (arreteRes.data?.id) {
+                await api.delete(`/arretes/${arreteRes.data.id}`)
             }
         }
         setSelectedSignes([])
@@ -296,8 +347,8 @@ const supprimerArretes = async (voyageIds) => {
                                         onSelectAll={() => setSelectedDefinitifs(
                                             selectedDefinitifs.length === definitifs.length ? [] : definitifs.map(v => v.id)
                                         )}
-                                       onDeleteSelected={() => supprimerArretes(selectedSignes)}
-onDeleteAll={() => supprimerArretes(signes.map(v => v.id))}
+                                        onDeleteSelected={() => supprimerVoyages(selectedDefinitifs)}
+                                        onDeleteAll={() => supprimerVoyages(definitifs.map(v => v.id))}
                                     />
                                     {definitifs.map(voyage => (
                                         <div key={voyage.id} className={`bg-white rounded-2xl border shadow-sm p-5 transition ${
@@ -339,6 +390,13 @@ onDeleteAll={() => supprimerArretes(signes.map(v => v.id))}
                                                         <span className="text-xs text-gray-500">{b.enseignant?.ufr}</span>
                                                     </div>
                                                 ))}
+                                            </div>
+
+                                            <div className="flex gap-2 mb-3">
+                                                <button onClick={() => exporterPDFDefinitif(voyage)}
+                                                    className="flex-1 flex items-center justify-center gap-2 border border-blue-200 text-blue-700 hover:bg-blue-50 py-2.5 rounded-xl font-semibold text-sm transition">
+                                                    <Eye size={16} /> Voir la liste (PDF)
+                                                </button>
                                             </div>
 
                                             {arreteOuvert !== voyage.id ? (
@@ -388,13 +446,13 @@ onDeleteAll={() => supprimerArretes(signes.map(v => v.id))}
                                                     </div>
                                                     <div className="flex gap-2">
                                                         <button onClick={() => creerArrete(voyage.id)}
-                                                            disabled={actionLoading === 'arrete_' + voyage.id}
-                                                            className="flex-1 flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl font-semibold text-sm transition disabled:opacity-50">
-                                                            {actionLoading === 'arrete_' + voyage.id
-                                                                ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                                : <FileText size={16} />}
-                                                            Signer l'arrete
-                                                        </button>
+    disabled={actionLoading === 'arrete_' + voyage.id}
+    className="flex-1 flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl font-semibold text-sm transition disabled:opacity-50">
+    {actionLoading === 'arrete_' + voyage.id
+        ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        : <FileText size={16} />}
+    Aperçu et signature
+</button>
                                                         <button onClick={() => setArreteOuvert(null)}
                                                             className="px-4 py-2.5 border border-gray-300 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50 transition">
                                                             Annuler

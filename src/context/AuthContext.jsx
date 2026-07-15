@@ -25,9 +25,9 @@ export const AuthProvider = ({ children }) => {
                     localStorage.removeItem('user')
                     setUser(null)
                 })
-                .finally(() => setLoading(false)) // ✅ attend la fin de /me
+                .finally(() => setLoading(false)) 
         } else {
-            setLoading(false) // ✅ pas de token, on arrête directement
+            setLoading(false) 
         }
     }, [])
 

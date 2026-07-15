@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
+import IncidentsSignales from '../../components/IncidentsSignales'
 import { Bus, MapPin, FileText, Clock, XCircle, Bell, CheckCircle, ThumbsUp, ThumbsDown, AlertCircle, Trash2 } from 'lucide-react'
 
 const typeNotifConfig = {
@@ -102,10 +103,16 @@ export default function DDLDashboard() {
     return (
         <Layout>
             <div className="space-y-6">
-             <div>
+          
+<div>
     <h1 className="text-2xl font-bold text-gray-800">Bonjour, {user?.prenom} </h1>
     <p className="text-gray-500 text-sm mt-1">Bienvenue sur votre espace UADB Mobilité</p>
 </div>
+
+<IncidentsSignales />
+
+{/* Stats */}
+<div className="grid grid-cols-1 md:grid-cols-3 gap-5"></div>
                 {/* Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <div onClick={() => navigate('/ddl/navettes')} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition">

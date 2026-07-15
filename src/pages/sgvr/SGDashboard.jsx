@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import GraphiquesSGVR from '../../components/GraphiquesSGVR'
@@ -29,6 +29,7 @@ export default function SGDashboard() {
    const [onglet, setOnglet] = useState('historique')
     const [selected, setSelected] = useState([])
     const [deleteLoading, setDeleteLoading] = useState(false)
+    const tableauRef = useRef(null)
 
     useEffect(() => { fetchReservations() }, [])
     useEffect(() => { setSelected([]) }, [onglet])
@@ -51,6 +52,13 @@ export default function SGDashboard() {
         } finally {
             setLoading(false)
         }
+    }
+
+    const allerVers = (ongletCible) => {
+        setOnglet(ongletCible)
+        setTimeout(() => {
+            tableauRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 100)
     }
 
     const handleEditMontant = (r) => {
@@ -368,15 +376,16 @@ const renderTableau = (liste) => {
     return (
         <Layout>
             <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-800">Tableau de bord SG VR</h1>
-                        <p className="text-gray-500 text-sm mt-1">Gestion des réservations navette</p>
-                    </div>
-                   
-                </div>
+               <div className="flex items-center justify-between">
+    <div>
+        <h1 className="text-2xl font-bold text-gray-800">Tableau de bord SG VR</h1>
+        <p className="text-gray-500 text-sm mt-1">Gestion des réservations navette</p>
+    </div>
+</div>
 
-                {error && (
+
+
+{error && (
                     <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
                         <AlertCircle size={20} className="text-red-500 mt-0.5 flex-shrink-0" />
                         <div>
@@ -388,7 +397,7 @@ const renderTableau = (liste) => {
 
                 {!error && (
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div onClick={() => setOnglet('encours')} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow">
+                        <div onClick={() => allerVers('encours')} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="bg-blue-100 p-2 rounded-xl"><Bus size={20} className="text-blue-700" /></div>
                                 <span className="text-xs text-gray-400">Total</span>
@@ -396,7 +405,7 @@ const renderTableau = (liste) => {
                             <p className="text-2xl font-bold text-gray-800">{reservations.length}</p>
                             <p className="text-sm text-gray-500 mt-1">Réservations</p>
                         </div>
-                        <div onClick={() => setOnglet('encours')} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow">
+                        <div onClick={() => allerVers('encours')} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="bg-yellow-100 p-2 rounded-xl"><Clock size={20} className="text-yellow-700" /></div>
                                 <span className="text-xs text-gray-400">En cours</span>
@@ -404,7 +413,7 @@ const renderTableau = (liste) => {
                             <p className="text-2xl font-bold text-gray-800">{enCours.length}</p>
                             <p className="text-sm text-gray-500 mt-1">En cours</p>
                         </div>
-                        <div onClick={() => setOnglet('historique')} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow">
+                        <div onClick={() => allerVers('historique')} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="bg-green-100 p-2 rounded-xl"><BadgeCheck size={20} className="text-green-700" /></div>
                                 <span className="text-xs text-gray-400">Terminées</span>
@@ -462,7 +471,9 @@ const renderTableau = (liste) => {
                     </div>
                 )}
 
-                {!error && !loading && renderTableau(listeActive)}
+                <div ref={tableauRef}>
+                    {!error && !loading && renderTableau(listeActive)}
+                </div>
 
                 {loading && (
                     <div className="flex justify-center py-20">

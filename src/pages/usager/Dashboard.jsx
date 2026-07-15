@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
+import ProchaineNavette from '../../components/ProchaineNavette'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api/axios'
 import { Bus, QrCode, Calendar, User, Bell, CheckCircle, AlertCircle, X, Clock, MapPin, Trash2, Download } from 'lucide-react'
@@ -168,7 +169,7 @@ const annulerReservation = async (id) => {
                         {user?.statut}
                     </span>
                 </div>
-
+<ProchaineNavette />
                 {/* Actions rapides en tuiles */}
                 <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => navigate('/usager/reserver')}

@@ -2,6 +2,7 @@ import Layout from '../../components/Layout'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
+import IncidentsDrh from '../../components/IncidentsDrh'
 import { FileText, CheckCircle, XCircle, Clock } from 'lucide-react'
 
 export default function DRHDashboard() {
@@ -40,14 +41,13 @@ export default function DRHDashboard() {
             <div className="space-y-6">
 
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">
-                        Dashboard DRH
-                    </h1>
+    <h1 className="text-2xl font-bold text-gray-800">Dashboard DRH</h1>
+    <p className="text-gray-500 text-sm mt-1">Gestion des ordres de mission</p>
+</div>
 
-                    <p className="text-gray-500 text-sm mt-1">
-                        Gestion des ordres de mission
-                    </p>
-                </div>
+<IncidentsDrh />
+
+{/* Statistiques */}
 
                 {/* Statistiques */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">

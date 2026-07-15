@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
+import SignaturePad from '../../components/SignaturePad'
 import { Users, Check, AlertCircle, ArrowLeft, Filter, Search, Plus, X, FileText } from 'lucide-react'
 
 const UFRS = ['SATIC', 'SDD', 'ECOMIJ', 'ISFAR']
@@ -26,7 +27,7 @@ export default function NouveauVoyageEtude() {
     const [showAddModal, setShowAddModal]   = useState(false)
     const [editingId, setEditingId] = useState(null)
     const [showRecap, setShowRecap] = useState(false)
-    const [addForm, setAddForm]             = useState({ prenom: '', nom: '', ufr: 'SATIC', departement: '', matricule: '' })
+    const [addForm, setAddForm]             = useState({ prenom: '', nom: '', ufr: 'SATIC', departement: '', matricule: '', date_embauche: '' })
     const [loading, setLoading]             = useState(false)
     const [loadingEns, setLoadingEns]       = useState(true)
     const [error, setError]                 = useState('')
@@ -40,35 +41,42 @@ export default function NouveauVoyageEtude() {
         motif: 'Voyage d\'études',
     })
 
+    // ===== Etape apercu + signature avant transmission =====
+    const [step, setStep]                 = useState('form') // 'form' | 'apercu'
+    const [voyageCree, setVoyageCree]     = useState(null)
+    const [signature, setSignature]       = useState(null)
+    const [transmitLoading, setTransmitLoading] = useState(false)
+
     const anneeActuelle = new Date().getFullYear()
     const pariteAnnee   = anneeActuelle % 2 === 0 ? 'paire' : 'impaire'
-
-    useEffect(() => {
-        api.get('/enseignants-permanents')
-            .then(res => {
-                const data = res.data
-                setEnseignants(data)
-                const eligibles = data.filter(e => {
-                    if (!e.date_embauche) return false
-                    const anneeEmbauche = new Date(e.date_embauche).getFullYear()
-                    return anneeActuelle % 2 === 0
-                        ? anneeEmbauche % 2 === 0
-                        : anneeEmbauche % 2 !== 0
-                })
-                setSelected(eligibles.map(e => e.id))
-            })
-            .catch(() => {})
-            .finally(() => setLoadingEns(false))
-    }, [])
+const estEligiblePourAnnee = (dateEmbauche, anneeRef) => {
+    if (!dateEmbauche) return false
+    const annee = new Date(dateEmbauche).getFullYear()
+    const anciennete = anneeRef - annee
+    return anciennete >= 2 && anciennete % 2 === 0
+}
+   useEffect(() => {
+api.get('/enseignants-permanents')
+    .then(res => {
+        setEnseignants(res.data)
+        const idsEligibles = res.data
+            .filter(e => estEligiblePourAnnee(e.date_embauche, anneeActuelle))
+            .map(e => e.id)
+        setSelected(idsEligibles)
+    })
+    .catch(() => {})
+    .finally(() => setLoadingEns(false))
+}, [])
 
     const tousEnseignants = [...enseignants, ...manuels]
 
     const getAnnee = (e) => e.date_embauche ? new Date(e.date_embauche).getFullYear() : null
 
-    const enseignantsFiltres = enseignants.filter(e => {
+    const enseignantsFiltres = tousEnseignants.filter(e => {
         const matchUFR     = filtreUFR === 'tous' || e.ufr === filtreUFR
         const annee        = getAnnee(e)
         const matchPairing = filtrePairing === 'tous'
+            || e._manuel
             || (filtrePairing === 'paire'   && annee !== null && annee % 2 === 0)
             || (filtrePairing === 'impaire' && annee !== null && annee % 2 !== 0)
         const matchSearch  = searchEns === ''
@@ -85,11 +93,13 @@ export default function NouveauVoyageEtude() {
         setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
 
     const selecterTousFiltres = () => {
-        const ids = enseignantsFiltres.map(e => e.id)
-        const tousSelectionnes = ids.every(id => selected.includes(id))
-        if (tousSelectionnes) setSelected(prev => prev.filter(id => !ids.includes(id)))
-        else setSelected(prev => [...new Set([...prev, ...ids])])
-    }
+    const idsEligibles = enseignantsFiltres
+        .filter(e => e._manuel || estEligiblePourAnnee(e.date_embauche, anneeActuelle))
+        .map(e => e.id)
+    const tousSelectionnes = idsEligibles.every(id => selected.includes(id))
+    if (tousSelectionnes) setSelected(prev => prev.filter(id => !idsEligibles.includes(id)))
+    else setSelected(prev => [...new Set([...prev, ...idsEligibles])])
+}
 const exportPDF = () => {
     const enseignantsExport = tousEnseignants.filter(e => selected.includes(e.id))
     const annee = new Date().getFullYear()
@@ -146,17 +156,17 @@ th { background: #ffffff; color: #111827; padding: 8px; text-align: left; font-s
     } else {
         // Mode ajout
         const fakeId = `manuel_${Date.now()}`
-        const nouvel = { ...addForm, id: fakeId, date_embauche: null, _manuel: true }
+        const nouvel = { ...addForm, id: fakeId, date_embauche: addForm.date_embauche || null, _manuel: true }
         setManuels(prev => [...prev, nouvel])
         setSelected(prev => [...prev, fakeId])
     }
 
-    setAddForm({ prenom: '', nom: '', ufr: 'SATIC', departement: '', matricule: '' })
+    setAddForm({ prenom: '', nom: '', ufr: 'SATIC', departement: '', matricule: '', date_embauche: '' })
     setShowAddModal(false)
 }
 
 const ouvrirModification = (m) => {
-    setAddForm({ prenom: m.prenom, nom: m.nom, ufr: m.ufr, departement: m.departement, matricule: m.matricule })
+    setAddForm({ prenom: m.prenom, nom: m.nom, ufr: m.ufr, departement: m.departement, matricule: m.matricule, date_embauche: m.date_embauche || '' })
     setEditingId(m.id)
     setShowAddModal(true)
 }
@@ -164,7 +174,7 @@ const ouvrirModification = (m) => {
 const fermerModal = () => {
     setShowAddModal(false)
     setEditingId(null)
-    setAddForm({ prenom: '', nom: '', ufr: 'SATIC', departement: '', matricule: '' })
+    setAddForm({ prenom: '', nom: '', ufr: 'SATIC', departement: '', matricule: '', date_embauche: '' })
 }
 
     const retirerManuel = (id) => {
@@ -179,35 +189,162 @@ const fermerModal = () => {
     }
 }
 
+    // Etape 1 : creer la liste (brouillon) et passer a l'apercu, SANS transmettre
     const handleSubmit = async (e) => {
-        e.preventDefault()
-        if (selected.length === 0) {
-            setError('Veuillez selectionner au moins un beneficiaire')
+    e.preventDefault()
+    if (selected.length === 0) {
+        setError('Veuillez selectionner au moins un beneficiaire')
+        return
+    }
+    setLoading(true)
+    setError('')
+    try {
+        const idsReels = selected.filter(id => typeof id === 'number')
+        const res = await api.post('/voyages-etudes', { ...form, enseignants: idsReels })
+
+        // Correctif : le backend peut renvoyer l'objet voyage sous différentes
+        // formes selon l'endpoint ({ voyage: {...} }, { data: {...} }, ou l'objet
+        // directement). On essaie les trois pour ne jamais se retrouver avec
+        // voyageCree === undefined (ce qui empêchait l'affichage de l'étape
+        // "apercu" et donnait l'impression que le bouton "Continuer" ne faisait rien).
+        const voyage = res.data?.voyage ?? res.data?.data ?? res.data
+
+        if (!voyage || !voyage.id) {
+            // Sécurité supplémentaire : si malgré tout on n'a rien d'exploitable,
+            // on prévient clairement au lieu de rester bloqué silencieusement.
+            console.error('Réponse inattendue de /voyages-etudes:', res.data)
+            setError("La liste a peut-être été créée mais la réponse du serveur est dans un format inattendu. Vérifiez la page d'historique.")
             return
         }
-        setLoading(true)
+
+        setVoyageCree(voyage)
+        setStep('apercu')
+    } catch (err) {
+        setError(err.response?.data?.message || 'Erreur lors de la creation')
+    } finally {
+        setLoading(false)
+    }
+}
+
+    // Correctif : si une signature existe deja en local (le VR a deja signe
+    // un document precedent), SignaturePad l'affiche mais ne declenche pas
+    // onSaved automatiquement. On la recupere nous-memes pour activer le bouton.
+    useEffect(() => {
+        if (step === 'apercu') {
+            const saved = localStorage.getItem('signature_vice_recteur')
+            if (saved && saved.startsWith('data:image')) setSignature(saved)
+        }
+    }, [step])
+
+    // Etape 2 : une fois signee, on transmet reellement la liste
+    const handleSignerEtTransmettre = async () => {
+        if (!signature || !voyageCree) return
+        setTransmitLoading(true)
         setError('')
         try {
-            const idsReels = selected.filter(id => typeof id === 'number')
-            await api.post('/voyages-etudes', { ...form, enseignants: idsReels })
+            await api.patch(`/voyages-etudes/${voyageCree.id}/transmettre`)
             setSuccess(true)
             setTimeout(() => navigate('/vice-recteur/voyages-etudes'), 2000)
         } catch (err) {
-            setError(err.response?.data?.message || 'Erreur lors de la publication')
+            setError(err.response?.data?.message || 'Erreur lors de la transmission')
         } finally {
-            setLoading(false)
+            setTransmitLoading(false)
         }
     }
 
+  
     if (success) {
+    return (
+        <Layout>
+            <div className="flex flex-col items-center justify-center py-20">
+                <div className="bg-green-100 p-5 rounded-full mb-4">
+                    <Check size={48} className="text-green-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Liste publiée !</h2>
+                <p className="text-gray-500">Les Chefs de Département et la Commission ont été notifiés.</p>
+            </div>
+        </Layout>
+    )
+}
+
+    // ===== ETAPE APERCU + SIGNATURE =====
+    if (step === 'apercu' && voyageCree) {
+        const beneficiairesApercu = tousEnseignants.filter(e => selected.includes(e.id))
+
         return (
             <Layout>
-                <div className="flex flex-col items-center justify-center py-20">
-                    <div className="bg-green-100 p-5 rounded-full mb-4">
-                        <Check size={48} className="text-green-600" />
+                <div className="w-full max-w-3xl mx-auto space-y-6">
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => setStep('form')}
+                            className="p-2 hover:bg-gray-100 rounded-xl transition">
+                            <ArrowLeft size={20} className="text-gray-600" />
+                        </button>
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-800">Aperçu avant transmission</h1>
+                            <p className="text-gray-500 text-sm mt-1">
+                                Vérifiez la liste puis signez pour la transmettre aux Chefs de Département et à la Commission
+                            </p>
+                        </div>
                     </div>
-                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Liste publiee !</h2>
-                    <p className="text-gray-500">Les Chefs de Departement ont ete notifies.</p>
+
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-4 text-sm flex items-center gap-2">
+                            <AlertCircle size={16} /> {error}
+                        </div>
+                    )}
+
+                    <div className="bg-white border border-gray-200 shadow-sm rounded-2xl px-8 py-8 font-serif text-gray-900">
+                        <h2 className="text-lg font-bold text-blue-800 mb-1">
+                            Liste des bénéficiaires — {form.motif}
+                        </h2>
+                        <p className="text-sm text-gray-600 mb-6">
+                            Publiée le {new Date(form.date_publication).toLocaleDateString('fr-FR')} — Total : {beneficiairesApercu.length} bénéficiaire(s)
+                        </p>
+
+                        <table className="w-full border-collapse text-[13px] mb-10">
+                            <thead>
+                                <tr>
+                                    <th className="border border-gray-800 px-3 py-1.5 text-left">N°</th>
+                                    <th className="border border-gray-800 px-3 py-1.5 text-left">Prénom</th>
+                                    <th className="border border-gray-800 px-3 py-1.5 text-left">Nom</th>
+                                    <th className="border border-gray-800 px-3 py-1.5 text-left">UFR</th>
+                                    <th className="border border-gray-800 px-3 py-1.5 text-left">Département</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {beneficiairesApercu.map((e, i) => (
+                                    <tr key={e.id}>
+                                        <td className="border border-gray-800 px-3 py-1.5">{i + 1}.</td>
+                                        <td className="border border-gray-800 px-3 py-1.5">{e.prenom}</td>
+                                        <td className="border border-gray-800 px-3 py-1.5 font-bold">{e.nom?.toUpperCase()}</td>
+                                        <td className="border border-gray-800 px-3 py-1.5">{e.ufr || '-'}</td>
+                                        <td className="border border-gray-800 px-3 py-1.5">{e.departement || '-'}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+
+                        <div className="flex justify-end">
+                            <SignaturePad
+                                storageKey="signature_vice_recteur"
+                                label="Le Vice-Recteur"
+                                onSaved={setSignature}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                        <button type="button" onClick={() => setStep('form')}
+                            className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition">
+                            Retour au formulaire
+                        </button>
+                        <button type="button" onClick={handleSignerEtTransmettre}
+                            disabled={!signature || transmitLoading}
+                            className="flex-1 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-50 flex items-center justify-center gap-2">
+                            {transmitLoading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                            {!signature ? 'Signez pour continuer' : (transmitLoading ? 'Transmission...' : 'Signer et transmettre')}
+                        </button>
+                    </div>
                 </div>
             </Layout>
         )
@@ -225,9 +362,9 @@ const fermerModal = () => {
                     </button>
                     <div>
                         <h1 className="text-2xl font-bold text-gray-800">Publier une liste de beneficiaires</h1>
-                        <p className="text-gray-500 text-sm mt-1">
-                            Année {anneeActuelle} — Enseignants années <span className="font-semibold">{pariteAnnee}s</span> pré-sélectionnés
-                        </p>
+                       <p className="text-gray-500 text-sm mt-1">
+    Année {anneeActuelle} — Sont éligibles les enseignants ayant au moins 2 ans d'ancienneté, à intervalle de 2 ans depuis leur embauche
+</p>
                     </div>
                 </div>
 
@@ -311,27 +448,6 @@ const fermerModal = () => {
                                     </button>
                                 </div>
 
-                                {manuels.length > 0 && (
-                                    <div className="space-y-1.5 pt-2 border-t border-gray-100">
-                                        <p className="text-xs font-semibold text-orange-600">Ajoutés manuellement :</p>
-                                       {manuels.map(m => (
-    <div key={m.id} className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
-        <span className="text-xs text-gray-800">{m.prenom} {m.nom} — {m.ufr}</span>
-        <div className="flex items-center gap-2">
-            <button type="button" onClick={() => ouvrirModification(m)}
-                className="text-xs text-blue-600 hover:text-blue-800 font-medium">
-                Modifier
-            </button>
-            <button type="button" onClick={() => retirerManuel(m.id)}
-                className="text-xs text-red-500 hover:text-red-700">
-                <X size={14} />
-            </button>
-        </div>
-    </div>
-))}
-                                    </div>
-                                )}
-
                                 <div className="pt-2 border-t border-gray-100 space-y-3">
                                     <button type="button" onClick={() => navigate('/vice-recteur/voyages-etudes')}
                                         className="w-full border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition">
@@ -340,7 +456,7 @@ const fermerModal = () => {
                                     <button type="submit" disabled={loading}
                                         className="w-full bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-50 flex items-center justify-center gap-2">
                                         {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                                        {loading ? 'Publication...' : `Publier (${selected.length})`}
+                                        {loading ? 'Creation...' : `Continuer vers l'apercu (${selected.length})`}
                                     </button>
                                 </div>
                             </div>
@@ -386,14 +502,18 @@ const fermerModal = () => {
                                     </div>
                                 </div>
 
-                                {enseignantsFiltres.length > 0 && (
-                                    <button type="button" onClick={selecterTousFiltres}
-                                        className="text-xs text-blue-700 hover:underline font-semibold">
-                                        {enseignantsFiltres.every(e => selected.includes(e.id))
-                                            ? 'Tout désélectionner'
-                                            : `Sélectionner tout (${enseignantsFiltres.length})`}
-                                    </button>
-                                )}
+                               {enseignantsFiltres.length > 0 && (() => {
+    const eligiblesFiltres = enseignantsFiltres.filter(e => e._manuel || estEligiblePourAnnee(e.date_embauche, anneeActuelle))
+    if (eligiblesFiltres.length === 0) return null
+    return (
+        <button type="button" onClick={selecterTousFiltres}
+            className="text-xs text-blue-700 hover:underline font-semibold">
+            {eligiblesFiltres.every(e => selected.includes(e.id))
+                ? 'Tout désélectionner'
+                : `Sélectionner les éligibles (${eligiblesFiltres.length})`}
+        </button>
+    )
+})()}
 
                               {loadingEns ? (
     <div className="flex justify-center py-8">
@@ -458,11 +578,8 @@ const fermerModal = () => {
                                             const annee      = getAnnee(e)
                                             const parite     = annee ? (annee % 2 === 0 ? 'paire' : 'impaire') : null
                                             const isSelected = selected.includes(e.id)
-                                            const estEligible = annee && (
-                                                anneeActuelle % 2 === 0
-                                                    ? annee % 2 === 0
-                                                    : annee % 2 !== 0
-                                            )
+                                            const anciennete = annee ? anneeActuelle - annee : null
+                                            const estEligible = anciennete !== null && anciennete >= 2 && anciennete % 2 === 0
                                             return (
 <div key={e.id}
     onClick={() => toggleSelect(e.id)}
@@ -489,10 +606,34 @@ const fermerModal = () => {
         {annee || '—'}
     </span>
 
-    <span className="px-2 border-l-2 border-gray-300 flex justify-center">
-        {estEligible ? (
+    <span className="px-2 border-l-2 border-gray-300 flex justify-center items-center gap-2">
+        {e._manuel ? (
+            <>
+                {estEligible ? (
+                    <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-green-100 text-green-700">
+                        Éligible
+                    </span>
+                ) : (
+                    <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">
+                        Manuel
+                    </span>
+                )}
+                <button type="button" onClick={(ev) => { ev.stopPropagation(); ouvrirModification(e) }}
+                    className="text-[11px] text-blue-600 hover:text-blue-800 font-medium">
+                    Modifier
+                </button>
+                <button type="button" onClick={(ev) => { ev.stopPropagation(); retirerManuel(e.id) }}
+                    className="text-red-500 hover:text-red-700">
+                    <X size={12} />
+                </button>
+            </>
+        ) :estEligible ? (
             <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-green-100 text-green-700">
                 Éligible
+            </span>
+        ) : isSelected ? (
+            <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">
+                Dérogation
             </span>
         ) : (
             <span className="text-[11px] text-gray-300">—</span>
@@ -563,6 +704,13 @@ const fermerModal = () => {
                                 onChange={e => setAddForm(f => ({ ...f, matricule: e.target.value }))}
                                 className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
                                 placeholder="Ex: PER001" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-gray-700 mb-1 block">Date d'embauche (optionnel)</label>
+                            <input type="date" value={addForm.date_embauche}
+                                onChange={e => setAddForm(f => ({ ...f, date_embauche: e.target.value }))}
+                                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                            <p className="text-[11px] text-gray-400 mt-1">Si renseignée, l'éligibilité sera calculée automatiquement.</p>
                         </div>
                         <div className="flex gap-3 pt-2">
                            <button type="button" onClick={fermerModal}

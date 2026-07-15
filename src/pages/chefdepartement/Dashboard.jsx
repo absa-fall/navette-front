@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
 import { useNavigate } from 'react-router-dom'
-import { FileText, CheckCircle, AlertCircle, Send, Eye, Bell, Users, ChevronDown, ChevronUp, Trash2, History } from 'lucide-react'
+import { FileText, CheckCircle, AlertCircle, Send, Eye, Bell, Users, Trash2, History } from 'lucide-react'
 
 export default function ChefDepartementDashboard() {
     const navigate = useNavigate()
@@ -14,11 +14,8 @@ export default function ChefDepartementDashboard() {
     const [actionLoading, setActionLoading]     = useState(null)
     const [message, setMessage]                 = useState('')
     const [error, setError]                     = useState('')
-    const [voyageOuvert, setVoyageOuvert]       = useState(null)
-    const [beneficiaires, setBeneficiaires]     = useState({})
-    const [loadingBenef, setLoadingBenef]       = useState(null)
     const [selectedVoyages, setSelectedVoyages] = useState([])
-    const [selectedJustif, setSelectedJustif]   = useState([])
+
     const [selectedAuto, setSelectedAuto]       = useState([])
     const [selectedHistorique, setSelectedHistorique] = useState([])
     const [autorisationsAbsence, setAutorisationsAbsence] = useState([])
@@ -26,7 +23,7 @@ export default function ChefDepartementDashboard() {
     useEffect(() => {
         const params = new URLSearchParams(location.search)
         const tab = params.get('tab')
-        if (['listes', 'justificatifs', 'autorisations', 'historique'].includes(tab)) setActiveTab(tab)
+        if (['listes', 'autorisations', 'historique'].includes(tab)) setActiveTab(tab)
     }, [location.search])
 
     useEffect(() => { fetchDossiers() }, [])
@@ -52,21 +49,6 @@ export default function ChefDepartementDashboard() {
         setTimeout(() => { setMessage(''); setError('') }, 3000)
     }
 
-    const toggleVoyage = async (voyageId) => {
-        if (voyageOuvert === voyageId) { setVoyageOuvert(null); return }
-        setVoyageOuvert(voyageId)
-        if (beneficiaires[voyageId]) return
-        setLoadingBenef(voyageId)
-        try {
-            const res = await api.get(`/voyages-etudes/${voyageId}/beneficiaires`)
-            setBeneficiaires(prev => ({ ...prev, [voyageId]: res.data }))
-        } catch {
-            showMsg('Impossible de charger les beneficiaires', true)
-        } finally {
-            setLoadingBenef(null)
-        }
-    }
-
     // ===== SELECTION VOYAGES =====
     const toggleSelectVoyage = (id) =>
         setSelectedVoyages(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
@@ -74,51 +56,27 @@ export default function ChefDepartementDashboard() {
     const toggleSelectAllVoyages = () =>
         setSelectedVoyages(selectedVoyages.length === voyagesUniques.length ? [] : voyagesUniques.map(v => v.id))
 
-    const supprimerVoyagesSelectionnes = async () => {
+   const supprimerVoyagesSelectionnes = async () => {
         if (!confirm(`Masquer ${selectedVoyages.length} voyage(s) de votre vue ?`)) return
         try {
+            for (const id of selectedVoyages) await api.delete(`/voyages-etudes/${id}`)
             setDossiers(prev => prev.filter(d => !selectedVoyages.includes(d.voyage?.id)))
             setSelectedVoyages([])
             showMsg('Voyage(s) masque(s) de votre vue')
-        } catch { showMsg('Erreur', true) }
+        } catch { showMsg('Erreur lors de la suppression', true) }
     }
 
     const supprimerTousVoyages = async () => {
         if (!confirm('Masquer tous les voyages de votre vue ?')) return
         try {
+            for (const id of voyagesUniques.map(v => v.id)) await api.delete(`/voyages-etudes/${id}`)
             setDossiers([])
             setSelectedVoyages([])
             showMsg('Voyages masques de votre vue')
-        } catch { showMsg('Erreur', true) }
-    }
-
-    // ===== SELECTION JUSTIFICATIFS =====
-    const toggleSelectJustif = (id) =>
-        setSelectedJustif(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
-
-    const toggleSelectAllJustif = () =>
-        setSelectedJustif(selectedJustif.length === dossiersJustif.length ? [] : dossiersJustif.map(d => d.id))
-
-    const supprimerJustifSelectionnes = async () => {
-        if (!confirm(`Supprimer ${selectedJustif.length} dossier(s) ?`)) return
-        try {
-            for (const id of selectedJustif) await api.delete(`/voyages-etudes/beneficiaire/${id}/dossier`)
-            showMsg('Suppression effectuee')
-            setSelectedJustif([])
-            fetchDossiers()
         } catch { showMsg('Erreur lors de la suppression', true) }
     }
 
-    const supprimerTousJustif = async () => {
-        if (!confirm('Supprimer tous les dossiers justificatifs ?')) return
-        try {
-            for (const d of dossiersJustif) await api.delete(`/voyages-etudes/beneficiaire/${d.id}/dossier`)
-            showMsg('Tous les dossiers supprimes')
-            setSelectedJustif([])
-            fetchDossiers()
-        } catch { showMsg('Erreur lors de la suppression', true) }
-    }
-
+   
     // ===== SELECTION AUTORISATIONS EN ATTENTE =====
     const toggleSelectAuto = (id) =>
         setSelectedAuto(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
@@ -173,21 +131,11 @@ export default function ChefDepartementDashboard() {
         } catch { showMsg('Erreur lors de la suppression', true) }
     }
 
-    const notifierEnseignants = async (voyageId) => {
+   const notifierEnseignants = async (voyageId) => {
         setActionLoading('notif_' + voyageId)
         try {
             await api.post(`/voyages-etudes/${voyageId}/notifier-enseignants`)
             showMsg('Enseignants notifies avec succes')
-        } catch (err) {
-            showMsg(err.response?.data?.message || 'Erreur', true)
-        } finally { setActionLoading(null) }
-    }
-
-    const envoyerAuVR = async (id) => {
-        setActionLoading(id + '_vr')
-        try {
-            await api.patch(`/voyages-etudes/beneficiaire/${id}/envoyer-vr`)
-            showMsg('Dossier transmis au Vice-Recteur et a la Commission')
             fetchDossiers()
         } catch (err) {
             showMsg(err.response?.data?.message || 'Erreur', true)
@@ -209,7 +157,7 @@ export default function ChefDepartementDashboard() {
         }
     }
 
-    const dossiersJustif         = dossiers.filter(d => !["transmis_vr", "valide"].includes(d.statut_justificatif))
+
     const voyagesUniques          = [...new Map(dossiers.map(d => [d.voyage?.id, d.voyage])).values()].filter(Boolean)
     const autorisationsEnAttente  = autorisationsAbsence.filter(a => a.statut === 'soumise')
     const historiqueAutorisations = autorisationsAbsence.filter(a => a.avis_chef_departement !== null)
@@ -251,7 +199,6 @@ export default function ChefDepartementDashboard() {
                 <div className="flex gap-2 border-b border-gray-200 flex-wrap">
                     {[
                         { key: 'listes', label: 'Nouvelles listes', icon: <Bell size={14} />, count: voyagesUniques.length, color: 'blue' },
-                        { key: 'justificatifs', label: 'Justificatifs recus', icon: null, count: dossiersJustif.length, color: 'blue' },
                         { key: 'autorisations', label: "Demandes d'autorisation", icon: null, count: autorisationsEnAttente.length, color: 'green' },
                         { key: 'historique', label: 'Historique', icon: <History size={14} />, count: historiqueAutorisations.length, color: 'gray' },
                     ].map(tab => (
@@ -313,10 +260,8 @@ export default function ChefDepartementDashboard() {
                                                 <input type="checkbox"
                                                     checked={selectedVoyages.includes(v.id)}
                                                     onChange={() => toggleSelectVoyage(v.id)}
-                                                    className="w-4 h-4 accent-blue-700 cursor-pointer flex-shrink-0"
-                                                    onClick={e => e.stopPropagation()} />
-                                                <div className="flex items-center justify-between flex-1 cursor-pointer hover:bg-blue-50 rounded-lg px-2 py-1 transition"
-                                                    onClick={() => toggleVoyage(v.id)}>
+                                                    className="w-4 h-4 accent-blue-700 cursor-pointer flex-shrink-0" />
+                                                <div className="flex items-center justify-between flex-1 px-2 py-1">
                                                     <div className="flex items-center gap-3">
                                                         <div className="bg-blue-100 p-2 rounded-lg">
                                                             <Users size={14} className="text-blue-700" />
@@ -330,136 +275,29 @@ export default function ChefDepartementDashboard() {
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <button
-                                                            onClick={e => { e.stopPropagation(); notifierEnseignants(v.id) }}
-                                                            disabled={actionLoading === 'notif_' + v.id}
-                                                            className="flex items-center gap-1 bg-blue-700 hover:bg-blue-800 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50">
+                                                            onClick={() => navigate(`/voyages-etudes/${v.id}/liste-publiee`)}
+                                                            className="flex items-center gap-1 border border-purple-200 text-purple-700 hover:bg-purple-50 px-3 py-1.5 rounded-lg text-xs font-semibold transition">
+                                                            <FileText size={12} />
+                                                            Voir la liste (PDF)
+                                                        </button>
+                                                        <button
+                                                            onClick={() => notifierEnseignants(v.id)}
+                                                            disabled={actionLoading === 'notif_' + v.id || v.enseignants_notifies}
+                                                            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-70 ${
+                                                                v.enseignants_notifies
+                                                                    ? 'bg-green-100 text-green-700'
+                                                                    : 'bg-blue-700 hover:bg-blue-800 text-white'
+                                                            }`}>
                                                             {actionLoading === 'notif_' + v.id
                                                                 ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                                : <Bell size={12} />}
-                                                            Notifier
+                                                                : v.enseignants_notifies
+                                                                    ? <CheckCircle size={12} />
+                                                                    : <Bell size={12} />}
+                                                            {v.enseignants_notifies ? 'Notifié' : 'Notifier'}
                                                         </button>
-                                                        {voyageOuvert === v.id
-                                                            ? <ChevronUp size={16} className="text-blue-600" />
-                                                            : <ChevronDown size={16} className="text-gray-400" />}
                                                     </div>
                                                 </div>
                                             </div>
-
-                                            {voyageOuvert === v.id && (
-                                                <div className="border-t border-gray-100 px-4 py-3 bg-gray-50">
-                                                    {loadingBenef === v.id ? (
-                                                        <div className="flex justify-center py-4">
-                                                            <div className="w-5 h-5 border-4 border-blue-700 border-t-transparent rounded-full animate-spin" />
-                                                        </div>
-                                                    ) : beneficiaires[v.id]?.length > 0 ? (
-                                                        <div className="space-y-2">
-                                                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                                                                Beneficiaires ({beneficiaires[v.id].length})
-                                                            </p>
-                                                            {beneficiaires[v.id].map(b => (
-                                                                <div key={b.id} className="flex items-center justify-between bg-white border border-gray-100 rounded-lg px-3 py-2">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs">
-                                                                            {b.enseignant?.prenom?.[0]}{b.enseignant?.nom?.[0]}
-                                                                        </div>
-                                                                        <div>
-                                                                            <p className="text-sm font-medium text-gray-800">{b.enseignant?.prenom} {b.enseignant?.nom}</p>
-                                                                            <p className="text-xs text-gray-400">{b.enseignant?.ufr}{b.enseignant?.departement ? ` — ${b.enseignant.departement}` : ''}</p>
-                                                                        </div>
-                                                                    </div>
-                                                                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                                                                        b.statut_justificatif === 'soumis'      ? 'bg-blue-100 text-blue-700' :
-                                                                        b.statut_justificatif === 'transmis_vr' ? 'bg-purple-100 text-purple-700' :
-                                                                        b.statut_justificatif === 'valide'      ? 'bg-green-100 text-green-700' :
-                                                                        'bg-gray-100 text-gray-500'
-                                                                    }`}>
-                                                                        {b.statut_justificatif === 'soumis'      ? 'Soumis'      :
-                                                                         b.statut_justificatif === 'transmis_vr' ? 'Transmis VR' :
-                                                                         b.statut_justificatif === 'valide'      ? 'Valide'      :
-                                                                         'En attente'}
-                                                                    </span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    ) : (
-                                                        <p className="text-sm text-gray-400 text-center py-3">Aucun beneficiaire trouve</p>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            )
-                        )}
-
-                        {/* ===== ONGLET JUSTIFICATIFS RECUS ===== */}
-                        {activeTab === 'justificatifs' && (
-                            dossiersJustif.length === 0 ? (
-                                <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
-                                    <FileText size={40} className="mx-auto mb-4 text-gray-300" />
-                                    <h3 className="text-gray-700 font-semibold mb-2">Aucun justificatif</h3>
-                                    <p className="text-gray-400 text-sm">Les justificatifs soumis par les enseignants apparaitront ici</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    <BarreSelection
-                                        selected={selectedJustif}
-                                        total={dossiersJustif.length}
-                                        onSelectAll={toggleSelectAllJustif}
-                                        onDeleteSelected={supprimerJustifSelectionnes}
-                                        onDeleteAll={supprimerTousJustif}
-                                    />
-                                    {dossiersJustif.map(d => (
-                                        <div key={d.id} className={`bg-white rounded-2xl border shadow-sm p-5 transition ${
-                                            selectedJustif.includes(d.id) ? 'border-blue-300' : 'border-gray-100'
-                                        }`}>
-                                            <div className="flex items-start justify-between mb-4">
-                                                <div className="flex items-center gap-3">
-                                                    <input type="checkbox"
-                                                        checked={selectedJustif.includes(d.id)}
-                                                        onChange={() => toggleSelectJustif(d.id)}
-                                                        className="w-4 h-4 accent-blue-700 cursor-pointer mt-1" />
-                                                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-sm">
-                                                        {d.enseignant?.prenom?.[0]}{d.enseignant?.nom?.[0]}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-semibold text-gray-800">{d.enseignant?.prenom} {d.enseignant?.nom}</p>
-                                                        <p className="text-xs text-gray-500">{d.enseignant?.ufr}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="font-medium text-gray-700 text-sm">{d.voyage?.destination}</p>
-                                                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                                                        d.statut_justificatif === 'soumis' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
-                                                    }`}>
-                                                        {d.statut_justificatif === 'soumis' ? 'Soumis' : 'En attente'}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            {d.justificatifs?.length > 0 ? (
-                                                <div className="space-y-1 mb-4">
-                                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Fichiers :</p>
-                                                    {d.justificatifs.map(j => (
-                                                        <button key={j.id}
-                                                            onClick={() => window.open(`http://127.0.0.1:8000/storage/${j.fichier_pdf}`, '_blank')}
-                                                            className="flex items-center gap-2 text-sm text-blue-700 hover:underline">
-                                                            <Eye size={14} /> {j.nom_original || 'Fichier PDF'}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <p className="text-sm text-gray-400 mb-4">Aucun justificatif soumis pour le moment</p>
-                                            )}
-
-                                            <button onClick={() => envoyerAuVR(d.id)}
-                                                disabled={actionLoading === d.id + '_vr' || d.statut_justificatif !== 'soumis'}
-                                                className="w-full flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl font-semibold text-sm transition disabled:opacity-50">
-                                                {actionLoading === d.id + '_vr'
-                                                    ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                    : <Send size={16} />}
-                                                Transmettre au Vice-Recteur et Commission
-                                            </button>
                                         </div>
                                     ))}
                                 </div>
@@ -527,6 +365,28 @@ export default function ChefDepartementDashboard() {
                                                     <Eye size={14} />
                                                     Voir le document
                                                 </button>
+                                                <div className="flex gap-2 flex-wrap">
+    <button onClick={() => signerEtTransmettre(a.id)}
+        disabled={actionLoading === a.id + '_signer'}
+        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
+        {actionLoading === a.id + '_signer'
+            ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            : <CheckCircle size={14} />}
+        Signer et transmettre au Directeur UFR
+    </button>
+    <button onClick={() => navigate('/autorisation-absence/' + a.id)}
+        className="flex items-center gap-2 border border-blue-700 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm font-semibold transition">
+        <Eye size={14} />
+        Voir le document
+    </button>
+    {a.justificatif_url && (
+        <a href={a.justificatif_url} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-2 border border-purple-700 text-purple-700 hover:bg-purple-50 px-4 py-2 rounded-xl text-sm font-semibold transition">
+            <FileText size={14} />
+            Voir justificatif
+        </a>
+    )}
+</div>
                                             </div>
                                         </div>
                                     ))}
@@ -578,6 +438,23 @@ export default function ChefDepartementDashboard() {
                                                     className="flex items-center gap-1.5 border border-gray-400 text-gray-600 hover:bg-gray-100 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
                                                     <Eye size={13} /> Voir
                                                 </button>
+                                                <div className="flex items-center gap-3">
+    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+        a.avis_chef_departement === 'favorable' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+    }`}>
+        {a.avis_chef_departement === 'favorable' ? 'Avis favorable' : 'Rejetee'}
+    </span>
+    {a.justificatif_url && (
+        <a href={a.justificatif_url} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-1.5 border border-purple-400 text-purple-600 hover:bg-purple-50 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
+            <FileText size={13} /> Justificatif
+        </a>
+    )}
+    <button onClick={() => navigate('/autorisation-absence/' + a.id)}
+        className="flex items-center gap-1.5 border border-gray-400 text-gray-600 hover:bg-gray-100 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
+        <Eye size={13} /> Voir
+    </button>
+</div>
                                             </div>
                                         </div>
                                     ))}
