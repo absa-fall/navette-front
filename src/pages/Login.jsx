@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Mail, Lock, Eye, EyeOff, Bus, ArrowLeft } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react'
 
 export default function Login() {
     const [email, setEmail] = useState('')
@@ -11,67 +11,84 @@ export default function Login() {
     const [loading, setLoading] = useState(false)
     const { login } = useAuth()
     const navigate = useNavigate()
-const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    try {
-        const user = await login(email, password)
-        switch (user.role) {
-            case 'ddl': navigate('/ddl/dashboard'); break
-            case 'enseignant': navigate('/enseignant/dashboard'); break
-            case 'admin': navigate('/admin/dashboard'); break
-            case 'drh': navigate('/drh/dashboard'); break
-            case 'sg_drh': navigate('/sg-drh/dashboard'); break
-            case 'chauffeur': navigate('/chauffeur/dashboard'); break
-            case 'sg_vr': navigate('/sg-vr/dashboard'); break
-            case 'vice_recteur': navigate('/vice-recteur/dashboard'); break
-            case 'usager': navigate('/usager/dashboard'); break
-            case 'chef_departement': navigate('/chef-departement/dashboard'); break
-            case 'directeur_ufr': navigate('/directeur-ufr/dashboard'); break
-            case 'recteur': navigate('/recteur/dashboard'); break
-            case 'commission': navigate('/commission/dashboard'); break
-            default: navigate('/login'); break
+
+    const handleSubmit = async (e) => {
+        e.preventDefault()
+        setLoading(true)
+        setError('')
+
+        if (!email.trim()) {
+            setError('Veuillez entrer votre email')
+            setLoading(false)
+            return
         }
-    } catch (err) {
-        console.error('DEBUG erreur complète:', err)
-        setError(
-            err.response?.data?.message
-            || err.message
-            || 'Erreur inconnue'
-        )
-    } finally {
-        setLoading(false)
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(email)) {
+            setError('Veuillez entrer un email valide')
+            setLoading(false)
+            return
+        }
+
+        if (!password) {
+            setError('Veuillez entrer votre mot de passe')
+            setLoading(false)
+            return
+        }
+
+        try {
+            const user = await login(email.toLowerCase(), password)
+            switch (user.role) {
+                case 'ddl': navigate('/ddl/dashboard'); break
+                case 'enseignant': navigate('/enseignant/dashboard'); break
+                case 'admin': navigate('/admin/dashboard'); break
+                case 'drh': navigate('/drh/dashboard'); break
+                case 'sg_drh': navigate('/sg-drh/dashboard'); break
+                case 'chauffeur': navigate('/chauffeur/dashboard'); break
+                case 'sg_vr': navigate('/sg-vr/dashboard'); break
+                case 'vice_recteur': navigate('/vice-recteur/dashboard'); break
+                case 'usager': navigate('/usager/dashboard'); break
+                case 'chef_departement': navigate('/chef-departement/dashboard'); break
+                case 'directeur_ufr': navigate('/directeur-ufr/dashboard'); break
+                case 'recteur': navigate('/recteur/dashboard'); break
+                case 'commission': navigate('/commission/dashboard'); break
+                default: navigate('/login'); break
+            }
+        } catch (err) {
+            setError(
+                err.response?.data?.message
+                || err.message
+                || 'Erreur inconnue'
+            )
+        } finally {
+            setLoading(false)
+        }
     }
-}
 
     return (
         <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
 
-           <img
-    src="/rectorat-uadb.png"
-    alt="Rectorat UADB"
-    className="absolute inset-0 w-full h-full object-cover"
-/>
-            {/* Overlay sombre pour lisibilite */}
+            <img
+                src="/rectorat-uadb.png"
+                alt="Rectorat UADB"
+                className="absolute inset-0 w-full h-full object-cover"
+            />
             <div className="absolute inset-0 bg-gradient-to-br from-blue-900/80 via-blue-800/70 to-blue-900/85" />
 
-          {/* Logo en haut */}
-<div className="absolute top-6 left-6 z-10 flex items-center gap-3">
-    <button
-        onClick={() => navigate('/')}
-        className="bg-white/15 backdrop-blur-sm p-2 rounded-xl border border-white/20 hover:bg-white/25 transition"
-        title="Retour à l'accueil"
-    >
-        <ArrowLeft className="text-white" size={18} />
-    </button>
-    <div className="bg-white/90 backdrop-blur-sm p-1.5 rounded-xl border border-white/20">
-        <img src="/logo-uadb.png" alt="Logo UADB" className="w-8 h-8 object-contain" />
-    </div>
-    <span className="text-white font-bold text-lg drop-shadow">UADB Mobilite</span>
-</div>
+            <div className="absolute top-6 left-6 z-10 flex items-center gap-3">
+                <button
+                    onClick={() => navigate('/')}
+                    className="bg-white/15 backdrop-blur-sm p-2 rounded-xl border border-white/20 hover:bg-white/25 transition"
+                    title="Retour à l'accueil"
+                >
+                    <ArrowLeft className="text-white" size={18} />
+                </button>
+                <div className="bg-white/90 backdrop-blur-sm p-1.5 rounded-xl border border-white/20">
+                    <img src="/logo-uadb.png" alt="Logo UADB" className="w-8 h-8 object-contain" />
+                </div>
+                <span className="text-white font-bold text-lg drop-shadow">UADB Mobilite</span>
+            </div>
 
-            {/* Carte de connexion semi-transparente */}
             <div className="relative z-10 w-full max-w-md">
                 <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl p-8">
 
@@ -80,7 +97,7 @@ const handleSubmit = async (e) => {
 
                     {error && (
                         <div className="bg-red-500/20 border border-red-300/40 text-red-50 rounded-xl p-4 mb-6 text-sm flex items-center gap-2 backdrop-blur-sm">
-                            <span>{error}</span>
+                            <span>⚠️ {error}</span>
                         </div>
                     )}
 
@@ -95,7 +112,7 @@ const handleSubmit = async (e) => {
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full border border-white/30 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 bg-white/10 backdrop-blur-sm text-white placeholder-blue-200"
+                                    className="w-full border border-white/30 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 bg-white/10 backdrop-blur-sm text-white placeholder-blue-200/50"
                                     placeholder="votre@uadb.edu.sn"
                                     required
                                 />
@@ -112,8 +129,8 @@ const handleSubmit = async (e) => {
                                     type={showPassword ? 'text' : 'password'}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full border border-white/30 rounded-xl pl-10 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 bg-white/10 backdrop-blur-sm text-white placeholder-blue-200"
-                                    placeholder="********"
+                                    className="w-full border border-white/30 rounded-xl pl-10 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 bg-white/10 backdrop-blur-sm text-white placeholder-blue-200/50"
+                                    placeholder="••••••••"
                                     required
                                 />
                                 <button

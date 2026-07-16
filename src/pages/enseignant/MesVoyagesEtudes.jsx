@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
-import { MapPin, FileText, Upload, CheckCircle, Clock, AlertCircle, X, Lock, Eye, Trash2 } from 'lucide-react'
+import { MapPin, FileText, Upload, CheckCircle, Clock, AlertCircle, X, Lock, Eye, Trash2, Search } from 'lucide-react'
 const statutJustifConfig = {
     en_attente:  { label: 'En attente',      color: 'bg-gray-100 text-gray-600' },
     soumis:      { label: 'Soumis au VR/Commission',  color: 'bg-blue-100 text-blue-700' },
@@ -40,6 +40,7 @@ const [actionLoading, setActionLoading] = useState(null)
     const [error, setError]                 = useState('')
     const [selected, setSelected] = useState([])
 const [deleteLoading, setDeleteLoading] = useState(false)
+const [searchQuery, setSearchQuery] = useState('')
 
     useEffect(() => { fetchVoyages() }, [])
 
@@ -131,8 +132,8 @@ const toggleSelect = (id) => {
 }
 
 const toggleSelectAll = () => {
-    if (selected.length === beneficiaires.length) setSelected([])
-    else setSelected(beneficiaires.map(b => b.id))
+    if (selected.length === beneficiairesAffiches.length) setSelected([])
+    else setSelected(beneficiairesAffiches.map(b => b.id))
 }
 
 const supprimerSelection = async (ids) => {
@@ -149,12 +150,33 @@ const supprimerSelection = async (ids) => {
         setDeleteLoading(false)
     }
 }
+
+// Filtre de recherche : destination, statut du justificatif, ou numero d'autorisation
+const beneficiairesAffiches = beneficiaires.filter(b =>
+    searchQuery === '' ||
+    b.voyage?.destination?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    b.voyage?.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    b.autorisation_absence?.numero?.toLowerCase().includes(searchQuery.toLowerCase())
+)
+
     return (
         <Layout>
             <div className="space-y-6">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Mes voyages d'etudes</h1>
-                    <p className="text-gray-500 text-sm mt-1">{beneficiaires.length} voyage(s)</p>
+                    <p className="text-gray-500 text-sm mt-1">{beneficiairesAffiches.length} voyage(s)</p>
+                </div>
+
+                {/* Recherche */}
+                <div className="relative max-w-sm">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Rechercher par année..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                 </div>
 
                 {message && (
@@ -178,12 +200,18 @@ const supprimerSelection = async (ids) => {
                         <h3 className="text-gray-700 font-semibold mb-2">Aucun voyage</h3>
                         <p className="text-gray-400 text-sm">Vous n'avez pas encore ete selectionne pour un voyage d'etudes</p>
                     </div>
+                ) : beneficiairesAffiches.length === 0 ? (
+                    <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
+                        <Search size={40} className="mx-auto mb-4 text-gray-300" />
+                        <h3 className="text-gray-700 font-semibold mb-2">Aucun resultat</h3>
+                        <p className="text-gray-400 text-sm">Aucun voyage ne correspond a votre recherche</p>
+                    </div>
                 ) : (
     <div className="space-y-4">
         <div className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-2.5 shadow-sm">
             <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                 <input type="checkbox"
-                    checked={selected.length === beneficiaires.length && beneficiaires.length > 0}
+                    checked={selected.length === beneficiairesAffiches.length && beneficiairesAffiches.length > 0}
                     onChange={toggleSelectAll}
                     className="w-4 h-4 accent-blue-700 cursor-pointer" />
                 {selected.length > 0 ? `${selected.length} selectionne(s)` : 'Tout selectionner'}
@@ -198,13 +226,13 @@ const supprimerSelection = async (ids) => {
                         Supprimer ({selected.length})
                     </button>
                 )}
-                <button onClick={() => supprimerSelection(beneficiaires.map(b => b.id))} disabled={deleteLoading}
+                <button onClick={() => supprimerSelection(beneficiairesAffiches.map(b => b.id))} disabled={deleteLoading}
                     className="flex items-center gap-1.5 text-xs bg-red-50 border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition disabled:opacity-50">
                     <Trash2 size={13} /> Supprimer tout
                 </button>
             </div>
         </div>
-        {beneficiaires.map(b => {
+        {beneficiairesAffiches.map(b => {
                             const justif       = statutJustifConfig[b.statut_justificatif] || statutJustifConfig['en_attente']
                            const getStatutAutorisationAffiche = (b) => {
     const auto = b.autorisation_absence

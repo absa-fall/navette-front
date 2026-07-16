@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
-import { Bus, PenLine, CheckCircle, Send, FileText, Clock, XCircle, History, Truck, Trash2 } from 'lucide-react'
+import { Bus, PenLine, CheckCircle, Send, FileText, Clock, XCircle, History, Truck, Trash2, Search } from 'lucide-react'
 
 const statutConfig = {
     en_attente_drh: { label: 'En attente DRH', color: 'bg-orange-100 text-orange-700', icon: Clock },
@@ -20,6 +20,7 @@ const trajetLabels = {
 }
 
 export default function SGDRHOrdres() {
+
     const [searchParams] = useSearchParams()
     const navigate = useNavigate()
     const statutFiltre = searchParams.get('statut')
@@ -34,6 +35,7 @@ export default function SGDRHOrdres() {
     const [onglet, setOnglet] = useState('attente')
     const [selected, setSelected] = useState([])
     const [deleteSelectionLoading, setDeleteSelectionLoading] = useState(false)
+    const [searchOrdres, setSearchOrdres] = useState('')
 
     useEffect(() => {
         chargerOrdres()
@@ -50,6 +52,7 @@ export default function SGDRHOrdres() {
     useEffect(() => {
         setSelected([])
     }, [onglet])
+
 
     const chargerOrdres = () => {
         api.get('/ordres-mission')
@@ -69,12 +72,27 @@ export default function SGDRHOrdres() {
         return historique
     }
 
+    const filtrerOrdres = (liste) => liste.filter(o =>
+        searchOrdres === '' ||
+        o.destination?.toLowerCase().includes(searchOrdres.toLowerCase()) ||
+        trajetLabels[o.trajet]?.toLowerCase().includes(searchOrdres.toLowerCase()) ||
+        o.chauffeur_prenom?.toLowerCase().includes(searchOrdres.toLowerCase()) ||
+        o.chauffeur_nom?.toLowerCase().includes(searchOrdres.toLowerCase()) ||
+        o.ddl?.prenom?.toLowerCase().includes(searchOrdres.toLowerCase()) ||
+        o.ddl?.nom?.toLowerCase().includes(searchOrdres.toLowerCase()) ||
+        o.motif?.toLowerCase().includes(searchOrdres.toLowerCase())
+    )
+
+    const ordresFiltres = filtrerOrdres(ordres)
+    const historiqueFiltres = filtrerOrdres(historiqueFiltre())
+
+
     const toggleSelect = (id) => {
         setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
     }
 
     const toggleSelectAll = () => {
-        const ids = historiqueFiltre().map(o => o.id)
+        const ids = historiqueFiltres.map(o => o.id)
         if (ids.every(id => selected.includes(id))) {
             setSelected([])
         } else {
@@ -82,145 +100,153 @@ export default function SGDRHOrdres() {
         }
     }
 
+
    const supprimerSelection = async () => {
-    if (selected.length === 0) return
-    if (!confirm(`Voulez-vous vraiment supprimer ${selected.length} ordre(s) de l'historique ?`)) return
-    setDeleteSelectionLoading(true)
-    try {
-        await Promise.all(selected.map(id => api.delete(`/ordres-mission/${id}/historique`)))
-        setSelected([])
-        chargerOrdres() // recharge depuis le backend
-    } catch (err) {
-        alert('Erreur lors de la suppression.')
-    } finally {
-        setDeleteSelectionLoading(false)
+        if (selected.length === 0) return
+        if (!confirm(`Voulez-vous vraiment supprimer ${selected.length} ordre(s) de l'historique ?`)) return
+        setDeleteSelectionLoading(true)
+        try {
+            await Promise.all(selected.map(id => api.delete(`/ordres-mission/${id}/historique`)))
+            setSelected([])
+            chargerOrdres() // recharge depuis le backend
+        } catch (err) {
+            alert('Erreur lors de la suppression.')
+        } finally {
+            setDeleteSelectionLoading(false)
+        }
     }
-}
 
-const supprimerHistorique = async (id) => {
-    if (!confirm("Voulez-vous vraiment supprimer cet ordre de l'historique ?")) return
-    setDeleteLoading(id)
-    try {
-        await api.delete(`/ordres-mission/${id}/historique`)
-        chargerOrdres() // recharge depuis le backend
-    } catch (err) {
-        alert(err.response?.data?.message || 'Erreur')
-    } finally {
-        setDeleteLoading(null)
+    const supprimerHistorique = async (id) => {
+        if (!confirm("Voulez-vous vraiment supprimer cet ordre de l'historique ?")) return
+        setDeleteLoading(id)
+        try {
+            await api.delete(`/ordres-mission/${id}/historique`)
+            chargerOrdres() // recharge depuis le backend
+        } catch (err) {
+            alert(err.response?.data?.message || 'Erreur')
+        } finally {
+            setDeleteLoading(null)
+        }
     }
-}
-const signer = async (id) => {
-    setActionLoading(id)
-    try {
-        const ordre = ordres.find(o => o.id === id)
-        await api.patch(`/ordres-mission/${id}/signer`, {
-            chauffeur_id: ordre?.chauffeur_id
-        })
-        setSignerModal(null)
-        chargerOrdres()
-        setSuccessMsg(`Ordre signé et transmis au chauffeur ${ordre?.chauffeur_prenom} ${ordre?.chauffeur_nom}.`)
-        setTimeout(() => setSuccessMsg(''), 5000)
-    } catch (err) {
-        alert(err.response?.data?.message || 'Erreur')
-    } finally {
-        setActionLoading(null)
-    }
-}
 
-    const toutSelectionne = historiqueFiltre().length > 0 && historiqueFiltre().every(o => selected.includes(o.id))
-const aUneSignatureLocale = (ordreId) => {
-    const saved = localStorage.getItem(`signature_sg_drh_${ordreId}`)
-    return !!(saved && saved.startsWith('data:image'))
-}
+    const signer = async (id) => {
+        setActionLoading(id)
+        try {
+            const ordre = ordres.find(o => o.id === id)
+            await api.patch(`/ordres-mission/${id}/signer`, {
+                chauffeur_id: ordre?.chauffeur_id
+            })
+            setSignerModal(null)
+            chargerOrdres()
+            setSuccessMsg(`Ordre signé et transmis au chauffeur ${ordre?.chauffeur_prenom} ${ordre?.chauffeur_nom}.`)
+            setTimeout(() => setSuccessMsg(''), 5000)
+        } catch (err) {
+            alert(err.response?.data?.message || 'Erreur')
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
+
+    const toutSelectionne = historiqueFiltres.length > 0 && historiqueFiltres.every(o => selected.includes(o.id))
+
+    const aUneSignatureLocale = (ordreId) => {
+        const saved = localStorage.getItem(`signature_sg_drh_${ordreId}`)
+        return !!(saved && saved.startsWith('data:image'))
+    }
+
+
     const renderOrdre = (ordre, avecAction = true) => {
-    const statut = statutConfig[ordre.statut] || statutConfig['approuve_drh']
-    const Icon = statut.icon
-    return (
-        <div key={ordre.id} className={`bg-white rounded-2xl p-5 border shadow-sm ${!avecAction && selected.includes(ordre.id) ? 'border-red-200 bg-red-50' : 'border-gray-100'}`}>
-            <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-4">
-                    {!avecAction && (
-                        <input
-                            type="checkbox"
-                            checked={selected.includes(ordre.id)}
-                            onChange={() => toggleSelect(ordre.id)}
-                            className="w-4 h-4 rounded border-gray-300 text-blue-600 mt-1"
-                        />
-                    )}
-                    <div className="bg-blue-100 p-3 rounded-xl">
-                        <Bus size={20} className="text-blue-700" />
+        const statut = statutConfig[ordre.statut] || statutConfig['approuve_drh']
+        const Icon = statut.icon
+
+        return (
+            <div key={ordre.id} className={`bg-white rounded-2xl p-5 border shadow-sm ${!avecAction && selected.includes(ordre.id) ? 'border-red-200 bg-red-50' : 'border-gray-100'}`}>
+                <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                        {!avecAction && (
+                            <input
+                                type="checkbox"
+                                checked={selected.includes(ordre.id)}
+                                onChange={() => toggleSelect(ordre.id)}
+                                className="w-4 h-4 rounded border-gray-300 text-blue-600 mt-1"
+                            />
+                        )}
+                        <div className="bg-blue-100 p-3 rounded-xl">
+                            <Bus size={20} className="text-blue-700" />
+                        </div>
+                        <div>
+                            <p className="font-semibold text-gray-800">
+                                {ordre.destination || trajetLabels[ordre.trajet] || ordre.trajet}
+                            </p>
+                            <p className="text-sm text-gray-500 mt-0.5">
+                                Départ : {new Date(ordre.date_depart).toLocaleDateString('fr-FR')}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                                Chauffeur : {ordre.chauffeur_prenom} {ordre.chauffeur_nom}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                                Demandé par : {ordre.ddl?.prenom} {ordre.ddl?.nom}
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <p className="font-semibold text-gray-800">
-                            {ordre.destination || trajetLabels[ordre.trajet] || ordre.trajet}
-                        </p>
-                        <p className="text-sm text-gray-500 mt-0.5">
-                            Départ : {new Date(ordre.date_depart).toLocaleDateString('fr-FR')}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                            Chauffeur : {ordre.chauffeur_prenom} {ordre.chauffeur_nom}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                            Demandé par : {ordre.ddl?.prenom} {ordre.ddl?.nom}
-                        </p>
-                    </div>
+                    <span className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${statut.color}`}>
+                        <Icon size={12} />
+                        {statut.label}
+                    </span>
                 </div>
-                <span className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${statut.color}`}>
-                    <Icon size={12} />
-                    {statut.label}
-                </span>
-            </div>
 
-            <p className="text-sm text-gray-600 mb-4 bg-gray-50 rounded-xl p-3">{ordre.motif}</p>
+                <p className="text-sm text-gray-600 mb-4 bg-gray-50 rounded-xl p-3">{ordre.motif}</p>
 
-            <div className="flex gap-3">
-                <button
-                    onClick={() => navigate(`/ordres-mission/${ordre.id}/document`)}
-                    className="flex items-center gap-2 border border-blue-200 text-blue-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-50 transition"
-                >
-                    <FileText size={15} />
-                    Aperçu
-                </button>
-                {avecAction ? (
-                    aUneSignatureLocale(ordre.id) ? (
-                        <button
-                            onClick={() => signer(ordre.id)}
-                            disabled={actionLoading === ordre.id}
-                            className="flex-1 flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-50"
-                        >
-                            {actionLoading === ordre.id
-                                ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                : <Send size={16} />
-                            }
-                            Transmettre au chauffeur
-                        </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => navigate(`/ordres-mission/${ordre.id}/document`)}
+                        className="flex items-center gap-2 border border-blue-200 text-blue-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-50 transition"
+                    >
+                        <FileText size={15} />
+                        Aperçu
+                    </button>
+
+                    {avecAction ? (
+                        aUneSignatureLocale(ordre.id) ? (
+                            <button
+                                onClick={() => signer(ordre.id)}
+                                disabled={actionLoading === ordre.id}
+                                className="flex-1 flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-50"
+                            >
+                                {actionLoading === ordre.id
+                                    ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    : <Send size={16} />
+                                }
+                                Transmettre au chauffeur
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => navigate(`/ordres-mission/${ordre.id}/document`)}
+                                className="flex-1 flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl text-sm font-semibold transition"
+                            >
+                                <PenLine size={16} />
+                                Signer l'ordre
+                            </button>
+                        )
                     ) : (
                         <button
-                            onClick={() => navigate(`/ordres-mission/${ordre.id}/document`)}
-                            className="flex-1 flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl text-sm font-semibold transition"
+                            onClick={() => supprimerHistorique(ordre.id)}
+                            disabled={deleteLoading === ordre.id}
+                            className="flex items-center gap-1.5 border border-red-200 text-red-600 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-50 transition disabled:opacity-50"
                         >
-                            <PenLine size={16} />
-                            Signer l'ordre
+                            {deleteLoading === ordre.id
+                                ? <div className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                                : <Trash2 size={15} />
+                            }
+                            Supprimer
                         </button>
-                    )
-                ) : (
-                    <button
-                        onClick={() => supprimerHistorique(ordre.id)}
-                        disabled={deleteLoading === ordre.id}
-                        className="flex items-center gap-1.5 border border-red-200 text-red-600 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-50 transition disabled:opacity-50"
-                    >
-                        {deleteLoading === ordre.id
-                            ? <div className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                            : <Trash2 size={15} />
-                        }
-                        Supprimer
-                    </button>
-                )}
+                    )}
+                </div>
             </div>
-        </div>
-    )
-}
-   
+        )
+    }
+
 
     const getTitre = () => {
         if (statutFiltre === 'a_signer') return 'Ordres à signer'
@@ -232,12 +258,13 @@ const aUneSignatureLocale = (ordreId) => {
     return (
         <Layout>
             <div className="space-y-6">
+
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">{getTitre()}</h1>
                     <p className="text-gray-500 text-sm mt-1">
                         {onglet === 'attente'
-                            ? `${ordres.length} ordre(s) à signer`
-                            : `${historiqueFiltre().length} ordre(s) dans l'historique`
+                            ? `${ordresFiltres.length} ordre(s) à signer`
+                            : `${historiqueFiltres.length} ordre(s) dans l'historique`
                         }
                     </p>
                 </div>
@@ -265,12 +292,24 @@ const aUneSignatureLocale = (ordreId) => {
                     </button>
                 </div>
 
+                {/* Recherche */}
+                <div className="relative max-w-sm">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Rechercher par destination, chauffeur, demandeur, motif..."
+                        value={searchOrdres}
+                        onChange={e => setSearchOrdres(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+
                 {loading ? (
                     <div className="flex justify-center py-20">
                         <div className="w-8 h-8 border-4 border-blue-700 border-t-transparent rounded-full animate-spin" />
                     </div>
                 ) : onglet === 'attente' ? (
-                    ordres.length === 0 ? (
+                    ordresFiltres.length === 0 ? (
                         <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                             <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <PenLine size={28} className="text-gray-400" />
@@ -280,11 +319,11 @@ const aUneSignatureLocale = (ordreId) => {
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {ordres.map(ordre => renderOrdre(ordre, true))}
+                            {ordresFiltres.map(ordre => renderOrdre(ordre, true))}
                         </div>
                     )
                 ) : (
-                    historiqueFiltre().length === 0 ? (
+                    historiqueFiltres.length === 0 ? (
                         <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                             <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <History size={28} className="text-gray-400" />
@@ -294,6 +333,7 @@ const aUneSignatureLocale = (ordreId) => {
                         </div>
                     ) : (
                         <div className="space-y-4">
+
                             <div className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-gray-100 shadow-sm">
                                 <div className="flex items-center gap-3">
                                     <input
@@ -323,7 +363,8 @@ const aUneSignatureLocale = (ordreId) => {
                                     </button>
                                 )}
                             </div>
-                            {historiqueFiltre().map(ordre => renderOrdre(ordre, false))}
+
+                            {historiqueFiltres.map(ordre => renderOrdre(ordre, false))}
                         </div>
                     )
                 )}

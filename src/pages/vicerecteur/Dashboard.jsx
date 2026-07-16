@@ -40,43 +40,43 @@ export default function ViceRecteurDashboard() {
         <Layout>
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Dashboard Vice-Recteur</h1>
-                    <p className="text-gray-500 text-sm mt-1">Gestion des voyages d'etudes</p>
+                    <h1 className="font-serif text-2xl font-semibold text-blue-950">Dashboard Vice-Recteur</h1>
+                    <p className="text-slate-500 text-sm mt-1">Gestion des voyages d'etudes</p>
                 </div>
 
                 {/* Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <div
                         onClick={() => navigate('/vice-recteur/voyages-etudes')}
-                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 cursor-pointer hover:shadow-md transition"
                     >
-                        <div className="bg-orange-100 p-2 rounded-xl w-fit mb-3">
-                            <Clock size={20} className="text-orange-700" />
+                        <div className="bg-blue-50 p-2 rounded-xl w-fit mb-3">
+                            <Clock size={20} className="text-blue-700" />
                         </div>
-                        <p className="text-2xl font-bold text-gray-800">{stats.voyagesEnAttente}</p>
-                        <p className="text-sm text-gray-500 mt-1">Listes publiees</p>
+                        <p className="font-serif text-2xl font-semibold text-blue-950">{stats.voyagesEnAttente}</p>
+                        <p className="text-sm text-slate-500 mt-1">Listes publiees</p>
                     </div>
 
                     <div
                         onClick={() => navigate('/vice-recteur/voyages-etudes')}
-                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 cursor-pointer hover:shadow-md transition"
                     >
-                        <div className="bg-green-100 p-2 rounded-xl w-fit mb-3">
-                            <CheckCircle size={20} className="text-green-700" />
+                        <div className="bg-blue-50 p-2 rounded-xl w-fit mb-3">
+                            <CheckCircle size={20} className="text-blue-700" />
                         </div>
-                        <p className="text-2xl font-bold text-gray-800">{stats.voyagesDefinitifs}</p>
-                        <p className="text-sm text-gray-500 mt-1">Listes definitives</p>
+                        <p className="font-serif text-2xl font-semibold text-blue-950">{stats.voyagesDefinitifs}</p>
+                        <p className="text-sm text-slate-500 mt-1">Listes definitives</p>
                     </div>
 
                     <div
                         onClick={() => navigate('/vice-recteur/voyages-etudes?tab=dossiers')}
-                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 cursor-pointer hover:shadow-md transition"
                     >
-                        <div className="bg-blue-100 p-2 rounded-xl w-fit mb-3">
+                        <div className="bg-blue-50 p-2 rounded-xl w-fit mb-3">
                             <FileText size={20} className="text-blue-700" />
                         </div>
-                        <p className="text-2xl font-bold text-gray-800">{stats.rapportsAValider}</p>
-                        <p className="text-sm text-gray-500 mt-1">Dossiers a valider</p>
+                        <p className="font-serif text-2xl font-semibold text-blue-950">{stats.rapportsAValider}</p>
+                        <p className="text-sm text-slate-500 mt-1">Dossiers a valider</p>
                     </div>
                 </div>
 
@@ -84,20 +84,20 @@ export default function ViceRecteurDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div
                         onClick={() => navigate('/vice-recteur/voyages-etudes/nouveau')}
-                        className="bg-blue-700 hover:bg-blue-800 text-white rounded-2xl p-6 cursor-pointer transition"
+                        className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl p-6 cursor-pointer transition"
                     >
                         <Plus size={28} className="mb-3" />
-                        <p className="font-bold text-lg">Publier une liste</p>
+                        <p className="font-serif font-semibold text-lg">Publier une liste</p>
                         <p className="text-blue-200 text-sm mt-1">Selectionner les beneficiaires</p>
                     </div>
 
                     <div
                         onClick={() => navigate('/vice-recteur/voyages-etudes')}
-                        className="bg-white hover:shadow-md rounded-2xl p-6 cursor-pointer transition border border-gray-100 shadow-sm"
+                        className="bg-white hover:shadow-md rounded-2xl p-6 cursor-pointer transition border border-slate-100 shadow-sm"
                     >
                         <MapPin size={28} className="mb-3 text-blue-700" />
-                        <p className="font-bold text-lg text-gray-800">Gerer les voyages</p>
-                        <p className="text-gray-500 text-sm mt-1">Voir toutes les listes</p>
+                        <p className="font-serif font-semibold text-lg text-blue-950">Gerer les voyages</p>
+                        <p className="text-slate-500 text-sm mt-1">Voir toutes les listes</p>
                     </div>
                 </div>
             </div>

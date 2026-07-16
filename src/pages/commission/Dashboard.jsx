@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
-import { FileText, CheckCircle, AlertCircle, Eye, MessageSquare, X, Trash2, MapPin } from 'lucide-react'
+import { FileText, CheckCircle, AlertCircle, Eye, MessageSquare, X, Trash2, MapPin, Search } from 'lucide-react'
 
 export default function CommissionDashboard() {
     const navigate = useNavigate()
@@ -18,6 +18,7 @@ export default function CommissionDashboard() {
     const [selected, setSelected]           = useState([])
     const [selectedListes, setSelectedListes] = useState([])
     const [justifOuvert, setJustifOuvert]   = useState(null)
+    const [searchQuery, setSearchQuery]     = useState('')
 
     useEffect(() => { fetchDossiers(); fetchListesPubliees() }, [])
 
@@ -74,7 +75,7 @@ export default function CommissionDashboard() {
         setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
 
     const toggleSelectAll = () =>
-        setSelected(selected.length === traites.length ? [] : traites.map(d => d.id))
+        setSelected(selected.length === traitesAffiches.length ? [] : traitesAffiches.map(d => d.id))
 
     const supprimerSelectionnes = async () => {
         if (!confirm(`Supprimer ${selected.length} dossier(s) ?`)) return
@@ -89,7 +90,7 @@ export default function CommissionDashboard() {
     const supprimerTous = async () => {
         if (!confirm('Supprimer tous les dossiers traités ?')) return
         try {
-            for (const d of traites) await api.delete(`/voyages-etudes/beneficiaire/${d.id}/dossier`)
+            for (const d of traitesAffiches) await api.delete(`/voyages-etudes/beneficiaire/${d.id}/dossier`)
             showMsg('Tous les dossiers supprimés')
             setSelected([])
             fetchDossiers()
@@ -101,7 +102,7 @@ export default function CommissionDashboard() {
         setSelectedListes(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
 
     const toggleSelectAllListes = () =>
-        setSelectedListes(selectedListes.length === listesPubliees.length ? [] : listesPubliees.map(v => v.id))
+        setSelectedListes(selectedListes.length === listesPublieesAffichees.length ? [] : listesPublieesAffichees.map(v => v.id))
 
     const supprimerListesSelectionnees = async () => {
         if (!confirm(`Supprimer ${selectedListes.length} liste(s) ?`)) return
@@ -116,7 +117,7 @@ export default function CommissionDashboard() {
     const supprimerToutesListes = async () => {
         if (!confirm('Supprimer toutes les listes publiées de votre vue ?')) return
         try {
-            for (const v of listesPubliees) await api.delete(`/voyages-etudes/${v.id}`)
+            for (const v of listesPublieesAffichees) await api.delete(`/voyages-etudes/${v.id}`)
             showMsg('Toutes les listes supprimées de votre vue')
             setSelectedListes([])
             fetchListesPubliees()
@@ -125,6 +126,23 @@ export default function CommissionDashboard() {
 
     const enAttente = dossiers.filter(d => !d.avis?.some(a => a.user?.role === 'commission'))
     const traites   = dossiers.filter(d =>  d.avis?.some(a => a.user?.role === 'commission'))
+
+    // Filtres de recherche
+    const filtrerListes = (liste) => liste.filter(v =>
+        searchQuery === '' ||
+        v.destination?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    const filtrerDossiers = (liste) => liste.filter(d =>
+        searchQuery === '' ||
+        d.enseignant?.prenom?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        d.enseignant?.nom?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        d.enseignant?.ufr?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        d.voyage?.destination?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+
+    const listesPublieesAffichees = filtrerListes(listesPubliees)
+    const enAttenteAffiches       = filtrerDossiers(enAttente)
+    const traitesAffiches         = filtrerDossiers(traites)
 
     return (
         <Layout>
@@ -146,7 +164,7 @@ export default function CommissionDashboard() {
     <MapPin size={20} className="text-blue-600" />
 </div>
                         <p className="text-2xl font-bold text-gray-800">{listesPubliees.length}</p>
-                        <p className="text-sm text-gray-500 mt-1">Listes publiees</p>
+                        <p className="text-sm text-gray-500 mt-1">Listes publiées</p>
                     </div>
                     <div
                         onClick={() => setFiltreVue('attente')}
@@ -154,8 +172,8 @@ export default function CommissionDashboard() {
                             filtreVue === 'attente' ? 'border-blue-400 ring-2 ring-gray-200' : 'border-gray-100'
                         }`}
                     >
-                        <div className="bg-gray-100 p-2 rounded-xl w-fit mb-3">
-                            <FileText size={20} className="text-gray-600" />
+                        <div className="bg-blue-100 p-2 rounded-xl w-fit mb-3">
+                            <FileText size={20} className="text-blue-600" />
                         </div>
                         <p className="text-2xl font-bold text-gray-800">{enAttente.length}</p>
                         <p className="text-sm text-gray-500 mt-1">Dossiers a traiter</p>
@@ -166,12 +184,24 @@ export default function CommissionDashboard() {
                             filtreVue === 'traites' ? 'border-blue-400 ring-2 ring-gray-200' : 'border-gray-100'
                         }`}
                     >
-                        <div className="bg-gray-100 p-2 rounded-xl w-fit mb-3">
-                            <CheckCircle size={20} className="text-gray-600" />
+                        <div className="bg-blue-100 p-2 rounded-xl w-fit mb-3">
+                            <CheckCircle size={20} className="text-blue-600" />
                         </div>
                         <p className="text-2xl font-bold text-gray-800">{traites.length}</p>
                         <p className="text-sm text-gray-500 mt-1">Dossiers traites</p>
                     </div>
+                </div>
+
+                {/* Recherche */}
+                <div className="relative max-w-sm">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Rechercher par enseignant, année, UFR..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                 </div>
 
                 {/* Messages */}
@@ -201,18 +231,24 @@ export default function CommissionDashboard() {
                                     <h3 className="text-gray-700 font-semibold mb-2">Aucune liste publiee</h3>
                                     <p className="text-gray-400 text-sm">Les listes publiees par le Vice-Recteur apparaitront ici</p>
                                 </div>
+                            ) : listesPublieesAffichees.length === 0 ? (
+                                <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
+                                    <Search size={40} className="mx-auto mb-4 text-gray-300" />
+                                    <h3 className="text-gray-700 font-semibold mb-2">Aucun resultat</h3>
+                                    <p className="text-gray-400 text-sm">Aucune liste ne correspond a votre recherche</p>
+                                </div>
                             ) : (
                                 <div className="space-y-3">
                                     <h2 className="font-semibold text-gray-700 flex items-center gap-2">
                                         <span className="w-2 h-2 bg-gray-400 rounded-full inline-block"></span>
-                                        Listes publiees ({listesPubliees.length})
+                                        Listes publiees ({listesPublieesAffichees.length})
                                     </h2>
 
                                     {/* Barre sélection listes */}
                                     <div className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-2.5 shadow-sm">
                                         <div className="flex items-center gap-3">
                                             <input type="checkbox"
-                                                checked={selectedListes.length === listesPubliees.length && listesPubliees.length > 0}
+                                                checked={selectedListes.length === listesPublieesAffichees.length && listesPublieesAffichees.length > 0}
                                                 onChange={toggleSelectAllListes}
                                                 className="w-4 h-4 accent-gray-700 cursor-pointer" />
                                             <span className="text-sm text-gray-600">
@@ -233,7 +269,7 @@ export default function CommissionDashboard() {
                                         </div>
                                     </div>
 
-                                    {listesPubliees.map(v => (
+                                    {listesPublieesAffichees.map(v => (
                                         <div key={v.id} className={`rounded-xl border shadow-sm overflow-hidden ${
                                             selectedListes.includes(v.id) ? 'bg-gray-50 border-gray-300' : 'bg-white border-gray-100'
                                         }`}>
@@ -276,13 +312,19 @@ export default function CommissionDashboard() {
                                     <h3 className="text-gray-700 font-semibold mb-2">Aucun dossier en attente</h3>
                                     <p className="text-gray-400 text-sm">Tous les dossiers ont ete traites</p>
                                 </div>
+                            ) : enAttenteAffiches.length === 0 ? (
+                                <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
+                                    <Search size={40} className="mx-auto mb-4 text-gray-300" />
+                                    <h3 className="text-gray-700 font-semibold mb-2">Aucun resultat</h3>
+                                    <p className="text-gray-400 text-sm">Aucun dossier ne correspond a votre recherche</p>
+                                </div>
                             ) : (
                                 <div className="space-y-4">
                                     <h2 className="font-semibold text-gray-700 flex items-center gap-2">
                                         <span className="w-2 h-2 bg-gray-400 rounded-full inline-block"></span>
-                                        A traiter ({enAttente.length})
+                                        A traiter ({enAttenteAffiches.length})
                                     </h2>
-                                    {enAttente.map(d => {
+                                    {enAttenteAffiches.map(d => {
                                         const isAvisOuvert = avisOuvert === d.id
                                         const avisVR = d.avis?.find(a => a.user?.role === 'vice_recteur')
 
@@ -380,18 +422,24 @@ export default function CommissionDashboard() {
                                     <h3 className="text-gray-700 font-semibold mb-2">Aucun dossier traite</h3>
                                     <p className="text-gray-400 text-sm">Les dossiers que vous aveztraites apparaitront ici</p>
                                 </div>
+                            ) : traitesAffiches.length === 0 ? (
+                                <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
+                                    <Search size={40} className="mx-auto mb-4 text-gray-300" />
+                                    <h3 className="text-gray-700 font-semibold mb-2">Aucun resultat</h3>
+                                    <p className="text-gray-400 text-sm">Aucun dossier ne correspond a votre recherche</p>
+                                </div>
                             ) : (
                                 <div className="space-y-3">
                                     <h2 className="font-semibold text-gray-700 flex items-center gap-2">
                                         <span className="w-2 h-2 bg-gray-400 rounded-full inline-block"></span>
-                                        Traites ({traites.length})
+                                        Traites ({traitesAffiches.length})
                                     </h2>
 
                                     {/* Barre sélection */}
                                     <div className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-2.5 shadow-sm">
                                         <div className="flex items-center gap-3">
                                             <input type="checkbox"
-                                                checked={selected.length === traites.length && traites.length > 0}
+                                                checked={selected.length === traitesAffiches.length && traitesAffiches.length > 0}
                                                 onChange={toggleSelectAll}
                                                 className="w-4 h-4 accent-gray-700 cursor-pointer" />
                                             <span className="text-sm text-gray-600">
@@ -413,7 +461,7 @@ export default function CommissionDashboard() {
                                     </div>
 
                                     {/* Liste dossiers traités */}
-                                    {traites.map(d => {
+                                    {traitesAffiches.map(d => {
                                         const monAvis = d.avis?.find(a => a.user?.role === 'commission')
                                         const isOuvert = justifOuvert === d.id
                                         return (

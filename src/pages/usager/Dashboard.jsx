@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import ProchaineNavette from '../../components/ProchaineNavette'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api/axios'
-import { Bus, QrCode, Calendar, User, Bell, CheckCircle, AlertCircle, X, Clock, MapPin, Trash2, Download } from 'lucide-react'
+import { Bus, QrCode, Calendar, User, Bell, CheckCircle, AlertCircle, X, Clock, MapPin, Trash2, Download, Search } from 'lucide-react'
 import QRCode from 'react-qr-code'
 
 export default function UsagerDashboard() {
@@ -19,25 +19,28 @@ export default function UsagerDashboard() {
     const [deleteSelectionLoading, setDeleteSelectionLoading] = useState(false)
     const [qrOuvert, setQrOuvert] = useState(null)
     const [exportLoading, setExportLoading] = useState(false)
-const [annulerLoading, setAnnulerLoading] = useState(null)
+    const [annulerLoading, setAnnulerLoading] = useState(null)
+    const [searchQuery, setSearchQuery] = useState('')
+    const [notifOuvertes, setNotifOuvertes] = useState(false)
+    const notifRef = useRef(null)
 
-const exporterPdf = async () => {
-    setExportLoading(true)
-    try {
-        const res = await api.get('/mes-reservations/export-pdf', { responseType: 'blob' })
-        const url = window.URL.createObjectURL(new Blob([res.data]))
-        const link = document.createElement('a')
-        link.href = url
-        link.setAttribute('download', 'mes-reservations.pdf')
-        document.body.appendChild(link)
-        link.click()
-        link.remove()
-    } catch (err) {
-        alert('Erreur lors du telechargement du PDF')
-    } finally {
-        setExportLoading(false)
+    const exporterPdf = async () => {
+        setExportLoading(true)
+        try {
+            const res = await api.get('/mes-reservations/export-pdf', { responseType: 'blob' })
+            const url = window.URL.createObjectURL(new Blob([res.data]))
+            const link = document.createElement('a')
+            link.href = url
+            link.setAttribute('download', 'mes-reservations.pdf')
+            document.body.appendChild(link)
+            link.click()
+            link.remove()
+        } catch (err) {
+            alert('Erreur lors du telechargement du PDF')
+        } finally {
+            setExportLoading(false)
+        }
     }
-}
 
     useEffect(() => {
         fetchNotifications()
@@ -48,18 +51,31 @@ const exporterPdf = async () => {
         }, 15000)
         return () => clearInterval(interval)
     }, [])
-const annulerReservation = async (id) => {
-    if (!confirm('Confirmer l\'annulation ? Le chauffeur sera notifié.')) return
-    setAnnulerLoading(id)
-    try {
-        await api.post(`/reservations/${id}/annuler`)
-        setReservations(prev => prev.map(r => r.id === id ? { ...r, statut: 'annulee' } : r))
-    } catch (err) {
-        alert(err.response?.data?.message || 'Erreur lors de l\'annulation')
-    } finally {
-        setAnnulerLoading(null)
+
+    // ✅ Fermer le menu notifications si on clique en dehors
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (notifRef.current && !notifRef.current.contains(e.target)) {
+                setNotifOuvertes(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
+
+    const annulerReservation = async (id) => {
+        if (!confirm('Confirmer l\'annulation ? Le chauffeur sera notifié.')) return
+        setAnnulerLoading(id)
+        try {
+            await api.post(`/reservations/${id}/annuler`)
+            setReservations(prev => prev.map(r => r.id === id ? { ...r, statut: 'annulee' } : r))
+        } catch (err) {
+            alert(err.response?.data?.message || 'Erreur lors de l\'annulation')
+        } finally {
+            setAnnulerLoading(null)
+        }
     }
-}
+
     const fetchNotifications = async () => {
         try {
             const res = await api.get('/notifications')
@@ -134,14 +150,6 @@ const annulerReservation = async (id) => {
         }
     }
 
-    const nonLues = notifications.filter(n => !n.lu).length
-    const toutSelectionne = reservations.length > 0 && reservations.every(r => selected.includes(r.id))
-
-    const toggleSelectAll = () => {
-        if (toutSelectionne) setSelected([])
-        else setSelected(reservations.map(r => r.id))
-    }
-
     const getStatutBadge = (statut) => {
         switch (statut) {
             case 'terminee': return <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">Terminee</span>
@@ -152,24 +160,118 @@ const annulerReservation = async (id) => {
         }
     }
 
+    const nonLues = notifications.filter(n => !n.lu).length
+
+    const statutLabel = (statut) => {
+        switch (statut) {
+            case 'terminee': return 'Terminee'
+            case 'en_cours': return 'En cours'
+            case 'confirmee': return 'Confirmee'
+            case 'refusee': return 'Refusee'
+            case 'annulee': return 'Annulee'
+            default: return 'En attente'
+        }
+    }
+
+    const reservationsAffichees = reservations.filter(r =>
+        searchQuery === '' ||
+        r.ville_depart?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.ville_arrivee?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        statutLabel(r.statut).toLowerCase().includes(searchQuery.toLowerCase())
+    )
+
+    const toutSelectionne = reservationsAffichees.length > 0 && reservationsAffichees.every(r => selected.includes(r.id))
+
+    const toggleSelectAll = () => {
+        if (toutSelectionne) setSelected([])
+        else setSelected(reservationsAffichees.map(r => r.id))
+    }
+
     return (
         <Layout>
             <div className="space-y-4">
 
-                {/* Carte profil */}
+                {/* Carte profil + cloche notifications */}
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
                     <div className="w-11 h-11 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-sm flex-shrink-0">
                         {user?.prenom?.[0]}{user?.nom?.[0]}
                     </div>
                     <div className="flex-1">
-                        <p className="font-semibold text-gray-800 text-sm">{user?.prenom} {user?.nom}</p>
+                        <div className="font-semibold text-gray-800 text-sm flex items-center gap-2">
+                            {user?.prenom} {user?.nom}
+
+                            {/* ✅ Cloche notifications, à côté du nom */}
+                            <span className="relative" ref={notifRef}>
+                                <button onClick={() => setNotifOuvertes(prev => !prev)}
+                                    className="relative p-1 hover:bg-gray-100 rounded-lg transition flex-shrink-0">
+                                    <Bell size={16} className="text-gray-500" />
+                                    {nonLues > 0 && (
+                                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold min-w-[14px] h-[14px] px-0.5 flex items-center justify-center rounded-full">
+                                            {nonLues}
+                                        </span>
+                                    )}
+                                </button>
+
+                                {/* Menu déroulant notifications */}
+                                {notifOuvertes && (
+                                    <div className="absolute left-0 mt-2 w-80 max-w-[90vw] bg-white rounded-2xl border border-gray-100 shadow-lg z-50 max-h-96 overflow-y-auto">
+                                        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                                            <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                                                <Bell size={15} className="text-blue-700" /> Notifications
+                                            </h3>
+                                            {nonLues > 0 && (
+                                                <button onClick={async () => {
+                                                    await api.patch('/notifications/lu-toutes')
+                                                    setNotifications(prev => prev.map(n => ({ ...n, lu: true })))
+                                                }} className="text-xs text-blue-600 hover:underline">
+                                                    Tout marquer lu
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {notifications.length === 0 ? (
+                                            <div className="text-center py-8 text-gray-400 text-xs">
+                                                <Bell size={24} className="mx-auto mb-2 opacity-30" />
+                                                Aucune notification
+                                            </div>
+                                        ) : (
+                                            <div className="divide-y divide-gray-50">
+                                                {notifications.map(notif => (
+                                                    <div key={notif.id}
+                                                        className={`p-3 flex items-start gap-2.5 ${notif.lu ? '' : 'bg-blue-50'}`}>
+                                                        <div className="mt-0.5">
+                                                            {notif.type === 'reservation_confirmee'
+                                                                ? <CheckCircle size={16} className="text-green-600" />
+                                                                : <AlertCircle size={16} className="text-red-500" />}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className={`text-xs font-semibold ${notif.lu ? 'text-gray-600' : 'text-gray-800'}`}>{notif.titre}</p>
+                                                            <p className="text-xs text-gray-500 mt-0.5">{notif.message}</p>
+                                                            {!notif.lu && (
+                                                                <button onClick={() => marquerLue(notif.id)} className="text-xs text-blue-600 hover:underline mt-1">
+                                                                    Marquer lu
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        <button onClick={() => supprimerNotif(notif.id)} className="text-gray-400 hover:text-red-500 transition flex-shrink-0">
+                                                            <X size={13} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </span>
+                        </div>
                         <p className="text-xs text-gray-500 mt-0.5">{user?.ufr}</p>
                     </div>
                     <span className="text-xs px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 whitespace-nowrap">
                         {user?.statut}
                     </span>
                 </div>
-<ProchaineNavette />
+
+                <ProchaineNavette />
                 {/* Actions rapides en tuiles */}
                 <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => navigate('/usager/reserver')}
@@ -184,55 +286,6 @@ const annulerReservation = async (id) => {
                     </button>
                 </div>
 
-                {/* Notifications */}
-                {notifications.length > 0 && (
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
-                                <Bell size={18} className="text-blue-700" />
-                                Notifications
-                                {nonLues > 0 && (
-                                    <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{nonLues}</span>
-                                )}
-                            </h2>
-                            {nonLues > 0 && (
-                                <button onClick={async () => {
-                                    await api.patch('/notifications/lu-toutes')
-                                    setNotifications(prev => prev.map(n => ({ ...n, lu: true })))
-                                }} className="text-xs text-blue-600 hover:underline">
-                                    Tout marquer lu
-                                </button>
-                            )}
-                        </div>
-                        <div className="space-y-3">
-                            {notifications.map(notif => (
-                                <div key={notif.id}
-                                    className={`rounded-xl p-4 flex items-start gap-3 transition ${notif.lu ? 'bg-gray-50' : 'bg-blue-50 border border-blue-200'}`}>
-                                    <div className="mt-0.5">
-                                        {notif.type === 'reservation_confirmee'
-                                            ? <CheckCircle size={18} className="text-green-600" />
-                                            : <AlertCircle size={18} className="text-red-500" />}
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className={`text-sm font-semibold ${notif.lu ? 'text-gray-600' : 'text-gray-800'}`}>{notif.titre}</p>
-                                        <p className="text-xs text-gray-500 mt-1">{notif.message}</p>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-2">
-                                        {!notif.lu && (
-                                            <button onClick={() => marquerLue(notif.id)} className="text-xs text-blue-600 hover:underline whitespace-nowrap">
-                                                Marquer lu
-                                            </button>
-                                        )}
-                                        <button onClick={() => supprimerNotif(notif.id)} className="text-gray-400 hover:text-red-500 transition">
-                                            <X size={14} />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
                 {/* QR + Reservations en 2 colonnes */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
@@ -242,39 +295,53 @@ const annulerReservation = async (id) => {
                             <QrCode size={16} className="text-blue-700" /> Mon QR code
                         </p>
                         {user?.qr_code && reservations.some(r => ['confirmee', 'en_cours'].includes(r.statut)) ? (
-    <>
-        <div className="flex justify-center mb-4">
-            <div className="p-4 bg-white border-2 border-gray-200 rounded-2xl">
-                <QRCode value={user.qr_code} size={180} level="H" />
-            </div>
-        </div>
-        <p className="font-mono text-sm font-bold text-gray-600 tracking-widest">{user.qr_code}</p>
-    </>
-) : (
-    <div className="py-8 text-gray-400 text-sm">QR code non disponible</div>
-)}
+                            <>
+                                <div className="flex justify-center mb-4">
+                                    <div className="p-4 bg-white border-2 border-gray-200 rounded-2xl">
+                                        <QRCode value={user.qr_code} size={180} level="H" />
+                                    </div>
+                                </div>
+                                <p className="font-mono text-sm font-bold text-gray-600 tracking-widest">{user.qr_code}</p>
+                            </>
+                        ) : (
+                            <div className="py-8 text-gray-400 text-sm">QR code non disponible</div>
+                        )}
                     </div>
 
                     {/* Mes reservations */}
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                       <div className="flex items-center justify-between mb-3">
-    <h2 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-        <Calendar size={16} className="text-blue-700" />
-        Mes reservations
-        <span className="bg-gray-100 text-gray-600 text-xs font-bold px-2 py-0.5 rounded-full">
-            {reservations.length}
-        </span>
-    </h2>
-    {reservations.length > 0 && (
-        <button onClick={exporterPdf} disabled={exportLoading}
-            className="flex items-center gap-1.5 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg font-semibold transition disabled:opacity-50">
-            {exportLoading
-                ? <div className="w-3 h-3 border-2 border-blue-700 border-t-transparent rounded-full animate-spin" />
-                : <Download size={13} />}
-            PDF
-        </button>
-    )}
-</div>
+                        <div className="flex items-center justify-between mb-3">
+                            <h2 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                                <Calendar size={16} className="text-blue-700" />
+                                Mes reservations
+                                <span className="bg-gray-100 text-gray-600 text-xs font-bold px-2 py-0.5 rounded-full">
+                                    {reservationsAffichees.length}
+                                </span>
+                            </h2>
+                            {reservations.length > 0 && (
+                                <button onClick={exporterPdf} disabled={exportLoading}
+                                    className="flex items-center gap-1.5 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg font-semibold transition disabled:opacity-50">
+                                    {exportLoading
+                                        ? <div className="w-3 h-3 border-2 border-blue-700 border-t-transparent rounded-full animate-spin" />
+                                        : <Download size={13} />}
+                                    PDF
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Barre de recherche */}
+                        {reservations.length > 0 && (
+                            <div className="relative mb-3">
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Rechercher par ville, statut..."
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+                        )}
 
                         {loadingReservations ? (
                             <div className="flex justify-center py-6">
@@ -284,6 +351,11 @@ const annulerReservation = async (id) => {
                             <div className="text-center py-6 text-gray-400">
                                 <Calendar size={28} className="mx-auto mb-2 opacity-30" />
                                 <p className="text-xs">Aucune reservation</p>
+                            </div>
+                        ) : reservationsAffichees.length === 0 ? (
+                            <div className="text-center py-6 text-gray-400">
+                                <Search size={28} className="mx-auto mb-2 opacity-30" />
+                                <p className="text-xs">Aucun resultat pour cette recherche</p>
                             </div>
                         ) : (
                             <>
@@ -305,7 +377,7 @@ const annulerReservation = async (id) => {
                                 </div>
 
                                 <div className="space-y-2">
-                                    {reservations.map(r => (
+                                    {reservationsAffichees.map(r => (
                                         <div key={r.id}
                                             className={`border rounded-xl p-3 transition ${selected.includes(r.id) ? 'border-red-200 bg-red-50' : 'border-gray-100'}`}>
                                             <div className="flex items-start justify-between mb-1.5">
@@ -338,20 +410,19 @@ const annulerReservation = async (id) => {
                                                 </div>
                                             </div>
 
-                                        
-{r.statut === 'confirmee' && (
-    <div className="mt-2 ml-5">
-        <button
-            onClick={() => annulerReservation(r.id)}
-            disabled={annulerLoading === r.id}
-            className="flex items-center gap-1 border border-red-300 text-red-600 font-semibold px-2.5 py-1 rounded-lg hover:bg-red-50 transition text-xs disabled:opacity-50">
-            {annulerLoading === r.id
-                ? <div className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                : <X size={12} />}
-            Annuler
-        </button>
-    </div>
-)}
+                                            {r.statut === 'confirmee' && (
+                                                <div className="mt-2 ml-5">
+                                                    <button
+                                                        onClick={() => annulerReservation(r.id)}
+                                                        disabled={annulerLoading === r.id}
+                                                        className="flex items-center gap-1 border border-red-300 text-red-600 font-semibold px-2.5 py-1 rounded-lg hover:bg-red-50 transition text-xs disabled:opacity-50">
+                                                        {annulerLoading === r.id
+                                                            ? <div className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                                                            : <X size={12} />}
+                                                        Annuler
+                                                    </button>
+                                                </div>
+                                            )}
 
                                             {r.statut === 'en_attente_confirmation' && (
                                                 <div className="mt-2 ml-5">

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
-import { Bus, Plus, Clock, CheckCircle, XCircle, PenLine, Truck, Trash2, FileText, History, AlertTriangle } from 'lucide-react'
+import { Bus, Plus, Clock, CheckCircle, XCircle, PenLine, Truck, Trash2, FileText, History, AlertTriangle, Search } from 'lucide-react'
 const statutConfig = {
     en_attente_drh: { label: 'En attente DRH', color: 'bg-orange-100 text-orange-700', icon: Clock },
     approuve_drh: { label: 'Approuvé DRH', color: 'bg-blue-100 text-blue-700', icon: CheckCircle },
@@ -29,7 +29,8 @@ export default function MesNavettes() {
     const [onglet, setOnglet] = useState('attente')
     const [selected, setSelected] = useState([])
     const [deleteSelectionLoading, setDeleteSelectionLoading] = useState(false)
-    const [transmettreLoading, setTransmettreLoading] = useState(null)   
+    const [transmettreLoading, setTransmettreLoading] = useState(null)
+    const [searchNavettes, setSearchNavettes] = useState('')
 
     useEffect(() => {
         chargerOrdres()
@@ -54,8 +55,21 @@ export default function MesNavettes() {
         setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
     }
 
+    const filtrerOrdres = (liste) => liste.filter(o =>
+        searchNavettes === '' ||
+        o.destination?.toLowerCase().includes(searchNavettes.toLowerCase()) ||
+        o.trajet_autre?.toLowerCase().includes(searchNavettes.toLowerCase()) ||
+        trajetLabels[o.trajet]?.toLowerCase().includes(searchNavettes.toLowerCase()) ||
+        o.chauffeur_prenom?.toLowerCase().includes(searchNavettes.toLowerCase()) ||
+        o.chauffeur_nom?.toLowerCase().includes(searchNavettes.toLowerCase()) ||
+        o.motif?.toLowerCase().includes(searchNavettes.toLowerCase())
+    )
+
+    const enAttenteFiltres = filtrerOrdres(enAttente)
+    const historiqueFiltres = filtrerOrdres(historique)
+
     const toggleSelectAll = () => {
-        const ids = historique.map(o => o.id)
+        const ids = historiqueFiltres.map(o => o.id)
         if (ids.every(id => selected.includes(id))) {
             setSelected([])
         } else {
@@ -63,7 +77,7 @@ export default function MesNavettes() {
         }
     }
 const toggleSelectAllAttente = () => {
-    const ids = enAttente.map(o => o.id)
+    const ids = enAttenteFiltres.map(o => o.id)
     if (ids.every(id => selected.includes(id))) {
         setSelected([])
     } else {
@@ -71,7 +85,7 @@ const toggleSelectAllAttente = () => {
     }
 }
 
-const toutSelectionneAttente = enAttente.length > 0 && enAttente.every(o => selected.includes(o.id))
+const toutSelectionneAttente = enAttenteFiltres.length > 0 && enAttenteFiltres.every(o => selected.includes(o.id))
     const supprimerSelection = async () => {
         if (selected.length === 0) return
         if (!confirm(`Voulez-vous vraiment supprimer ${selected.length} ordre(s) de l'historique ?`)) return
@@ -138,7 +152,7 @@ const transmettreIncident = async (id) => {
             setTransmettreLoading(null)
         }
     }
-    const toutSelectionne = historique.length > 0 && historique.every(o => selected.includes(o.id))
+    const toutSelectionne = historiqueFiltres.length > 0 && historiqueFiltres.every(o => selected.includes(o.id))
 
     const renderOrdre = (ordre, estHistorique = false) => {
         const statut = statutConfig[ordre.statut] || statutConfig['en_attente_drh']
@@ -159,7 +173,6 @@ const transmettreIncident = async (id) => {
     <div className="bg-blue-100 p-3 rounded-xl">
         <Bus size={20} className="text-blue-700" />
     </div>
-    ...
                         <div>
                             <p className="font-semibold text-gray-800">
                                 {ordre.destination || (ordre.trajet === 'autres' && ordre.trajet_autre
@@ -303,12 +316,25 @@ const transmettreIncident = async (id) => {
         Historique ({historique.length})
     </button>
 </div>
+
+                {/* Recherche */}
+                <div className="relative max-w-sm">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Rechercher par destination, chauffeur, motif..."
+                        value={searchNavettes}
+                        onChange={e => setSearchNavettes(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+
                 {loading ? (
                     <div className="flex justify-center py-20">
                         <div className="w-8 h-8 border-4 border-blue-700 border-t-transparent rounded-full animate-spin" />
                     </div>
                 ) : onglet === 'attente' ? (
-                    enAttente.length === 0 ? (
+                    enAttenteFiltres.length === 0 ? (
                         <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                             <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <Bus size={28} className="text-gray-400" />
@@ -354,11 +380,11 @@ const transmettreIncident = async (id) => {
             )}
         </div>
 
-        {enAttente.map(ordre => renderOrdre(ordre, false))}
+        {enAttenteFiltres.map(ordre => renderOrdre(ordre, false))}
     </div>
 )
                 ) : (
-                    historique.length === 0 ? (
+                    historiqueFiltres.length === 0 ? (
                         <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                             <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <History size={28} className="text-gray-400" />
@@ -399,7 +425,7 @@ const transmettreIncident = async (id) => {
                                 )}
                             </div>
 
-                            {historique.map(ordre => renderOrdre(ordre, true))}
+                            {historiqueFiltres.map(ordre => renderOrdre(ordre, true))}
                         </div>
                     )
                 )}

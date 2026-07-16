@@ -115,7 +115,7 @@ const getRoleLabel = (user) => {
         case 'chauffeur':        return 'Chauffeur'
         case 'drh':              return 'Directeur RH'
         case 'sg_drh':           return 'SG - DRH'
-        case 'sg_vr':            return 'SG - Vice Rectorat'
+        case 'sg_vr':            return 'SG - Vice Recteur'
         case 'ddl':              return 'DDL'
         case 'vice_recteur':     return 'Vice-Recteur'
         case 'recteur':          return 'Recteur'
@@ -355,7 +355,7 @@ const allerVersPage = () => {
             )}
 
             <aside className={`
-                bg-gradient-to-b from-[#1E3A8A] to-[#16295F] text-white flex flex-col
+                bg-blue-950 text-white flex flex-col
                 transition-all duration-300 ease-in-out min-h-screen z-40 shadow-2xl shadow-blue-950/20
                 ${mobile
                     ? `fixed top-0 left-0 h-full w-64 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
@@ -364,10 +364,10 @@ const allerVersPage = () => {
             `}>
 
                 <div className={`flex items-center gap-3 h-16 border-b border-white/10 ${sidebarOpen ? 'px-5' : 'px-4 justify-center'}`}>
-                    <div className="bg-white/15 p-2 rounded-xl flex-shrink-0 shadow-inner shadow-white/5">
+                    <div className="bg-blue-500 p-2 rounded-xl flex-shrink-0 shadow-inner shadow-white/5">
                         <Bus size={20} className="text-white" />
                     </div>
-                    {sidebarOpen && <span className="font-bold text-[15px] tracking-tight">UADB Mobilité</span>}
+                    {sidebarOpen && <span className="font-serif font-bold text-[15px] tracking-tight">UADB Mobilité</span>}
                 </div>
 
                 <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto overflow-x-hidden">
@@ -378,8 +378,8 @@ const allerVersPage = () => {
                             <Link key={item.path} to={item.path}
                                 className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
                                     isActive
-                                        ? 'bg-white text-blue-900 font-semibold shadow-md shadow-blue-950/20'
-                                        : 'text-blue-100/80 hover:bg-white/10 hover:text-white'
+                                        ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-950/20'
+                                        : 'text-blue-200/80 hover:bg-white/10 hover:text-white'
                                 } ${!sidebarOpen ? 'justify-center' : ''}`}
                             >
                                 <Icon size={18} className={`flex-shrink-0 transition-transform duration-200 ${!isActive ? 'group-hover:scale-110' : ''}`} />
@@ -548,7 +548,7 @@ const allerVersPage = () => {
                                     <img src={avatar} alt="avatar"
                                         className="w-8 h-8 rounded-full object-cover ring-2 ring-blue-100" />
                                 ) : (
-                                    <div className="bg-blue-700 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-blue-100">
+                                    <div className="bg-blue-600 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-blue-100">
                                         {user?.prenom?.[0]}{user?.nom?.[0]}
                                     </div>
                                 )}
@@ -559,7 +559,7 @@ const allerVersPage = () => {
 
                             {profileOpen && (
                                 <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl shadow-slate-300/40 border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                    <div className="bg-gradient-to-br from-[#1E3A8A] to-[#16295F] p-5 flex flex-col items-center gap-3">
+                                    <div className="bg-blue-950 p-5 flex flex-col items-center gap-3">
                                         <div className="relative group">
                                             {avatar ? (
                                                 <img src={avatar} alt="avatar"

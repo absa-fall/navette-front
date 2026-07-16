@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { MapPin, CheckCircle, AlertCircle, FileText, Eye, Trash2, History } from 'lucide-react'
+import { MapPin, CheckCircle, AlertCircle, FileText, Eye, Trash2, History, Search } from 'lucide-react'
 
 export default function RecteurDashboard() {
     const navigate  = useNavigate()
@@ -13,7 +13,7 @@ export default function RecteurDashboard() {
     const [actionLoading, setActionLoading] = useState(null)
     const [message, setMessage]             = useState('')
     const [error, setError]                 = useState('')
-
+const [searchQuery, setSearchQuery] = useState('')
     const [selectedDefinitifs, setSelectedDefinitifs]         = useState([])
     const [selectedSignes, setSelectedSignes]                 = useState([])
     const [selectedAbsAttente, setSelectedAbsAttente]         = useState([])
@@ -163,12 +163,35 @@ const supprimerArretes = async (voyageIds) => {
         showMsg('Erreur lors de la suppression', true)
     }
 }
+    const definitifs                    = voyages.filter(v => v.statut_liste === 'definitive' && !v.arrete_recteur)
+    const signes                        = voyages.filter(v => v.arrete_recteur)
+    const autorisationsAbsenceEnAttente = autorisationsAbsence.filter(a => a.statut === 'avis_directeur_ufr')
+    const autorisationsAbsenceSignees   = autorisationsAbsence.filter(a => ['signee_recteur', 'transmise'].includes(a.statut))
+
+    const filtrerVoyages = (liste) => liste.filter(v =>
+        searchQuery === '' ||
+        v.destination?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+
+    const filtrerAbsences = (liste) => liste.filter(a =>
+        searchQuery === '' ||
+        a.enseignant?.prenom?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        a.enseignant?.nom?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        a.lieu_deplacement?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        a.numero?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+
+    const definitifsAffiches    = filtrerVoyages(definitifs)
+    const signesAffiches        = filtrerVoyages(signes)
+    const absEnAttenteAffichees = filtrerAbsences(autorisationsAbsenceEnAttente)
+    const absSigneesAffichees   = filtrerAbsences(autorisationsAbsenceSignees)
+
     // ===== SELECTION ABSENCES EN ATTENTE =====
     const toggleSelectAbsAttente = (id) =>
         setSelectedAbsAttente(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
 
     const toggleSelectAllAbsAttente = () =>
-        setSelectedAbsAttente(selectedAbsAttente.length === autorisationsAbsenceEnAttente.length ? [] : autorisationsAbsenceEnAttente.map(a => a.id))
+        setSelectedAbsAttente(selectedAbsAttente.length === absEnAttenteAffichees.length ? [] : absEnAttenteAffichees.map(a => a.id))
 
     const supprimerAbsAttenteSelectionnes = async () => {
         if (!confirm(`Supprimer ${selectedAbsAttente.length} demande(s) ?`)) return
@@ -183,7 +206,7 @@ const supprimerArretes = async (voyageIds) => {
     const supprimerToutesAbsAttente = async () => {
         if (!confirm('Supprimer toutes les demandes en attente ?')) return
         try {
-            for (const a of autorisationsAbsenceEnAttente) await api.delete(`/autorisations-absence/${a.id}`)
+            for (const a of absEnAttenteAffichees) await api.delete(`/autorisations-absence/${a.id}`)
             showMsg('Toutes les demandes supprimees')
             setSelectedAbsAttente([])
             fetchAll()
@@ -195,7 +218,7 @@ const supprimerArretes = async (voyageIds) => {
         setSelectedAbsHistorique(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
 
     const toggleSelectAllAbsHistorique = () =>
-        setSelectedAbsHistorique(selectedAbsHistorique.length === autorisationsAbsenceSignees.length ? [] : autorisationsAbsenceSignees.map(a => a.id))
+        setSelectedAbsHistorique(selectedAbsHistorique.length === absSigneesAffichees.length ? [] : absSigneesAffichees.map(a => a.id))
 
     const supprimerAbsHistoriqueSelectionnes = async () => {
         if (!confirm(`Supprimer ${selectedAbsHistorique.length} element(s) ?`)) return
@@ -210,17 +233,12 @@ const supprimerArretes = async (voyageIds) => {
     const supprimerToutAbsHistorique = async () => {
         if (!confirm("Vider tout l'historique des absences ?")) return
         try {
-            for (const a of autorisationsAbsenceSignees) await api.delete(`/autorisations-absence/${a.id}`)
+            for (const a of absSigneesAffichees) await api.delete(`/autorisations-absence/${a.id}`)
             showMsg('Historique vide')
             setSelectedAbsHistorique([])
             fetchAll()
         } catch { showMsg('Erreur lors de la suppression', true) }
     }
-
-    const definitifs                    = voyages.filter(v => v.statut_liste === 'definitive' && !v.arrete_recteur)
-    const signes                        = voyages.filter(v => v.arrete_recteur)
-    const autorisationsAbsenceEnAttente = autorisationsAbsence.filter(a => a.statut === 'avis_directeur_ufr')
-    const autorisationsAbsenceSignees   = autorisationsAbsence.filter(a => ['signee_recteur', 'transmise'].includes(a.statut))
 
     const BarreSelection = ({ selected, total, onSelectAll, onDeleteSelected, onDeleteAll }) => (
         <div className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-2.5 shadow-sm">
@@ -259,32 +277,32 @@ const supprimerArretes = async (voyageIds) => {
                 <div className="grid grid-cols-4 gap-4">
                     <div onClick={() => setActiveTab('arretes')}
                         className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-blue-200 hover:shadow-md transition">
-                        <div className="bg-orange-100 p-2 rounded-xl w-fit mb-3">
-                            <FileText size={20} className="text-orange-700" />
+                        <div className="bg-blue-50 p-2 rounded-xl w-fit mb-3">
+                            <FileText size={20} className="text-blue-700" />
                         </div>
                         <p className="text-2xl font-bold text-gray-800">{definitifs.length}</p>
                         <p className="text-sm text-gray-500 mt-1">Arretes a signer</p>
                     </div>
                     <div onClick={() => setActiveTab('autorisations_absence')}
-                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-purple-200 hover:shadow-md transition">
-                        <div className="bg-purple-100 p-2 rounded-xl w-fit mb-3">
-                            <FileText size={20} className="text-purple-700" />
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-blue-200 hover:shadow-md transition">
+                        <div className="bg-blue-50 p-2 rounded-xl w-fit mb-3">
+                            <FileText size={20} className="text-blue-700" />
                         </div>
                         <p className="text-2xl font-bold text-gray-800">{autorisationsAbsenceEnAttente.length}</p>
                         <p className="text-sm text-gray-500 mt-1">Absences a signer</p>
                     </div>
                     <div onClick={() => setActiveTab('historique_arretes')}
-                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-green-200 hover:shadow-md transition">
-                        <div className="bg-green-100 p-2 rounded-xl w-fit mb-3">
-                            <CheckCircle size={20} className="text-green-700" />
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-blue-200 hover:shadow-md transition">
+                        <div className="bg-blue-50 p-2 rounded-xl w-fit mb-3">
+                            <CheckCircle size={20} className="text-blue-700" />
                         </div>
                         <p className="text-2xl font-bold text-gray-800">{signes.length}</p>
                         <p className="text-sm text-gray-500 mt-1">Arretes signes</p>
                     </div>
                     <div onClick={() => setActiveTab('historique_absences')}
-                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-purple-200 hover:shadow-md transition">
-                        <div className="bg-purple-100 p-2 rounded-xl w-fit mb-3">
-                            <History size={20} className="text-purple-700" />
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-blue-200 hover:shadow-md transition">
+                        <div className="bg-blue-50 p-2 rounded-xl w-fit mb-3">
+                            <History size={20} className="text-blue-700" />
                         </div>
                         <p className="text-2xl font-bold text-gray-800">{autorisationsAbsenceSignees.length}</p>
                         <p className="text-sm text-gray-500 mt-1">Absences signees</p>
@@ -313,7 +331,17 @@ const supprimerArretes = async (voyageIds) => {
                         </button>
                     ))}
                 </div>
-
+{/* Recherche */}
+<div className="relative max-w-sm">
+    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+    <input
+        type="text"
+        placeholder="Rechercher par destination, enseignant, lieu..."
+        value={searchQuery}
+        onChange={e => setSearchQuery(e.target.value)}
+        className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+    />
+</div>
                 {message && (
                     <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl p-4 text-sm flex items-center gap-2">
                         <CheckCircle size={16} /> {message}
@@ -333,7 +361,7 @@ const supprimerArretes = async (voyageIds) => {
                     <>
                         {/* ===== ARRETES A SIGNER ===== */}
                         {activeTab === 'arretes' && (
-                            definitifs.length === 0 ? (
+                            definitifsAffiches.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                                     <MapPin size={40} className="mx-auto mb-4 text-gray-300" />
                                     <h3 className="text-gray-700 font-semibold mb-2">Aucun arrete en attente</h3>
@@ -343,14 +371,14 @@ const supprimerArretes = async (voyageIds) => {
                                 <div className="space-y-3">
                                     <BarreSelection
                                         selected={selectedDefinitifs}
-                                        total={definitifs.length}
+                                        total={definitifsAffiches.length}
                                         onSelectAll={() => setSelectedDefinitifs(
-                                            selectedDefinitifs.length === definitifs.length ? [] : definitifs.map(v => v.id)
+                                            selectedDefinitifs.length === definitifsAffiches.length ? [] : definitifsAffiches.map(v => v.id)
                                         )}
                                         onDeleteSelected={() => supprimerVoyages(selectedDefinitifs)}
-                                        onDeleteAll={() => supprimerVoyages(definitifs.map(v => v.id))}
+                                        onDeleteAll={() => supprimerVoyages(definitifsAffiches.map(v => v.id))}
                                     />
-                                    {definitifs.map(voyage => (
+                                    {definitifsAffiches.map(voyage => (
                                         <div key={voyage.id} className={`bg-white rounded-2xl border shadow-sm p-5 transition ${
                                             selectedDefinitifs.includes(voyage.id) ? 'border-blue-300' : 'border-gray-100'
                                         }`}>
@@ -468,7 +496,7 @@ const supprimerArretes = async (voyageIds) => {
 
                         {/* ===== ABSENCES A SIGNER ===== */}
                         {activeTab === 'autorisations_absence' && (
-                            autorisationsAbsenceEnAttente.length === 0 ? (
+                            absEnAttenteAffichees.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                                     <FileText size={40} className="mx-auto mb-4 text-gray-300" />
                                     <h3 className="text-gray-700 font-semibold mb-2">Aucune demande</h3>
@@ -478,12 +506,12 @@ const supprimerArretes = async (voyageIds) => {
                                 <div className="space-y-3">
                                     <BarreSelection
                                         selected={selectedAbsAttente}
-                                        total={autorisationsAbsenceEnAttente.length}
+                                        total={absEnAttenteAffichees.length}
                                         onSelectAll={toggleSelectAllAbsAttente}
                                         onDeleteSelected={supprimerAbsAttenteSelectionnes}
                                         onDeleteAll={supprimerToutesAbsAttente}
                                     />
-                                    {autorisationsAbsenceEnAttente.map(a => (
+                                    {absEnAttenteAffichees.map(a => (
                                         <div key={a.id} className={`bg-white rounded-2xl border shadow-sm p-5 transition ${
                                             selectedAbsAttente.includes(a.id) ? 'border-purple-300' : 'border-gray-100'
                                         }`}>
@@ -538,7 +566,7 @@ const supprimerArretes = async (voyageIds) => {
 
                         {/* ===== HISTORIQUE ARRETES ===== */}
                         {activeTab === 'historique_arretes' && (
-                            signes.length === 0 ? (
+                            signesAffiches.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                                     <History size={40} className="mx-auto mb-4 text-gray-300" />
                                     <h3 className="text-gray-700 font-semibold mb-2">Aucun arrete signe</h3>
@@ -548,14 +576,14 @@ const supprimerArretes = async (voyageIds) => {
                                 <div className="space-y-3">
                                     <BarreSelection
                                         selected={selectedSignes}
-                                        total={signes.length}
+                                        total={signesAffiches.length}
                                         onSelectAll={() => setSelectedSignes(
-                                            selectedSignes.length === signes.length ? [] : signes.map(v => v.id)
+                                            selectedSignes.length === signesAffiches.length ? [] : signesAffiches.map(v => v.id)
                                         )}
                                        onDeleteSelected={() => supprimerArretes(selectedSignes)}
-onDeleteAll={() => supprimerArretes(signes.map(v => v.id))}
+onDeleteAll={() => supprimerArretes(signesAffiches.map(v => v.id))}
                                     />
-                                    {signes.map(voyage => (
+                                    {signesAffiches.map(voyage => (
                                         <div key={voyage.id} className={`rounded-2xl p-4 flex items-center justify-between border transition ${
                                             selectedSignes.includes(voyage.id) ? 'bg-green-50 border-blue-300' : 'bg-green-50 border-green-200'
                                         }`}>
@@ -590,7 +618,7 @@ onDeleteAll={() => supprimerArretes(signes.map(v => v.id))}
 
                         {/* ===== HISTORIQUE ABSENCES ===== */}
                         {activeTab === 'historique_absences' && (
-                            autorisationsAbsenceSignees.length === 0 ? (
+                            absSigneesAffichees.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                                     <History size={40} className="mx-auto mb-4 text-gray-300" />
                                     <h3 className="text-gray-700 font-semibold mb-2">Aucun historique</h3>
@@ -600,12 +628,12 @@ onDeleteAll={() => supprimerArretes(signes.map(v => v.id))}
                                 <div className="space-y-3">
                                     <BarreSelection
                                         selected={selectedAbsHistorique}
-                                        total={autorisationsAbsenceSignees.length}
+                                        total={absSigneesAffichees.length}
                                         onSelectAll={toggleSelectAllAbsHistorique}
                                         onDeleteSelected={supprimerAbsHistoriqueSelectionnes}
                                         onDeleteAll={supprimerToutAbsHistorique}
                                     />
-                                    {autorisationsAbsenceSignees.map(a => (
+                                    {absSigneesAffichees.map(a => (
                                         <div key={a.id} className={`rounded-2xl border p-4 flex items-center justify-between transition ${
                                             selectedAbsHistorique.includes(a.id) ? 'bg-purple-50 border-blue-300' : 'bg-purple-50 border-purple-200'
                                         }`}>

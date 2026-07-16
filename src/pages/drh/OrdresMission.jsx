@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
-import { Bus, CheckCircle, XCircle, Clock, FileText, History, Trash2 } from 'lucide-react'
+import { Bus, CheckCircle, XCircle, Clock, FileText, History, Trash2, Search } from 'lucide-react'
 
 const statutConfig = {
     en_attente_drh: { label: 'En attente', color: 'bg-orange-100 text-orange-700', icon: Clock },
@@ -22,7 +22,7 @@ const trajetLabels = {
 export default function DRHOrdres() {
     const [searchParams] = useSearchParams()
     const navigate = useNavigate()
-    const statutFiltre = searchParams.get('statut') // Récupère ?statut=... depuis l'URL
+    const statutFiltre = searchParams.get('statut')
 
     const [ordres, setOrdres] = useState([])
     const [historique, setHistorique] = useState([])
@@ -34,12 +34,12 @@ export default function DRHOrdres() {
     const [onglet, setOnglet] = useState('attente')
     const [selected, setSelected] = useState([])
     const [deleteSelectionLoading, setDeleteSelectionLoading] = useState(false)
+    const [searchOrdres, setSearchOrdres] = useState('')
 
     useEffect(() => {
         chargerOrdres()
     }, [])
 
-    // Quand le statutFiltre change, on bascule sur le bon onglet
     useEffect(() => {
         if (statutFiltre === 'en_attente') {
             setOnglet('attente')
@@ -63,7 +63,6 @@ export default function DRHOrdres() {
             .finally(() => setLoading(false))
     }
 
-    // Filtrer l'historique selon le statut cliqué
     const historiqueFiltre = () => {
         if (!statutFiltre || statutFiltre === 'en_attente') {
             return historique
@@ -77,12 +76,26 @@ export default function DRHOrdres() {
         return historique
     }
 
+    const filtrerOrdres = (liste) => liste.filter(o =>
+        searchOrdres === '' ||
+        o.destination?.toLowerCase().includes(searchOrdres.toLowerCase()) ||
+        trajetLabels[o.trajet]?.toLowerCase().includes(searchOrdres.toLowerCase()) ||
+        o.chauffeur_prenom?.toLowerCase().includes(searchOrdres.toLowerCase()) ||
+        o.chauffeur_nom?.toLowerCase().includes(searchOrdres.toLowerCase()) ||
+        o.ddl?.prenom?.toLowerCase().includes(searchOrdres.toLowerCase()) ||
+        o.ddl?.nom?.toLowerCase().includes(searchOrdres.toLowerCase()) ||
+        o.motif?.toLowerCase().includes(searchOrdres.toLowerCase())
+    )
+
+    const ordresFiltres = filtrerOrdres(ordres)
+    const historiqueFiltres = filtrerOrdres(historiqueFiltre())
+
     const toggleSelect = (id) => {
         setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
     }
 
     const toggleSelectAll = () => {
-        const ids = historiqueFiltre().map(o => o.id)
+        const ids = historiqueFiltres.map(o => o.id)
         if (ids.every(id => selected.includes(id))) {
             setSelected([])
         } else {
@@ -223,7 +236,7 @@ export default function DRHOrdres() {
         win.document.close()
     }
 
-    const toutSelectionne = historiqueFiltre().length > 0 && historiqueFiltre().every(o => selected.includes(o.id))
+    const toutSelectionne = historiqueFiltres.length > 0 && historiqueFiltres.every(o => selected.includes(o.id))
 
     const renderOrdre = (ordre, avecActions = true) => {
         const statut = statutConfig[ordre.statut] || statutConfig['en_attente_drh']
@@ -352,7 +365,6 @@ export default function DRHOrdres() {
         )
     }
 
-    // Titre dynamique selon le filtre
     const getTitre = () => {
         if (statutFiltre === 'en_attente') return 'Ordres en attente d\'approbation'
         if (statutFiltre === 'approuve') return 'Ordres approuvés'
@@ -367,8 +379,8 @@ export default function DRHOrdres() {
                     <h1 className="text-2xl font-bold text-gray-800">{getTitre()}</h1>
                     <p className="text-gray-500 text-sm mt-1">
                         {onglet === 'attente' 
-                            ? `${ordres.length} ordre(s) en attente` 
-                            : `${historiqueFiltre().length} ordre(s) dans l'historique`
+                            ? `${ordresFiltres.length} ordre(s) en attente` 
+                            : `${historiqueFiltres.length} ordre(s) dans l'historique`
                         }
                     </p>
                 </div>
@@ -389,12 +401,24 @@ export default function DRHOrdres() {
                     </button>
                 </div>
 
+                {/* Recherche */}
+                <div className="relative max-w-sm">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Rechercher par destination, chauffeur, demandeur, motif..."
+                        value={searchOrdres}
+                        onChange={e => setSearchOrdres(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+
                 {loading ? (
                     <div className="flex justify-center py-20">
                         <div className="w-8 h-8 border-4 border-blue-700 border-t-transparent rounded-full animate-spin" />
                     </div>
                 ) : onglet === 'attente' ? (
-                    ordres.length === 0 ? (
+                    ordresFiltres.length === 0 ? (
                         <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                             <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <Bus size={28} className="text-gray-400" />
@@ -404,11 +428,11 @@ export default function DRHOrdres() {
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {ordres.map(ordre => renderOrdre(ordre, true))}
+                            {ordresFiltres.map(ordre => renderOrdre(ordre, true))}
                         </div>
                     )
                 ) : (
-                    historiqueFiltre().length === 0 ? (
+                    historiqueFiltres.length === 0 ? (
                         <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                             <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <History size={28} className="text-gray-400" />
@@ -418,7 +442,6 @@ export default function DRHOrdres() {
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {/* Barre tout sélectionner + supprimer */}
                             <div className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-gray-100 shadow-sm">
                                 <div className="flex items-center gap-3">
                                     <input
@@ -448,7 +471,7 @@ export default function DRHOrdres() {
                                     </button>
                                 )}
                             </div>
-                            {historiqueFiltre().map(ordre => renderOrdre(ordre, false))}
+                            {historiqueFiltres.map(ordre => renderOrdre(ordre, false))}
                         </div>
                     )
                 )}

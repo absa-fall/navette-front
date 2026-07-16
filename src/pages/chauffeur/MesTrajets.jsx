@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
 import { useAuth } from '../../context/AuthContext'
-import { Bus, CheckCircle, FileText, History, Truck, Trash2, ThumbsUp, XCircle } from 'lucide-react'
+import { Bus, CheckCircle, FileText, History, Truck, Trash2, ThumbsUp, XCircle, Search } from 'lucide-react'
 
 const trajetLabels = {
     dakar_bambey: 'Dakar → Bambey',
@@ -25,6 +25,7 @@ export default function MesTrajets() {
     const [deleteLoading, setDeleteLoading] = useState(false)
     const [onglet, setOnglet] = useState('encours')
     const [selected, setSelected] = useState([])
+    const [searchTrajets, setSearchTrajets] = useState('')
 
     // ✅ Modal refus
     const [modalRefus, setModalRefus] = useState({ visible: false, ordreId: null })
@@ -110,7 +111,7 @@ export default function MesTrajets() {
     }
 
     const toggleSelectAll = () => {
-        const ids = historique.map(o => o.id)
+        const ids = historiqueFiltre.map(o => o.id)
         if (ids.every(id => selected.includes(id))) setSelected([])
         else setSelected(ids)
     }
@@ -139,7 +140,18 @@ export default function MesTrajets() {
         return aujourdhui >= dateRetour
     }
 
-    const toutSelectionne = historique.length > 0 && historique.every(o => selected.includes(o.id))
+    const filtrerTrajets = (liste) => liste.filter(o =>
+        searchTrajets === '' ||
+        o.destination?.toLowerCase().includes(searchTrajets.toLowerCase()) ||
+        trajetLabels[o.trajet]?.toLowerCase().includes(searchTrajets.toLowerCase()) ||
+        o.ddl?.prenom?.toLowerCase().includes(searchTrajets.toLowerCase()) ||
+        o.ddl?.nom?.toLowerCase().includes(searchTrajets.toLowerCase())
+    )
+
+    const enCoursFiltre = filtrerTrajets(enCours)
+    const historiqueFiltre = filtrerTrajets(historique)
+
+    const toutSelectionne = historiqueFiltre.length > 0 && historiqueFiltre.every(o => selected.includes(o.id))
 
     const getTitre = () => {
         if (statutFiltre === 'assignes') return 'Trajets assignés'
@@ -159,8 +171,8 @@ export default function MesTrajets() {
     <h1 className="text-2xl font-bold text-gray-800">{getTitre()}</h1>
     <p className="text-gray-500 text-sm mt-1">
         {onglet === 'encours'
-            ? `${enCours.length} trajet(s) en cours`
-            : `${historique.length} trajet(s) dans l'historique`}
+            ? `${enCoursFiltre.length} trajet(s) en cours`
+            : `${historiqueFiltre.length} trajet(s) dans l'historique`}
     </p>
 </div>
                <div className="flex gap-2 border-b border-gray-200">
@@ -175,21 +187,35 @@ export default function MesTrajets() {
     </button>
 </div>
 
+                {/* Recherche */}
+                <div className="relative max-w-sm">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Rechercher par destination, trajet, demandeur..."
+                        value={searchTrajets}
+                        onChange={e => setSearchTrajets(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+
                 {loading ? (
                     <div className="flex justify-center py-20">
                         <div className="w-8 h-8 border-4 border-blue-700 border-t-transparent rounded-full animate-spin" />
                     </div>
                 ) : onglet === 'encours' ? (
-                    enCours.length === 0 ? (
+                    enCoursFiltre.length === 0 ? (
                         <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                             <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <Bus size={28} className="text-gray-400" />
                             </div>
-                            <h3 className="text-gray-700 font-semibold mb-2">Aucun trajet en cours</h3>
+                            <h3 className="text-gray-700 font-semibold mb-2">
+                                {enCours.length === 0 ? 'Aucun trajet en cours' : 'Aucun résultat'}
+                            </h3>
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {enCours.map(ordre => {
+                            {enCoursFiltre.map(ordre => {
                                 const estApprouve = ordre.statut_chauffeur === 'accepte'
                                 return (
                                     <div key={ordre.id} className={`bg-white rounded-2xl p-5 border shadow-sm transition ${estApprouve ? 'border-green-200' : 'border-gray-100'}`}>
@@ -267,12 +293,14 @@ export default function MesTrajets() {
                         </div>
                     )
                 ) : (
-                    historique.length === 0 ? (
+                    historiqueFiltre.length === 0 ? (
                         <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                             <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <History size={28} className="text-gray-400" />
                             </div>
-                            <h3 className="text-gray-700 font-semibold mb-2">Aucun historique</h3>
+                            <h3 className="text-gray-700 font-semibold mb-2">
+                                {historique.length === 0 ? 'Aucun historique' : 'Aucun résultat'}
+                            </h3>
                         </div>
                     ) : (
                         <>
@@ -280,7 +308,7 @@ export default function MesTrajets() {
                                 <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                                     <input type="checkbox" checked={toutSelectionne} onChange={toggleSelectAll}
                                         className="w-4 h-4 rounded border-gray-300 text-blue-600" />
-                                    Tout sélectionner ({historique.length})
+                                    Tout sélectionner ({historiqueFiltre.length})
                                 </label>
                                 {selected.length > 0 && (
                                     <button onClick={supprimerSelection} disabled={deleteLoading}
@@ -293,7 +321,7 @@ export default function MesTrajets() {
                                 )}
                             </div>
                             <div className="space-y-4">
-                                {historique.map(ordre => (
+                                {historiqueFiltre.map(ordre => (
                                     <div key={ordre.id} className={`bg-white rounded-2xl p-5 border shadow-sm transition ${selected.includes(ordre.id) ? 'border-red-200 bg-red-50' : 'border-gray-100'}`}>
                                         <div className="flex items-start justify-between mb-4">
                                             <div className="flex items-center gap-4">

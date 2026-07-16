@@ -63,6 +63,7 @@ import RapportsAValider from './pages/vicerecteur/RapportsAValider'
 import NouveauVoyageEtude from './pages/vicerecteur/NouveauVoyageEtude'
 import VoyagesEtudes from './pages/vicerecteur/VoyagesEtudes'
 import ListePublieeDocument from './pages/vicerecteur/ListePublieeDocument'
+import ListeDefinitiveDocument from './pages/vicerecteur/ListeDefinitiveDocument'
 // Admin
 import AdminDashboard from './pages/admin/Dashboard'
 import AdminUtilisateurs from './pages/admin/Utilisateurs'
@@ -154,6 +155,7 @@ function App() {
                     <Route path="/vice-recteur/voyages-etudes" element={<PrivateRoute><VoyagesEtudes /></PrivateRoute>} />
                     <Route path="/vice-recteur/voyages-etudes/nouveau" element={<PrivateRoute><NouveauVoyageEtude /></PrivateRoute>} />
 <Route path="/voyages-etudes/:voyageId/liste-publiee" element={<ListePublieeDocument />} />
+<Route path="/voyages-etudes/:voyageId/liste-definitive" element={<ListeDefinitiveDocument />} />
                     {/* Admin */}
                     <Route path="/admin/dashboard" element={<PrivateRoute><AdminDashboard /></PrivateRoute>} />
                     <Route path="/admin/utilisateurs" element={<PrivateRoute><AdminUtilisateurs /></PrivateRoute>} />

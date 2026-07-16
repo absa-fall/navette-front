@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
 import { useNavigate } from 'react-router-dom'
-import { FileText, CheckCircle, AlertCircle, Send, Eye, Bell, Users, Trash2, History } from 'lucide-react'
+import { FileText, CheckCircle, AlertCircle, Send, Eye, Bell, Users, Trash2, History, Search } from 'lucide-react'
 
 export default function ChefDepartementDashboard() {
     const navigate = useNavigate()
@@ -19,6 +19,7 @@ export default function ChefDepartementDashboard() {
     const [selectedAuto, setSelectedAuto]       = useState([])
     const [selectedHistorique, setSelectedHistorique] = useState([])
     const [autorisationsAbsence, setAutorisationsAbsence] = useState([])
+    const [searchQuery, setSearchQuery] = useState('')
 
     useEffect(() => {
         const params = new URLSearchParams(location.search)
@@ -54,7 +55,7 @@ export default function ChefDepartementDashboard() {
         setSelectedVoyages(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
 
     const toggleSelectAllVoyages = () =>
-        setSelectedVoyages(selectedVoyages.length === voyagesUniques.length ? [] : voyagesUniques.map(v => v.id))
+        setSelectedVoyages(selectedVoyages.length === voyagesAffiches.length ? [] : voyagesAffiches.map(v => v.id))
 
    const supprimerVoyagesSelectionnes = async () => {
         if (!confirm(`Masquer ${selectedVoyages.length} voyage(s) de votre vue ?`)) return
@@ -69,8 +70,8 @@ export default function ChefDepartementDashboard() {
     const supprimerTousVoyages = async () => {
         if (!confirm('Masquer tous les voyages de votre vue ?')) return
         try {
-            for (const id of voyagesUniques.map(v => v.id)) await api.delete(`/voyages-etudes/${id}`)
-            setDossiers([])
+            for (const id of voyagesAffiches.map(v => v.id)) await api.delete(`/voyages-etudes/${id}`)
+            setDossiers(prev => prev.filter(d => !voyagesAffiches.some(v => v.id === d.voyage?.id)))
             setSelectedVoyages([])
             showMsg('Voyages masques de votre vue')
         } catch { showMsg('Erreur lors de la suppression', true) }
@@ -82,7 +83,7 @@ export default function ChefDepartementDashboard() {
         setSelectedAuto(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
 
     const toggleSelectAllAuto = () =>
-        setSelectedAuto(selectedAuto.length === autorisationsEnAttente.length ? [] : autorisationsEnAttente.map(a => a.id))
+        setSelectedAuto(selectedAuto.length === autorisationsAffichees.length ? [] : autorisationsAffichees.map(a => a.id))
 
     const supprimerAutoSelectionnes = async () => {
         if (!confirm(`Supprimer ${selectedAuto.length} demande(s) ?`)) return
@@ -97,7 +98,7 @@ export default function ChefDepartementDashboard() {
     const supprimerToutesAuto = async () => {
         if (!confirm('Supprimer toutes les demandes ?')) return
         try {
-            for (const a of autorisationsEnAttente) await api.delete(`/autorisations-absence/${a.id}`)
+            for (const a of autorisationsAffichees) await api.delete(`/autorisations-absence/${a.id}`)
             showMsg('Toutes les demandes supprimees')
             setSelectedAuto([])
             fetchDossiers()
@@ -109,7 +110,7 @@ export default function ChefDepartementDashboard() {
         setSelectedHistorique(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
 
     const toggleSelectAllHistorique = () =>
-        setSelectedHistorique(selectedHistorique.length === historiqueAutorisations.length ? [] : historiqueAutorisations.map(a => a.id))
+        setSelectedHistorique(selectedHistorique.length === historiqueAffiche.length ? [] : historiqueAffiche.map(a => a.id))
 
     const supprimerHistoriqueSelectionnes = async () => {
         if (!confirm(`Supprimer ${selectedHistorique.length} element(s) de l'historique ?`)) return
@@ -124,7 +125,7 @@ export default function ChefDepartementDashboard() {
     const supprimerTouHistorique = async () => {
         if (!confirm("Vider tout l'historique ?")) return
         try {
-            for (const a of historiqueAutorisations) await api.delete(`/autorisations-absence/${a.id}`)
+            for (const a of historiqueAffiche) await api.delete(`/autorisations-absence/${a.id}`)
             showMsg('Historique vide')
             setSelectedHistorique([])
             fetchDossiers()
@@ -161,6 +162,24 @@ export default function ChefDepartementDashboard() {
     const voyagesUniques          = [...new Map(dossiers.map(d => [d.voyage?.id, d.voyage])).values()].filter(Boolean)
     const autorisationsEnAttente  = autorisationsAbsence.filter(a => a.statut === 'soumise')
     const historiqueAutorisations = autorisationsAbsence.filter(a => a.avis_chef_departement !== null)
+
+    // ===== FILTRAGE PAR RECHERCHE =====
+    const filtrerVoyages = (liste) => liste.filter(v =>
+        searchQuery === '' ||
+        v.destination?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+
+    const filtrerAutorisations = (liste) => liste.filter(a =>
+        searchQuery === '' ||
+        a.enseignant?.prenom?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        a.enseignant?.nom?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        a.numero?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        a.lieu_deplacement?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+
+    const voyagesAffiches        = filtrerVoyages(voyagesUniques)
+    const autorisationsAffichees = filtrerAutorisations(autorisationsEnAttente)
+    const historiqueAffiche      = filtrerAutorisations(historiqueAutorisations)
 
     const BarreSelection = ({ selected, total, onSelectAll, onDeleteSelected, onDeleteAll }) => (
         <div className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-2.5 shadow-sm">
@@ -218,6 +237,18 @@ export default function ChefDepartementDashboard() {
                     ))}
                 </div>
 
+                {/* Recherche */}
+                <div className="relative max-w-sm">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Rechercher par destination, enseignant, numéro..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+
                 {message && (
                     <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl p-4 text-sm flex items-center gap-2">
                         <CheckCircle size={16} /> {message}
@@ -237,22 +268,24 @@ export default function ChefDepartementDashboard() {
                     <>
                         {/* ===== ONGLET NOUVELLES LISTES ===== */}
                         {activeTab === 'listes' && (
-                            voyagesUniques.length === 0 ? (
+                            voyagesAffiches.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                                     <Bell size={40} className="mx-auto mb-4 text-gray-300" />
                                     <h3 className="text-gray-700 font-semibold mb-2">Aucune liste</h3>
-                                    <p className="text-gray-400 text-sm">Les listes publiees par le Vice-Recteur apparaitront ici</p>
+                                    <p className="text-gray-400 text-sm">
+                                        {voyagesUniques.length === 0 ? 'Les listes publiees par le Vice-Recteur apparaitront ici' : 'Aucun résultat pour cette recherche'}
+                                    </p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
                                     <BarreSelection
                                         selected={selectedVoyages}
-                                        total={voyagesUniques.length}
+                                        total={voyagesAffiches.length}
                                         onSelectAll={toggleSelectAllVoyages}
                                         onDeleteSelected={supprimerVoyagesSelectionnes}
                                         onDeleteAll={supprimerTousVoyages}
                                     />
-                                    {voyagesUniques.map(v => (
+                                    {voyagesAffiches.map(v => (
                                         <div key={v.id} className={`bg-white rounded-xl border overflow-hidden transition ${
                                             selectedVoyages.includes(v.id) ? 'border-blue-300' : 'border-gray-100 shadow-sm'
                                         }`}>
@@ -306,22 +339,24 @@ export default function ChefDepartementDashboard() {
 
                         {/* ===== ONGLET AUTORISATIONS EN ATTENTE ===== */}
                         {activeTab === 'autorisations' && (
-                            autorisationsEnAttente.length === 0 ? (
+                            autorisationsAffichees.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                                     <CheckCircle size={40} className="mx-auto mb-4 text-gray-300" />
                                     <h3 className="text-gray-700 font-semibold mb-2">Aucune demande</h3>
-                                    <p className="text-gray-400 text-sm">Les demandes d'autorisation d'absence apparaitront ici</p>
+                                    <p className="text-gray-400 text-sm">
+                                        {autorisationsEnAttente.length === 0 ? "Les demandes d'autorisation d'absence apparaitront ici" : 'Aucun résultat pour cette recherche'}
+                                    </p>
                                 </div>
                             ) : (
                                 <div className="space-y-4">
                                     <BarreSelection
                                         selected={selectedAuto}
-                                        total={autorisationsEnAttente.length}
+                                        total={autorisationsAffichees.length}
                                         onSelectAll={toggleSelectAllAuto}
                                         onDeleteSelected={supprimerAutoSelectionnes}
                                         onDeleteAll={supprimerToutesAuto}
                                     />
-                                    {autorisationsEnAttente.map(a => (
+                                    {autorisationsAffichees.map(a => (
                                         <div key={a.id} className={`bg-white rounded-2xl border shadow-sm p-5 transition ${
                                             selectedAuto.includes(a.id) ? 'border-blue-300' : 'border-gray-100'
                                         }`}>
@@ -365,28 +400,13 @@ export default function ChefDepartementDashboard() {
                                                     <Eye size={14} />
                                                     Voir le document
                                                 </button>
-                                                <div className="flex gap-2 flex-wrap">
-    <button onClick={() => signerEtTransmettre(a.id)}
-        disabled={actionLoading === a.id + '_signer'}
-        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
-        {actionLoading === a.id + '_signer'
-            ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            : <CheckCircle size={14} />}
-        Signer et transmettre au Directeur UFR
-    </button>
-    <button onClick={() => navigate('/autorisation-absence/' + a.id)}
-        className="flex items-center gap-2 border border-blue-700 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm font-semibold transition">
-        <Eye size={14} />
-        Voir le document
-    </button>
-    {a.justificatif_url && (
-        <a href={a.justificatif_url} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-2 border border-purple-700 text-purple-700 hover:bg-purple-50 px-4 py-2 rounded-xl text-sm font-semibold transition">
-            <FileText size={14} />
-            Voir justificatif
-        </a>
-    )}
-</div>
+                                                {a.justificatif_url && (
+                                                    <a href={a.justificatif_url} target="_blank" rel="noopener noreferrer"
+                                                        className="flex items-center gap-2 border border-purple-700 text-purple-700 hover:bg-purple-50 px-4 py-2 rounded-xl text-sm font-semibold transition">
+                                                        <FileText size={14} />
+                                                        Voir justificatif
+                                                    </a>
+                                                )}
                                             </div>
                                         </div>
                                     ))}
@@ -396,22 +416,24 @@ export default function ChefDepartementDashboard() {
 
                         {/* ===== ONGLET HISTORIQUE ===== */}
                         {activeTab === 'historique' && (
-                            historiqueAutorisations.length === 0 ? (
+                            historiqueAffiche.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                                     <History size={40} className="mx-auto mb-4 text-gray-300" />
                                     <h3 className="text-gray-700 font-semibold mb-2">Aucun historique</h3>
-                                    <p className="text-gray-400 text-sm">Les demandes que vous avez signees apparaitront ici</p>
+                                    <p className="text-gray-400 text-sm">
+                                        {historiqueAutorisations.length === 0 ? 'Les demandes que vous avez signees apparaitront ici' : 'Aucun résultat pour cette recherche'}
+                                    </p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
                                     <BarreSelection
                                         selected={selectedHistorique}
-                                        total={historiqueAutorisations.length}
+                                        total={historiqueAffiche.length}
                                         onSelectAll={toggleSelectAllHistorique}
                                         onDeleteSelected={supprimerHistoriqueSelectionnes}
                                         onDeleteAll={supprimerTouHistorique}
                                     />
-                                    {historiqueAutorisations.map(a => (
+                                    {historiqueAffiche.map(a => (
                                         <div key={a.id} className={`rounded-2xl border p-4 flex items-center justify-between transition ${
                                             selectedHistorique.includes(a.id) ? 'bg-gray-50 border-blue-300' : 'bg-gray-50 border-gray-200'
                                         }`}>
@@ -434,27 +456,16 @@ export default function ChefDepartementDashboard() {
                                                 }`}>
                                                     {a.avis_chef_departement === 'favorable' ? 'Avis favorable' : 'Rejetee'}
                                                 </span>
+                                                {a.justificatif_url && (
+                                                    <a href={a.justificatif_url} target="_blank" rel="noopener noreferrer"
+                                                        className="flex items-center gap-1.5 border border-purple-400 text-purple-600 hover:bg-purple-50 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
+                                                        <FileText size={13} /> Justificatif
+                                                    </a>
+                                                )}
                                                 <button onClick={() => navigate('/autorisation-absence/' + a.id)}
                                                     className="flex items-center gap-1.5 border border-gray-400 text-gray-600 hover:bg-gray-100 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
                                                     <Eye size={13} /> Voir
                                                 </button>
-                                                <div className="flex items-center gap-3">
-    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-        a.avis_chef_departement === 'favorable' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-    }`}>
-        {a.avis_chef_departement === 'favorable' ? 'Avis favorable' : 'Rejetee'}
-    </span>
-    {a.justificatif_url && (
-        <a href={a.justificatif_url} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1.5 border border-purple-400 text-purple-600 hover:bg-purple-50 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
-            <FileText size={13} /> Justificatif
-        </a>
-    )}
-    <button onClick={() => navigate('/autorisation-absence/' + a.id)}
-        className="flex items-center gap-1.5 border border-gray-400 text-gray-600 hover:bg-gray-100 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
-        <Eye size={13} /> Voir
-    </button>
-</div>
                                             </div>
                                         </div>
                                     ))}

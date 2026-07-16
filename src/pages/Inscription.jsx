@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
-import { Bus, User, Mail, Lock, Building2, BadgeCheck, Eye, EyeOff, Calendar, BookOpen } from 'lucide-react'
+import { User, Mail, Lock, Building2, BadgeCheck, Eye, EyeOff, Calendar, BookOpen } from 'lucide-react'
 
 const DEPARTEMENTS_PAR_UFR = {
     SATIC: ['SA', 'TIC'],
@@ -32,7 +32,12 @@ export default function Inscription() {
     const [error, setError] = useState('')
     const [success, setSuccess] = useState(false)
 
-    const estPermanent = form.statut === 'permanent'
+    // PER + statut permanent uniquement
+    const isPerPermanent = form.type_profil === 'PER' && form.statut === 'permanent'
+    const isVacataire = form.type_profil === 'Vacataire'
+    // UFR obligatoire seulement pour PER permanent et Vacataire
+    const ufrObligatoire = isPerPermanent || isVacataire
+
     const departementsDisponibles = DEPARTEMENTS_PAR_UFR[form.ufr] || []
 
     const handleChange = (e) => {
@@ -40,57 +45,80 @@ export default function Inscription() {
         setForm(prev => ({
             ...prev,
             [name]: value,
-            // Reset departement si UFR change
             ...(name === 'ufr' && { departement: '' }),
-            // Reset statut si type_profil change
             ...(name === 'type_profil' && { statut: '', date_embauche: '', departement: '' }),
         }))
     }
 
     const handleSubmit = async (e) => {
-    e.preventDefault()
-   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._\-#])[A-Za-z\d@$!%*?&._\-#]{8,}$/
-if (!passwordRegex.test(form.password)) {
-    setError('Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial (@$!%*?&._-#)')
-    return
-}
-    if (form.password !== form.confirmPassword) {
-        setError('Les mots de passe ne correspondent pas')
-        return
-    }
-    setLoading(true)
-    setError('')
+        e.preventDefault()
+
+        if (form.password !== form.confirmPassword) {
+            setError('Les mots de passe ne correspondent pas')
+            return
+        }
+
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._\-#])[A-Za-z\d@$!%*?&._\-#]{8,}$/
+        if (!passwordRegex.test(form.password)) {
+            setError('Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial (@$!%*?&._-#)')
+            return
+        }
+
+        if (!form.type_profil) {
+            setError('Veuillez sélectionner un type de profil')
+            return
+        }
+
+        if (form.type_profil !== 'Vacataire' && !form.statut) {
+            setError('Veuillez sélectionner un statut')
+            return
+        }
+
+        // UFR obligatoire uniquement pour PER permanent et Vacataire
+        if (ufrObligatoire && !form.ufr) {
+            setError('Veuillez sélectionner une UFR')
+            return
+        }
+
+        // Date d'embauche obligatoire uniquement pour PER permanent
+        if (isPerPermanent && !form.date_embauche) {
+            setError('La date d\'embauche est requise pour les permanents (PER)')
+            return
+        }
+
+        setLoading(true)
+        setError('')
         try {
-       const data = {
-    ...form,
-    role: form.type_profil === 'PER' ? 'enseignant' : 'usager',
-    type_profil: form.type_profil === 'Vacataire' ? 'vacataire' : form.type_profil,
-    statut: form.type_profil === 'Vacataire' ? 'vacataire' : form.statut,
-}
+            const data = {
+                ...form,
+                email: form.email.toLowerCase(),
+                role: form.type_profil === 'PER' ? 'enseignant' : 'usager',
+                type_profil: form.type_profil === 'Vacataire' ? 'vacataire' : form.type_profil,
+                statut: form.type_profil === 'Vacataire' ? 'vacataire' : form.statut,
+            }
             await api.post('/register', data)
             setSuccess(true)
-       } catch (err) {
-    console.error('DEBUG erreur complète:', err)
-    setError(
-        err.response?.data?.message
-        || err.message
-        || 'Erreur inconnue à l\'inscription'
-    )
-} finally {
-    setLoading(false)
-}
+        } catch (err) {
+            setError(
+                err.response?.data?.message
+                || err.message
+                || 'Erreur inconnue à l\'inscription'
+            )
+        } finally {
+            setLoading(false)
+        }
     }
 
-   if (success) {
-    return (
-        <div className="min-h-screen relative flex items-center justify-center p-6">
-            <img
-                src="/bus1.png"
-                alt="Bus UADB"
-                className="fixed inset-0 w-full h-full object-cover -z-10"
-            />
-            <div className="fixed inset-0 bg-gradient-to-br from-blue-900/85 via-blue-800/75 to-blue-900/90 -z-10" />
-            <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center relative z-10">
+    if (success) {
+        return (
+            <div className="min-h-screen relative flex items-center justify-center p-6">
+                <img
+                    src="/bus1.png"
+                    alt="Bus UADB"
+                    className="fixed inset-0 w-full h-full object-cover -z-10"
+                />
+                <div className="fixed inset-0 bg-gradient-to-br from-blue-900/85 via-blue-800/75 to-blue-900/90 -z-10" />
+                <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center relative z-10">
                     <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <BadgeCheck size={40} className="text-green-600" />
                     </div>
@@ -99,7 +127,7 @@ if (!passwordRegex.test(form.password)) {
                         Votre compte a été créé avec succès. Un QR code unique vous a été assigné.
                         Connectez-vous pour accéder à votre espace.
                     </p>
-                     <button
+                    <button
                         onClick={() => navigate('/login')}
                         className="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-xl transition"
                     >
@@ -110,24 +138,21 @@ if (!passwordRegex.test(form.password)) {
         )
     }
 
-   return (
-    <div className="min-h-screen relative">
+    return (
+        <div className="min-h-screen relative">
+            <img
+                src="/rectorat-uadb.png"
+                alt="Rectorat UADB"
+                className="fixed inset-0 w-full h-full object-cover -z-10"
+            />
+            <div className="fixed inset-0 bg-gradient-to-br from-blue-900/85 via-blue-800/75 to-blue-900/90 -z-10" />
 
-       {/* Image de fond fixe */}
-<img
-    src="/rectorat-uadb.png"
-    alt="Rectorat UADB"
-    className="fixed inset-0 w-full h-full object-cover -z-10"
-/>
-        <div className="fixed inset-0 bg-gradient-to-br from-blue-900/85 via-blue-800/75 to-blue-900/90 -z-10" />
-
-        {/* Header */}
-        <div className="bg-blue-900/70 backdrop-blur-sm text-white p-4 relative z-10">
+            <div className="bg-blue-900/70 backdrop-blur-sm text-white p-4 relative z-10">
                 <div className="max-w-lg mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-2">
-    <img src="/logo-uadb.png" alt="Logo UADB" className="w-7 h-7 object-contain bg-white rounded-lg p-0.5" />
-    <span className="font-bold text-lg">UADB Mobilité</span>
-</div>
+                        <img src="/logo-uadb.png" alt="Logo UADB" className="w-7 h-7 object-contain bg-white rounded-lg p-0.5" />
+                        <span className="font-bold text-lg">UADB Mobilité</span>
+                    </div>
                     <button onClick={() => navigate('/login')}
                         className="text-sm bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition">
                         Se connecter
@@ -135,8 +160,8 @@ if (!passwordRegex.test(form.password)) {
                 </div>
             </div>
 
-           <div className="max-w-lg mx-auto p-6 relative z-10">
-    <div className="bg-white rounded-2xl shadow-lg p-8">
+            <div className="max-w-lg mx-auto p-6 relative z-10">
+                <div className="bg-white rounded-2xl shadow-lg p-8">
                     <h1 className="text-2xl font-bold text-gray-800 mb-2">Créer un compte</h1>
                     <p className="text-gray-500 text-sm mb-6">
                         Inscrivez-vous pour réserver la navette UADB
@@ -149,7 +174,6 @@ if (!passwordRegex.test(form.password)) {
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        {/* Nom et Prénom */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Prénom *</label>
@@ -173,7 +197,6 @@ if (!passwordRegex.test(form.password)) {
                             </div>
                         </div>
 
-                        {/* Email */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
                             <div className="relative">
@@ -185,7 +208,6 @@ if (!passwordRegex.test(form.password)) {
                             </div>
                         </div>
 
-                        {/* Mot de passe */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe *</label>
                             <div className="relative">
@@ -202,19 +224,19 @@ if (!passwordRegex.test(form.password)) {
                                 </button>
                             </div>
                         </div>
-{/* Confirmation mot de passe */}
-<div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">Confirmer le mot de passe *</label>
-    <div className="relative">
-        <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input type={showPassword ? 'text' : 'password'}
-            name="confirmPassword" value={form.confirmPassword}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="••••••••" required />
-    </div>
-</div>
-                        {/* Type profil et Statut */}
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Confirmer le mot de passe *</label>
+                            <div className="relative">
+                                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input type={showPassword ? 'text' : 'password'}
+                                    name="confirmPassword" value={form.confirmPassword}
+                                    onChange={handleChange}
+                                    className="w-full border border-gray-300 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="••••••••" required />
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Type profil *</label>
@@ -223,41 +245,44 @@ if (!passwordRegex.test(form.password)) {
                                     className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     required>
                                     <option value="">Choisir...</option>
-<option value="PER">PER</option>
-<option value="PATS">PATS</option>
-<option value="ATR">ATR</option>
-<option value="Vacataire">Vacataire</option>
+                                    <option value="PER">PER</option>
+                                    <option value="PATS">PATS</option>
+                                    <option value="ATR">ATR</option>
+                                    <option value="Vacataire">Vacataire</option>
                                 </select>
                             </div>
                             <div>
-                              {form.type_profil === 'Vacataire' ? (
-    <div className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm text-gray-400 italic">
-        Vacataire (automatique)
-    </div>
-) : (
-    <select name="statut" value={form.statut}
-        onChange={handleChange}
-        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        required={form.type_profil !== 'Vacataire'}>
-        <option value="">Choisir...</option>
-        <option value="permanent">Permanent</option>
-        <option value="non_permanent">Non permanent</option>
-        <option value="contractuel">Contractuel</option>
-        <option value="vacataire">Vacataire</option>
-    </select>
-)}
+                                {form.type_profil === 'Vacataire' ? (
+                                    <div className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm text-gray-400 italic">
+                                        Vacataire (automatique)
+                                    </div>
+                                ) : (
+                                    <>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Statut *</label>
+                                        <select name="statut" value={form.statut}
+                                            onChange={handleChange}
+                                            className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            required={form.type_profil !== 'Vacataire'}>
+                                            <option value="">Choisir...</option>
+                                            <option value="permanent">Permanent</option>
+                                            <option value="non_permanent">Non permanent</option>
+                                            <option value="contractuel">Contractuel</option>
+                                        </select>
+                                    </>
+                                )}
                             </div>
                         </div>
 
-                        {/* UFR */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">UFR *</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                UFR {ufrObligatoire ? '*' : <span className="text-gray-400 font-normal">(optionnel)</span>}
+                            </label>
                             <div className="relative">
                                 <Building2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <select name="ufr" value={form.ufr}
                                     onChange={handleChange}
                                     className="w-full border border-gray-300 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    required>
+                                    required={ufrObligatoire}>
                                     <option value="">Sélectionnez votre UFR</option>
                                     <option value="SATIC">UFR SATIC</option>
                                     <option value="SDD">UFR SDD</option>
@@ -267,8 +292,7 @@ if (!passwordRegex.test(form.password)) {
                             </div>
                         </div>
 
-                        {/* Département — uniquement si permanent et UFR avec départements connus */}
-                        {estPermanent && form.ufr && (
+                        {isPerPermanent && form.ufr && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Département {departementsDisponibles.length > 0 ? '*' : ''}
@@ -295,7 +319,6 @@ if (!passwordRegex.test(form.password)) {
                             </div>
                         )}
 
-                        {/* Matricule et Tel */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Matricule</label>
@@ -313,8 +336,7 @@ if (!passwordRegex.test(form.password)) {
                             </div>
                         </div>
 
-                        {/* Date d'embauche — uniquement si permanent */}
-                        {estPermanent && (
+                        {isPerPermanent && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Date d'embauche *</label>
                                 <div className="relative">

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
 import QRCode from 'react-qr-code'
-import { Bus, ArrowLeft, Download, Clock, CheckCircle, XCircle, Trash2, AlertCircle } from 'lucide-react'
+import { Bus, ArrowLeft, Download, Clock, CheckCircle, XCircle, Trash2, AlertCircle, Search } from 'lucide-react'
 
 export default function MesReservations() {
     const navigate = useNavigate()
@@ -14,37 +14,40 @@ export default function MesReservations() {
     const [deleteLoading, setDeleteLoading] = useState(null)
     const [deleteSelectionLoading, setDeleteSelectionLoading] = useState(false)
     const [annulerLoading, setAnnulerLoading] = useState(null)
-const [exportLoading, setExportLoading] = useState(false)
+    const [exportLoading, setExportLoading] = useState(false)
+    const [searchQuery, setSearchQuery] = useState('')
 
-const exporterPdf = async () => {
-    setExportLoading(true)
-    try {
-        const res = await api.get('/mes-reservations/export-pdf', { responseType: 'blob' })
-        const url = window.URL.createObjectURL(new Blob([res.data]))
-        const link = document.createElement('a')
-        link.href = url
-        link.setAttribute('download', 'mes-reservations.pdf')
-        document.body.appendChild(link)
-        link.click()
-        link.remove()
-    } catch (err) {
-        alert('Erreur lors du telechargement du PDF')
-    } finally {
-        setExportLoading(false)
+    const exporterPdf = async () => {
+        setExportLoading(true)
+        try {
+            const res = await api.get('/mes-reservations/export-pdf', { responseType: 'blob' })
+            const url = window.URL.createObjectURL(new Blob([res.data]))
+            const link = document.createElement('a')
+            link.href = url
+            link.setAttribute('download', 'mes-reservations.pdf')
+            document.body.appendChild(link)
+            link.click()
+            link.remove()
+        } catch (err) {
+            alert('Erreur lors du telechargement du PDF')
+        } finally {
+            setExportLoading(false)
+        }
     }
-}
+
     useEffect(() => { fetchReservations() }, [])
 
-  const fetchReservations = () => {
-    setLoading(true)
-    api.get('/mes-reservations')
-        .then(res => {
-            setReservations(res.data.reservations)
-            setQrCodeUser(res.data.qr_code_user)
-        })
-        .catch(() => {})
-        .finally(() => setLoading(false))
-}
+    const fetchReservations = () => {
+        setLoading(true)
+        api.get('/mes-reservations')
+            .then(res => {
+                setReservations(res.data.reservations)
+                setQrCodeUser(res.data.qr_code_user)
+            })
+            .catch(() => {})
+            .finally(() => setLoading(false))
+    }
+
     const telechargerQR = (qrValue) => {
         const svg = document.getElementById(`qr-mes-${qrValue}`)
         if (!svg) return
@@ -99,13 +102,6 @@ const exporterPdf = async () => {
         setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
     }
 
-    const toutSelectionne = reservations.length > 0 && reservations.every(r => selected.includes(r.id))
-
-    const toggleSelectAll = () => {
-        if (toutSelectionne) setSelected([])
-        else setSelected(reservations.map(r => r.id))
-    }
-
     // ✅ Supprimer la sélection
     const supprimerSelection = async () => {
         if (selected.length === 0) return
@@ -134,8 +130,26 @@ const exporterPdf = async () => {
         }
     }
 
+    // ✅ Filtre de recherche : ville de depart, ville d'arrivee, ou statut
+    // IMPORTANT : cette variable doit être déclarée AVANT toutSelectionne / toggleSelectAll
+    // car ces deux-là en dépendent (sinon erreur "Cannot access before initialization" -> page blanche)
+    const reservationsAffichees = reservations.filter(r =>
+        searchQuery === '' ||
+        r.ville_depart?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.ville_arrivee?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        statutBadge(r.statut).label.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+
+    // ✅ Tout sélectionner (dépend de reservationsAffichees)
+    const toutSelectionne = reservationsAffichees.length > 0 && reservationsAffichees.every(r => selected.includes(r.id))
+
+    const toggleSelectAll = () => {
+        if (toutSelectionne) setSelected([])
+        else setSelected(reservationsAffichees.map(r => r.id))
+    }
+
     // ✅ Grouper par groupe_id pour afficher aller + retour ensemble
-    const groupes = reservations.reduce((acc, r) => {
+    const groupes = reservationsAffichees.reduce((acc, r) => {
         const key = r.groupe_id || `solo-${r.id}`
         if (!acc[key]) acc[key] = []
         acc[key].push(r)
@@ -145,30 +159,44 @@ const exporterPdf = async () => {
     return (
         <Layout>
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
-    <div className="flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-xl transition">
-            <ArrowLeft size={20} />
-        </button>
-        <div>
-            <h1 className="text-2xl font-bold text-gray-800">Mes reservations</h1>
-            <p className="text-gray-500 text-sm mt-1">{reservations.length} reservation(s)</p>
-        </div>
-    </div>
-    {reservations.length > 0 && (
-        <button onClick={exporterPdf} disabled={exportLoading}
-            className="flex items-center gap-1.5 text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-2 rounded-xl font-semibold transition disabled:opacity-50">
-            {exportLoading
-                ? <div className="w-4 h-4 border-2 border-blue-700 border-t-transparent rounded-full animate-spin" />
-                : <Download size={15} />}
-            PDF
-        </button>
-    )}
-</div>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-xl transition">
+                            <ArrowLeft size={20} />
+                        </button>
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-800">Mes reservations</h1>
+                            <p className="text-gray-500 text-sm mt-1">{reservationsAffichees.length} reservation(s)</p>
+                        </div>
+                    </div>
+                    {reservations.length > 0 && (
+                        <button onClick={exporterPdf} disabled={exportLoading}
+                            className="flex items-center gap-1.5 text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-2 rounded-xl font-semibold transition disabled:opacity-50">
+                            {exportLoading
+                                ? <div className="w-4 h-4 border-2 border-blue-700 border-t-transparent rounded-full animate-spin" />
+                                : <Download size={15} />}
+                            PDF
+                        </button>
+                    )}
+                </div>
+
+                {/* Recherche */}
+                {reservations.length > 0 && (
+                    <div className="relative max-w-sm">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Rechercher par ville, statut..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+                )}
 
                 {/* ✅ QR fixe du passager */}
                 {qrCodeUser && reservations.some(r => ['confirmee', 'en_cours'].includes(r.statut)) && (
-    <div className="bg-white rounded-2xl border border-blue-100 shadow-sm p-5 text-center">
+                    <div className="bg-white rounded-2xl border border-blue-100 shadow-sm p-5 text-center">
                         <p className="text-sm font-semibold text-blue-800 mb-1">Mon QR code personnel</p>
                         <p className="text-xs text-gray-500 mb-4">Ce QR est unique et permanent. Le chauffeur le scanne à chaque trajet.</p>
                         <div className="flex justify-center mb-3">
@@ -204,6 +232,12 @@ const exporterPdf = async () => {
                             Réserver
                         </button>
                     </div>
+                ) : reservationsAffichees.length === 0 ? (
+                    <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
+                        <Search size={40} className="mx-auto mb-4 text-gray-300" />
+                        <h3 className="text-gray-700 font-semibold mb-2">Aucun resultat</h3>
+                        <p className="text-gray-400 text-sm">Aucune réservation ne correspond a votre recherche</p>
+                    </div>
                 ) : (
                     <>
                         {/* ✅ Barre sélection + suppression groupée */}
@@ -211,7 +245,7 @@ const exporterPdf = async () => {
                             <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                                 <input type="checkbox" checked={toutSelectionne} onChange={toggleSelectAll}
                                     className="w-4 h-4 rounded border-gray-300 text-blue-600" />
-                                Tout sélectionner ({reservations.length})
+                                Tout sélectionner ({reservationsAffichees.length})
                             </label>
                             {selected.length > 0 && (
                                 <button onClick={supprimerSelection} disabled={deleteSelectionLoading}

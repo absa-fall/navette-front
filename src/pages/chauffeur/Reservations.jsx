@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api/axios'
 import Layout from '../../components/Layout'
-import { Bus, CheckCircle, Clock, MapPin, RefreshCw, AlertCircle, XCircle, ArrowRight, ArrowLeft, ArrowLeftRight, Trash2, RotateCcw } from 'lucide-react'
+import { Bus, CheckCircle, Clock, MapPin, RefreshCw, AlertCircle, XCircle, ArrowRight, ArrowLeft, ArrowLeftRight, Trash2, RotateCcw, Search } from 'lucide-react'
 
 const typeTrajetLabel = {
     aller: { label: 'Aller', icon: ArrowRight },
@@ -20,6 +20,7 @@ export default function ChauffeurReservations() {
     const [onglet, setOnglet] = useState('attente')
     const [selected, setSelected] = useState([])
     const [deleteLoading, setDeleteLoading] = useState(false)
+    const [searchReservations, setSearchReservations] = useState('')
 
     // Modal refus chauffeur (pour refuser une demande)
     const [modalRefus, setModalRefus] = useState(null)
@@ -174,11 +175,20 @@ export default function ChauffeurReservations() {
         }
     }
 
-    const enAttente  = reservations.filter(r => r.statut === 'en_attente_confirmation')
-    const confirmees = reservations.filter(r => r.statut === 'confirmee')
-    const enCours    = reservations.filter(r => r.statut === 'en_cours')
-    const terminees  = reservations.filter(r => r.statut === 'terminee')
-    const annulees   = reservations.filter(r => r.statut === 'annulee')
+    const filtrerReservations = (liste) => liste.filter(r =>
+        searchReservations === '' ||
+        r.prenom?.toLowerCase().includes(searchReservations.toLowerCase()) ||
+        r.nom?.toLowerCase().includes(searchReservations.toLowerCase()) ||
+        r.ufr?.toLowerCase().includes(searchReservations.toLowerCase()) ||
+        r.ville_depart?.toLowerCase().includes(searchReservations.toLowerCase()) ||
+        r.ville_arrivee?.toLowerCase().includes(searchReservations.toLowerCase())
+    )
+
+    const enAttente  = filtrerReservations(reservations.filter(r => r.statut === 'en_attente_confirmation'))
+    const confirmees = filtrerReservations(reservations.filter(r => r.statut === 'confirmee'))
+    const enCours    = filtrerReservations(reservations.filter(r => r.statut === 'en_cours'))
+    const terminees  = filtrerReservations(reservations.filter(r => r.statut === 'terminee'))
+    const annulees   = filtrerReservations(reservations.filter(r => r.statut === 'annulee'))
 
     const listeActive = onglet === 'attente'    ? enAttente
                       : onglet === 'confirmees' ? confirmees
@@ -243,6 +253,18 @@ export default function ChauffeurReservations() {
                     ))}
                 </div>
 
+                {/* Recherche */}
+                <div className="relative max-w-sm">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Rechercher par passager, UFR, ville..."
+                        value={searchReservations}
+                        onChange={e => setSearchReservations(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+
                 {loading ? (
                     <div className="flex justify-center py-20">
                         <div className="w-8 h-8 border-4 border-blue-700 border-t-transparent rounded-full animate-spin" />
@@ -250,7 +272,9 @@ export default function ChauffeurReservations() {
                 ) : listeActive.length === 0 ? (
                     <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                         <Bus size={40} className="mx-auto mb-4 text-gray-300" />
-                        <p className="text-gray-500">Aucune réservation dans cet onglet</p>
+                        <p className="text-gray-500">
+                            {reservations.length === 0 ? 'Aucune réservation dans cet onglet' : 'Aucun résultat pour cette recherche'}
+                        </p>
                     </div>
                 ) : (
                     <div className="space-y-4">

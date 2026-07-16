@@ -9,7 +9,8 @@ import {
     Loader,
     FileSpreadsheet,
     FileText,
-    Trash2
+    Trash2,
+    Search
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
@@ -38,6 +39,7 @@ const navigate = useNavigate()
     const [detailOuvert, setDetailOuvert] = useState(null)
 const [detailData, setDetailData]     = useState({})
 const [detailLoading, setDetailLoading] = useState(null)
+    const [searchRecaps, setSearchRecaps] = useState('')
 
     useEffect(() => { fetchRecaps() }, [])
 
@@ -93,7 +95,7 @@ const toggleDetail = async (recapId) => {
 
     const toggleSelectAll = () => {
         if (selectAll) { setSelected([]); setSelectAll(false) }
-        else { setSelected(recaps.map(r => r.id)); setSelectAll(true) }
+        else { setSelected(recapsFiltres.map(r => r.id)); setSelectAll(true) }
     }
 
     const supprimerSelection = async () => {
@@ -147,6 +149,15 @@ const exportPDF = (recap) => {
     navigate(`/recapitulatifs/${recap.id}/document`)
 }
 
+    const recapsFiltres = recaps.filter(r => {
+        if (searchRecaps === '') return true
+        const terme = searchRecaps.toLowerCase()
+        const dateDebut = new Date(r.semaine_debut).toLocaleDateString('fr-FR')
+        const dateFin = new Date(r.semaine_fin).toLocaleDateString('fr-FR')
+        const semaineLabel = `semaine du ${dateDebut} au ${dateFin}`
+        return semaineLabel.includes(terme)
+    })
+
     return (
         <Layout>
             <div className="space-y-6">
@@ -154,7 +165,7 @@ const exportPDF = (recap) => {
                 {/* HEADER */}
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Récapitulatifs hebdomadaires</h1>
-                    <p className="text-gray-500 text-sm mt-1">{recaps.length} récapitulatif(s)</p>
+                    <p className="text-gray-500 text-sm mt-1">{recapsFiltres.length} récapitulatif(s)</p>
                 </div>
 
                 {/* MESSAGES */}
@@ -195,13 +206,25 @@ const exportPDF = (recap) => {
                     </form>
                 </div>
 
+                {/* RECHERCHE */}
+                <div className="relative max-w-sm">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Rechercher par semaine (ex: 14/07/2026)..."
+                        value={searchRecaps}
+                        onChange={e => setSearchRecaps(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+
                 {/* BARRE SELECTION */}
-                {recaps.length > 0 && (
+                {recapsFiltres.length > 0 && (
                     <div className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-gray-100 shadow-sm">
                         <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                             <input type="checkbox" checked={selectAll} onChange={toggleSelectAll}
                                 className="w-4 h-4 rounded border-gray-300 text-blue-600" />
-                            Tout sélectionner ({recaps.length})
+                            Tout sélectionner ({recapsFiltres.length})
                         </label>
                         {selected.length > 0 && (
                             <button onClick={supprimerSelection}
@@ -218,17 +241,21 @@ const exportPDF = (recap) => {
                     <div className="flex justify-center py-20">
                         <div className="w-8 h-8 border-4 border-blue-700 border-t-transparent rounded-full animate-spin" />
                     </div>
-                ) : recaps.length === 0 ? (
+                ) : recapsFiltres.length === 0 ? (
                     <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                         <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                             <ClipboardList size={28} className="text-gray-400" />
                         </div>
-                        <h3 className="text-gray-700 font-semibold mb-2">Aucun récapitulatif</h3>
-                        <p className="text-gray-400 text-sm">Générez votre premier récapitulatif ci-dessus</p>
+                        <h3 className="text-gray-700 font-semibold mb-2">
+                            {recaps.length === 0 ? 'Aucun récapitulatif' : 'Aucun résultat'}
+                        </h3>
+                        <p className="text-gray-400 text-sm">
+                            {recaps.length === 0 ? 'Générez votre premier récapitulatif ci-dessus' : 'Essayez une autre recherche'}
+                        </p>
                     </div>
                 ) : (
                     <div className="space-y-4">
-                      {recaps.map(recap => (
+                      {recapsFiltres.map(recap => (
     <div key={recap.id}
         className={`bg-white rounded-2xl p-5 border shadow-sm transition ${selected.includes(recap.id) ? 'border-red-200 bg-red-50' : 'border-gray-100'}`}>
         <div className="flex items-center justify-between">

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { FileText, CheckCircle, AlertCircle, Send, Eye, Trash2, History } from 'lucide-react'
+import { FileText, CheckCircle, AlertCircle, Send, Eye, Trash2, History, Search } from 'lucide-react'
 
 export default function DirecteurUFRDashboard() {
     const navigate  = useNavigate()
@@ -16,6 +16,7 @@ export default function DirecteurUFRDashboard() {
     const [selectedAttente, setSelectedAttente]       = useState([])
     const [selectedHistorique, setSelectedHistorique] = useState([])
     const [autorisationsAbsence, setAutorisationsAbsence] = useState([])
+    const [searchQuery, setSearchQuery] = useState('')
 
     useEffect(() => {
         const params = new URLSearchParams(location.search)
@@ -66,7 +67,7 @@ export default function DirecteurUFRDashboard() {
         setSelectedAttente(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
 
     const toggleSelectAllAttente = () =>
-        setSelectedAttente(selectedAttente.length === autorisationsEnAttente.length ? [] : autorisationsEnAttente.map(a => a.id))
+        setSelectedAttente(selectedAttente.length === attenteAffichees.length ? [] : attenteAffichees.map(a => a.id))
 
     const supprimerAttenteSelectionnes = async () => {
         if (!confirm(`Supprimer ${selectedAttente.length} demande(s) ?`)) return
@@ -81,7 +82,7 @@ export default function DirecteurUFRDashboard() {
     const supprimerToutesAttente = async () => {
         if (!confirm('Supprimer toutes les demandes en attente ?')) return
         try {
-            for (const a of autorisationsEnAttente) await api.delete(`/autorisations-absence/${a.id}`)
+            for (const a of attenteAffichees) await api.delete(`/autorisations-absence/${a.id}`)
             showMsg('Toutes les demandes supprimees')
             setSelectedAttente([])
             fetchDossiers()
@@ -93,7 +94,7 @@ export default function DirecteurUFRDashboard() {
         setSelectedHistorique(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
 
     const toggleSelectAllHistorique = () =>
-        setSelectedHistorique(selectedHistorique.length === historiqueAutorisations.length ? [] : historiqueAutorisations.map(a => a.id))
+        setSelectedHistorique(selectedHistorique.length === historiqueAffiche.length ? [] : historiqueAffiche.map(a => a.id))
 
     const supprimerHistoriqueSelectionnes = async () => {
         if (!confirm(`Supprimer ${selectedHistorique.length} element(s) de l'historique ?`)) return
@@ -108,7 +109,7 @@ export default function DirecteurUFRDashboard() {
     const supprimerTouHistorique = async () => {
         if (!confirm("Vider tout l'historique ?")) return
         try {
-            for (const a of historiqueAutorisations) await api.delete(`/autorisations-absence/${a.id}`)
+            for (const a of historiqueAffiche) await api.delete(`/autorisations-absence/${a.id}`)
             showMsg('Historique vide')
             setSelectedHistorique([])
             fetchDossiers()
@@ -117,6 +118,18 @@ export default function DirecteurUFRDashboard() {
 
     const autorisationsEnAttente  = autorisationsAbsence.filter(a => a.statut === 'avis_chef_departement')
     const historiqueAutorisations = autorisationsAbsence.filter(a => a.avis_directeur_ufr !== null)
+
+    // ===== FILTRAGE PAR RECHERCHE =====
+    const filtrerAutorisations = (liste) => liste.filter(a =>
+        searchQuery === '' ||
+        a.enseignant?.prenom?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        a.enseignant?.nom?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        a.numero?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        a.lieu_deplacement?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+
+    const attenteAffichees   = filtrerAutorisations(autorisationsEnAttente)
+    const historiqueAffiche  = filtrerAutorisations(historiqueAutorisations)
 
     const BarreSelection = ({ selected, total, onSelectAll, onDeleteSelected, onDeleteAll }) => (
         <div className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-2.5 shadow-sm">
@@ -162,17 +175,17 @@ export default function DirecteurUFRDashboard() {
                         <p className="text-sm text-gray-500 mt-1">En attente de transmission</p>
                     </div>
                     <div onClick={() => setActiveTab('historique')}
-                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-green-200 hover:shadow-md transition">
-                        <div className="bg-green-100 p-2 rounded-xl w-fit mb-3">
-                            <CheckCircle size={20} className="text-green-700" />
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-blue-200 hover:shadow-md transition">
+                        <div className="bg-blue-100 p-2 rounded-xl w-fit mb-3">
+                            <CheckCircle size={20} className="text-blue-700" />
                         </div>
                         <p className="text-2xl font-bold text-gray-800">{historiqueAutorisations.length}</p>
                         <p className="text-sm text-gray-500 mt-1">Transmis au Recteur</p>
                     </div>
                     <div onClick={() => setActiveTab('historique')}
-                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-gray-300 hover:shadow-md transition">
-                        <div className="bg-gray-100 p-2 rounded-xl w-fit mb-3">
-                            <History size={20} className="text-gray-700" />
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-blue-200 hover:shadow-md transition">
+                        <div className="bg-blue-100 p-2 rounded-xl w-fit mb-3">
+                            <History size={20} className="text-blue-700" />
                         </div>
                         <p className="text-2xl font-bold text-gray-800">{historiqueAutorisations.length}</p>
                         <p className="text-sm text-gray-500 mt-1">Historique complet</p>
@@ -208,6 +221,18 @@ export default function DirecteurUFRDashboard() {
                     </button>
                 </div>
 
+                {/* Recherche */}
+                <div className="relative max-w-sm">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Rechercher par enseignant, numéro, lieu..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+
                 {message && (
                     <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl p-4 text-sm flex items-center gap-2">
                         <CheckCircle size={16} /> {message}
@@ -227,22 +252,24 @@ export default function DirecteurUFRDashboard() {
                     <>
                         {/* ONGLET EN ATTENTE */}
                         {activeTab === 'attente' && (
-                            autorisationsEnAttente.length === 0 ? (
+                            attenteAffichees.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                                     <FileText size={40} className="mx-auto mb-4 text-gray-300" />
                                     <h3 className="text-gray-700 font-semibold mb-2">Aucune autorisation</h3>
-                                    <p className="text-gray-400 text-sm">Les autorisations a transmettre apparaitront ici</p>
+                                    <p className="text-gray-400 text-sm">
+                                        {autorisationsEnAttente.length === 0 ? 'Les autorisations a transmettre apparaitront ici' : 'Aucun résultat pour cette recherche'}
+                                    </p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
                                     <BarreSelection
                                         selected={selectedAttente}
-                                        total={autorisationsEnAttente.length}
+                                        total={attenteAffichees.length}
                                         onSelectAll={toggleSelectAllAttente}
                                         onDeleteSelected={supprimerAttenteSelectionnes}
                                         onDeleteAll={supprimerToutesAttente}
                                     />
-                                    {autorisationsEnAttente.map(a => (
+                                    {attenteAffichees.map(a => (
                                         <div key={a.id} className={`bg-white rounded-2xl border shadow-sm p-5 transition ${
                                             selectedAttente.includes(a.id) ? 'border-blue-300' : 'border-gray-100'
                                         }`}>
@@ -297,22 +324,24 @@ export default function DirecteurUFRDashboard() {
 
                         {/* ONGLET HISTORIQUE */}
                         {activeTab === 'historique' && (
-                            historiqueAutorisations.length === 0 ? (
+                            historiqueAffiche.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                                     <History size={40} className="mx-auto mb-4 text-gray-300" />
                                     <h3 className="text-gray-700 font-semibold mb-2">Aucun dossier traite</h3>
-                                    <p className="text-gray-400 text-sm">Les dossiers que vous avez transmis apparaitront ici</p>
+                                    <p className="text-gray-400 text-sm">
+                                        {historiqueAutorisations.length === 0 ? 'Les dossiers que vous avez transmis apparaitront ici' : 'Aucun résultat pour cette recherche'}
+                                    </p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
                                     <BarreSelection
                                         selected={selectedHistorique}
-                                        total={historiqueAutorisations.length}
+                                        total={historiqueAffiche.length}
                                         onSelectAll={toggleSelectAllHistorique}
                                         onDeleteSelected={supprimerHistoriqueSelectionnes}
                                         onDeleteAll={supprimerTouHistorique}
                                     />
-                                    {historiqueAutorisations.map(a => (
+                                    {historiqueAffiche.map(a => (
                                         <div key={a.id} className={`rounded-2xl border p-4 flex items-center justify-between transition ${
                                             selectedHistorique.includes(a.id) ? 'bg-green-50 border-blue-300' : 'bg-green-50 border-green-200'
                                         }`}>

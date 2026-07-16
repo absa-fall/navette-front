@@ -20,7 +20,6 @@ export const AuthProvider = ({ children }) => {
                     setUser(freshUser)
                 })
                 .catch((err) => {
-                    console.error('Erreur /me:', err.response?.data || err.message)
                     localStorage.removeItem('token')
                     localStorage.removeItem('user')
                     setUser(null)
@@ -32,17 +31,14 @@ export const AuthProvider = ({ children }) => {
     }, [])
 
     const login = async (email, password) => {
-        console.log("Tentative de login avec :", email, password)
         try {
             const response = await api.post('/login', { email, password })
-            console.log("Réponse API :", response.data)
             const { user, token } = response.data
             localStorage.setItem('token', token)
             localStorage.setItem('user', JSON.stringify(user))
             setUser(user)
             return user
         } catch (error) {
-            console.error("Erreur API :", error.response?.data || error.message)
             throw error
         }
     }
