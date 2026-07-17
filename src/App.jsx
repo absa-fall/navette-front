@@ -8,7 +8,7 @@ import LandingPage from './pages/LandingPage'
 // Auth
 import Login from './pages/Login'
 import Inscription from './pages/Inscription'
-
+import ActiverCompte from './pages/ActiverCompte'
 import OrdreMissionDocument from "./pages/drh/OrdreMissionDocument";
 import Parametres from './pages/Parametres'
 // DDL
@@ -64,6 +64,7 @@ import NouveauVoyageEtude from './pages/vicerecteur/NouveauVoyageEtude'
 import VoyagesEtudes from './pages/vicerecteur/VoyagesEtudes'
 import ListePublieeDocument from './pages/vicerecteur/ListePublieeDocument'
 import ListeDefinitiveDocument from './pages/vicerecteur/ListeDefinitiveDocument'
+import ProcesVerbalAnnuel from './pages/vicerecteur/ProcesVerbalAnnuel'
 // Admin
 import AdminDashboard from './pages/admin/Dashboard'
 import AdminUtilisateurs from './pages/admin/Utilisateurs'
@@ -75,7 +76,7 @@ import DirecteurUFRDashboard from './pages/directeurufr/Dashboard'
 import RecteurDashboard from './pages/recteur/Dashboard'
 import ArreteVoyageDocument from './pages/recteur/ArreteVoyageDocument'
 import CommissionDashboard from './pages/commission/Dashboard'
-
+import AdminProcesVerbaux from './pages/admin/ProcesVerbaux'
 const PrivateRoute = ({ children }) => {
     const { user, loading } = useAuth()
     if (loading) return (
@@ -100,6 +101,7 @@ function App() {
                     <Route path="/inscription" element={<Inscription />} />
 <Route path="/mot-de-passe-oublie" element={<MotDePasseOublie />} />
 <Route path="/reset-password" element={<ReinitialiserMotDePasse />} />
+
                    {/* DDL */}
                     <Route path="/ddl/dashboard" element={<PrivateRoute><DDLDashboard /></PrivateRoute>} />
                     <Route path="/ddl/navettes" element={<PrivateRoute><MesNavettes /></PrivateRoute>} />
@@ -156,12 +158,14 @@ function App() {
                     <Route path="/vice-recteur/voyages-etudes/nouveau" element={<PrivateRoute><NouveauVoyageEtude /></PrivateRoute>} />
 <Route path="/voyages-etudes/:voyageId/liste-publiee" element={<ListePublieeDocument />} />
 <Route path="/voyages-etudes/:voyageId/liste-definitive" element={<ListeDefinitiveDocument />} />
+<Route path="/vice-recteur/proces-verbal" element={<PrivateRoute><ProcesVerbalAnnuel /></PrivateRoute>} />
                     {/* Admin */}
                     <Route path="/admin/dashboard" element={<PrivateRoute><AdminDashboard /></PrivateRoute>} />
                     <Route path="/admin/utilisateurs" element={<PrivateRoute><AdminUtilisateurs /></PrivateRoute>} />
 <Route path="/admin/voyages-etudes" element={<AdminVoyagesEtudes />} />
 <Route path="/admin/ordres-mission" element={<AdminOrdresMission />} />
 <Route path="/admin/vehicules" element={<AdminVehicules />} />
+<Route path="/admin/proces-verbaux" element={<PrivateRoute><AdminProcesVerbaux /></PrivateRoute>} />
 
                     {/* Chef Departement */}
                     <Route path="/chef-departement/dashboard" element={<PrivateRoute><ChefDepartementDashboard /></PrivateRoute>} />
@@ -172,12 +176,13 @@ function App() {
                     {/* Recteur */}
                     <Route path="/recteur/dashboard" element={<PrivateRoute><RecteurDashboard /></PrivateRoute>} />
 <Route path="/voyages-etudes/:voyageId/arrete" element={<PrivateRoute><ArreteVoyageDocument /></PrivateRoute>} />
+<Route path="/recteur/proces-verbal" element={<PrivateRoute><ProcesVerbalAnnuel /></PrivateRoute>} />
                     {/* Commission */}
                     <Route path="/commission/dashboard" element={<PrivateRoute><CommissionDashboard /></PrivateRoute>} />
-
+<Route path="/commission/proces-verbal" element={<PrivateRoute><ProcesVerbalAnnuel /></PrivateRoute>} />
                     {/* Fallback */}
                     <Route path="*" element={<Navigate to="/login" replace />} />
-
+<Route path="/activer-compte" element={<ActiverCompte />} />
                 </Routes>
             </BrowserRouter>
         </AuthProvider>

@@ -171,58 +171,6 @@ export default function AutorisationAbsenceDocument() {
                 >
                     <Printer size={16} /> Imprimer / Télécharger
                 </button>
-{enseignantPeutTransmettreMaintenant && (
-                    <button
-                        onClick={transmettre}
-                        disabled={!signatureEnseignant || transmission}
-                        className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white font-semibold px-6 py-2.5 rounded-xl transition disabled:opacity-50"
-                    >
-                        {transmission ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                        Transmettre au Chef de Département
-                    </button>
-                )}
-
-                {chefPeutSignerMaintenant && (
-                    <button
-                        onClick={transmettreChef}
-                        disabled={!signatureChef || transmission}
-                        className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white font-semibold px-6 py-2.5 rounded-xl transition disabled:opacity-50"
-                    >
-                        {transmission ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                        Signer et transmettre au Directeur UFR
-                    </button>
-                )}
-
-                {directeurPeutSignerMaintenant && (
-                    <button
-                        onClick={transmettreDirecteur}
-                        disabled={!signatureDirecteur || transmission}
-                        className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white font-semibold px-6 py-2.5 rounded-xl transition disabled:opacity-50"
-                    >
-                        {transmission ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                        Signer et transmettre au Recteur
-                    </button>
-                )}
-
-                {recteurPeutSignerMaintenant && (
-                    <button
-                        onClick={transmettreRecteur}
-                        disabled={!signatureRecteur || transmission}
-                        className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white font-semibold px-6 py-2.5 rounded-xl transition disabled:opacity-50"
-                    >
-                        {transmission ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                        Signer et transmettre à l'enseignant
-                    </button>
-                )}
-
-                {peutRejeterMaintenant && (
-                    <button
-                        onClick={() => setRejetOuvert(true)}
-                        className="flex items-center gap-2 border border-red-300 text-red-600 hover:bg-red-50 font-semibold px-6 py-2.5 rounded-xl transition"
-                    >
-                        <XCircle size={16} /> Rejeter
-                    </button>
-                )}
             </div>
 
             {rejetOuvert && (
@@ -250,7 +198,7 @@ export default function AutorisationAbsenceDocument() {
                 </div>
             )}
 
-            <div className="max-w-3xl mx-auto bg-white border border-gray-200 shadow-sm rounded-xl px-12 py-10 print:shadow-none print:border-none print:rounded-none print:max-w-full print:px-8 print:py-4 font-serif text-gray-900">
+            <div className="max-w-3xl mx-auto bg-white border border-gray-200 shadow-sm rounded-xl px-12 py-10 print:shadow-none print:border-none print:rounded-none print:max-w-full print:px-8 print:py-4 font-serif text-gray-900 pb-24 print:pb-4">
 
                 <div className="flex justify-between items-start mb-5 print:mb-3">
                     <div className="text-[11px] leading-relaxed max-w-[55%]">
@@ -333,6 +281,13 @@ export default function AutorisationAbsenceDocument() {
                     {!recteurASigne && (
                         <>
                             <SignaturePad
+                                storageKey={`signature_enseignant_${autorisation.id}`}
+                                label={autorisation.enseignant ? `${autorisation.enseignant.prenom} ${autorisation.enseignant.nom}` : "L'enseignant"}
+                                readOnly={!enseignantPeutSignerMaintenant}
+                                onSaved={setSignatureEnseignant}
+                                initialValue={autorisation.signature_enseignant_image}
+                            />
+                            <SignaturePad
                                 storageKey={`signature_chef_departement_${autorisation.id}`}
                                 label="Le Chef de Département"
                                 readOnly={!chefPeutSignerMaintenant}
@@ -355,15 +310,6 @@ export default function AutorisationAbsenceDocument() {
                         onSaved={setSignatureRecteur}
                         initialValue={autorisation.signature_recteur_image}
                     />
-                    {!recteurASigne && (
-                        <SignaturePad
-                            storageKey={`signature_enseignant_${autorisation.id}`}
-                            label={autorisation.enseignant ? `${autorisation.enseignant.prenom} ${autorisation.enseignant.nom}` : "L'enseignant"}
-                            readOnly={!enseignantPeutSignerMaintenant}
-                            onSaved={setSignatureEnseignant}
-                            initialValue={autorisation.signature_enseignant_image}
-                        />
-                    )}
                 </div>
 
                 <div className="text-center text-[10px] text-gray-600 border-t pt-3 print:pt-2">
@@ -371,6 +317,75 @@ export default function AutorisationAbsenceDocument() {
                     <p>Internet : www.uadb.edu.sn // Courriel : rectorat@uadb.edu.sn</p>
                 </div>
             </div>
+
+            {/* Barre d'action fixe — séparée du document, apparaît seulement quand il y a une action à faire */}
+            {(enseignantPeutTransmettreMaintenant || chefPeutSignerMaintenant || directeurPeutSignerMaintenant || recteurPeutSignerMaintenant) && (
+                <div className="print:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] z-40">
+                    <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
+                        <p className="text-sm text-gray-600 hidden sm:block">
+                            {enseignantPeutTransmettreMaintenant && (signatureEnseignant ? 'Signature enregistrée — prêt à transmettre.' : 'Signez ci-dessous pour transmettre.')}
+                            {chefPeutSignerMaintenant && (signatureChef ? 'Signature enregistrée — prêt à transmettre.' : 'Signez ci-dessous pour transmettre.')}
+                            {directeurPeutSignerMaintenant && (signatureDirecteur ? 'Signature enregistrée — prêt à transmettre.' : 'Signez ci-dessous pour transmettre.')}
+                            {recteurPeutSignerMaintenant && (signatureRecteur ? 'Signature enregistrée — prêt à transmettre.' : 'Signez ci-dessous pour transmettre.')}
+                        </p>
+
+                        <div className="flex items-center gap-3 ml-auto">
+                            {peutRejeterMaintenant && (
+                                <button
+                                    onClick={() => setRejetOuvert(true)}
+                                    className="flex items-center gap-2 border border-red-300 text-red-600 hover:bg-red-50 font-semibold px-5 py-2.5 rounded-xl transition"
+                                >
+                                    <XCircle size={16} /> Rejeter
+                                </button>
+                            )}
+
+                            {enseignantPeutTransmettreMaintenant && (
+                                <button
+                                    onClick={transmettre}
+                                    disabled={!signatureEnseignant || transmission}
+                                    className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white font-semibold px-6 py-2.5 rounded-xl transition disabled:opacity-50"
+                                >
+                                    {transmission ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                                    Transmettre au Chef de Département
+                                </button>
+                            )}
+
+                            {chefPeutSignerMaintenant && (
+                                <button
+                                    onClick={transmettreChef}
+                                    disabled={!signatureChef || transmission}
+                                    className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white font-semibold px-6 py-2.5 rounded-xl transition disabled:opacity-50"
+                                >
+                                    {transmission ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                                    Transmettre au Directeur UFR
+                                </button>
+                            )}
+
+                            {directeurPeutSignerMaintenant && (
+                                <button
+                                    onClick={transmettreDirecteur}
+                                    disabled={!signatureDirecteur || transmission}
+                                    className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white font-semibold px-6 py-2.5 rounded-xl transition disabled:opacity-50"
+                                >
+                                    {transmission ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                                    Transmettre au Recteur
+                                </button>
+                            )}
+
+                            {recteurPeutSignerMaintenant && (
+                                <button
+                                    onClick={transmettreRecteur}
+                                    disabled={!signatureRecteur || transmission}
+                                    className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white font-semibold px-6 py-2.5 rounded-xl transition disabled:opacity-50"
+                                >
+                                    {transmission ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                                    Transmettre à l'enseignant
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

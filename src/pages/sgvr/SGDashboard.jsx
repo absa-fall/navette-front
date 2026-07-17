@@ -212,14 +212,31 @@ export default function SGDashboard() {
         win.document.close()
         win.print()
     }
+const estRetourNonEffectue = (r) => {
+    if (r.type_trajet !== 'aller_retour' || r.trajet_sens !== 'retour') return false
+    if (['terminee', 'annulee', 'refusee'].includes(r.statut)) return false
+    const dateResa = new Date(r.date_reservation)
+    const aujourdHui = new Date()
+    aujourdHui.setHours(0, 0, 0, 0)
+    return dateResa < aujourdHui
+}
+   const sensLabel = (r) => r.trajet_sens === 'retour' ? 'Retour' : 'Aller'
 
-    const getStatutBadge = (r) => {
-        if (r.statut === 'terminee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">Terminée</span>
-        if (r.statut === 'en_cours') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">En cours</span>
-        if (r.statut === 'confirmee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">Confirmée</span>
-        if (r.statut === 'refusee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">Refusée</span>
-        return <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">En attente</span>
+const getStatutBadge = (r) => {
+    if (estRetourNonEffectue(r)) {
+        return (
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 flex items-center gap-1 w-fit">
+                <AlertCircle size={12} />
+                Retour non effectué
+            </span>
+        )
     }
+    if (r.statut === 'terminee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">Terminée ({sensLabel(r)})</span>
+    if (r.statut === 'en_cours') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">En cours ({sensLabel(r)})</span>
+    if (r.statut === 'confirmee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">Confirmée ({sensLabel(r)})</span>
+    if (r.statut === 'refusee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">Refusée ({sensLabel(r)})</span>
+    return <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">En attente ({sensLabel(r)})</span>
+}
 
     const getProfilBadge = (typeProfil) => {
         const colors = {
@@ -232,6 +249,7 @@ export default function SGDashboard() {
     }
 
     const enCours = reservations.filter(r => r.statut !== 'terminee' && r.statut !== 'refusee')
+    const retoursOublies = reservations.filter(estRetourNonEffectue)
     const terminées = reservations.filter(r => r.statut === 'terminee')
     const totalRetenues = reservations.reduce((sum, r) => sum + (parseFloat(r.montant_retenue) || 0), 0)
     const listeActive = onglet === 'encours' ? enCours : terminées
@@ -429,7 +447,9 @@ const renderTableau = (liste) => {
                             <p className="text-2xl font-bold text-gray-800">{totalRetenues.toLocaleString()}</p>
                             <p className="text-sm text-gray-500 mt-1">FCFA retenues</p>
                         </div>
+                        
                     </div>
+                    
                 )}
                 <GraphiquesSGVR reservations={reservations} />
 

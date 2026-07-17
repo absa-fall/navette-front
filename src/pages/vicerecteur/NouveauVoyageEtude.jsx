@@ -26,7 +26,7 @@ export default function NouveauVoyageEtude() {
     const [manuels, setManuels]             = useState([])
     const [showAddModal, setShowAddModal]   = useState(false)
     const [editingId, setEditingId] = useState(null)
-    const [addForm, setAddForm]             = useState({ prenom: '', nom: '', ufr: 'SATIC', departement: '', matricule: '', date_embauche: '' })
+const [addForm, setAddForm]             = useState({ prenom: '', nom: '', email: '', ufr: 'SATIC', departement: '', matricule: '', date_embauche: '' })
     const [ajoutManuelLoading, setAjoutManuelLoading] = useState(false)
     const [loading, setLoading]             = useState(false)
     const [loadingEns, setLoadingEns]       = useState(true)
@@ -101,19 +101,19 @@ api.get('/enseignants-permanents')
     else setSelected(prev => [...new Set([...prev, ...idsEligibles])])
 }
   const ajouterManuel = async () => {
-    if (!addForm.prenom || !addForm.nom || !addForm.date_embauche) return
+    if (!addForm.prenom || !addForm.nom || !addForm.date_embauche || !addForm.departement) return
 
     if (editingId) {
         setManuels(prev => prev.map(m => m.id === editingId ? { ...m, ...addForm } : m))
         setEditingId(null)
         setUfrOuverte(addForm.ufr)
         setFiltreUFR(prev => (prev !== 'tous' && prev !== addForm.ufr) ? 'tous' : prev)
-        setAddForm({ prenom: '', nom: '', ufr: 'SATIC', departement: '', matricule: '', date_embauche: '' })
+       setAddForm({ prenom: '', nom: '', email: '', ufr: 'SATIC', departement: '', matricule: '', date_embauche: '' })
         setShowAddModal(false)
         return
     }
 
-    setAjoutManuelLoading(true)
+   setAjoutManuelLoading(true)
     try {
         const res = await api.post('/enseignants-manuel', addForm)
         const nouvel = { ...res.data.enseignant, _manuel: true }
@@ -121,8 +121,9 @@ api.get('/enseignants-permanents')
         setSelected(prev => [...prev, nouvel.id])
         setUfrOuverte(addForm.ufr)
         setFiltreUFR(prev => (prev !== 'tous' && prev !== addForm.ufr) ? 'tous' : prev)
-        setAddForm({ prenom: '', nom: '', ufr: 'SATIC', departement: '', matricule: '', date_embauche: '' })
+        setAddForm({ prenom: '', nom: '', email: '', ufr: 'SATIC', departement: '', matricule: '', date_embauche: '' })
         setShowAddModal(false)
+        alert(res.data.message || 'Enseignant ajoute. Un code d\'activation lui a ete envoye par email.')
     } catch (err) {
         alert(err.response?.data?.message || "Erreur lors de l'ajout de l'enseignant")
     } finally {
@@ -131,7 +132,7 @@ api.get('/enseignants-permanents')
 }
 
 const ouvrirModification = (m) => {
-    setAddForm({ prenom: m.prenom, nom: m.nom, ufr: m.ufr, departement: m.departement, matricule: m.matricule, date_embauche: m.date_embauche || '' })
+    setAddForm({ prenom: m.prenom, nom: m.nom, email: m.email || '', ufr: m.ufr, departement: m.departement, matricule: m.matricule, date_embauche: m.date_embauche || '' })
     setEditingId(m.id)
     setShowAddModal(true)
 }
@@ -139,7 +140,7 @@ const ouvrirModification = (m) => {
 const fermerModal = () => {
     setShowAddModal(false)
     setEditingId(null)
-    setAddForm({ prenom: '', nom: '', ufr: 'SATIC', departement: '', matricule: '', date_embauche: '' })
+    setAddForm({ prenom: '', nom: '', email: '', ufr: 'SATIC', departement: '', matricule: '', date_embauche: '' })
 }
 
     const retirerManuel = (id) => {
@@ -584,7 +585,7 @@ const fermerModal = () => {
     <X size={20} />
 </button>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                       <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <label className="text-xs font-medium text-slate-700 mb-1 block">Prénom *</label>
                                 <input type="text" value={addForm.prenom}
@@ -601,6 +602,14 @@ const fermerModal = () => {
                             </div>
                         </div>
                         <div>
+                            <label className="text-xs font-medium text-slate-700 mb-1 block">Email *</label>
+                            <input type="email" value={addForm.email}
+                                onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))}
+                                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                placeholder="enseignant@uadb.edu.sn" />
+                            <p className="text-[11px] text-slate-400 mt-1">Un code d'activation sera envoyé à cette adresse.</p>
+                        </div>
+                        <div>
                             <label className="text-xs font-medium text-slate-700 mb-1 block">UFR</label>
                             <select value={addForm.ufr}
                                 onChange={e => setAddForm(f => ({ ...f, ufr: e.target.value }))}
@@ -609,18 +618,19 @@ const fermerModal = () => {
                             </select>
                         </div>
                         <div>
-                            <label className="text-xs font-medium text-slate-700 mb-1 block">Département</label>
-                            <input type="text" value={addForm.departement}
+                            <label className="text-xs font-medium text-slate-700 mb-1 block">Département *</label>
+                            <input type="text" value={addForm.departement} required
                                 onChange={e => setAddForm(f => ({ ...f, departement: e.target.value }))}
                                 className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
                                 placeholder="Ex: Informatique" />
                         </div>
-                        <div>
-                            <label className="text-xs font-medium text-slate-700 mb-1 block">Matricule</label>
+                       <div>
+                            <label className="text-xs font-medium text-slate-700 mb-1 block">Matricule *</label>
                             <input type="text" value={addForm.matricule}
                                 onChange={e => setAddForm(f => ({ ...f, matricule: e.target.value }))}
                                 className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
                                 placeholder="Ex: PER001" />
+                            <p className="text-[11px] text-slate-400 mt-1">L'enseignant devra saisir ce matricule pour activer son compte.</p>
                         </div>
                         <div>
                             <label className="text-xs font-medium text-slate-700 mb-1 block">Date d'embauche *</label>
@@ -635,7 +645,7 @@ const fermerModal = () => {
     Annuler
 </button>
 <button type="button" onClick={ajouterManuel}
-    disabled={!addForm.prenom || !addForm.nom || !addForm.date_embauche || ajoutManuelLoading}
+    disabled={!addForm.prenom || !addForm.nom || !addForm.email || !addForm.matricule || !addForm.date_embauche || !addForm.departement || ajoutManuelLoading}
     className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition disabled:opacity-50">
     {ajoutManuelLoading ? 'Ajout...' : (editingId ? 'Enregistrer' : 'Ajouter')}
 </button>

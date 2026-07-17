@@ -37,7 +37,7 @@ const STATUT_OPTIONS = [
 const formVide = {
     nom: '', prenom: '', email: '', password: '',
     role: '', type_profil: '', statut: '', ufr: '',
-    matricule: '', tel: '',
+    matricule: '', tel: '', date_embauche: '',
 }
 
 export default function AdminUtilisateurs() {
@@ -81,23 +81,24 @@ export default function AdminUtilisateurs() {
         setModalOuvert(true)
     }
 
-    const ouvrirEdition = (user) => {
-        setForm({
-            nom:         user.nom || '',
-            prenom:      user.prenom || '',
-            email:       user.email || '',
-            password:    '',
-            role:        user.role || '',
-            type_profil: user.type_profil || '',
-            statut:      user.statut || '',
-            ufr:         user.ufr || '',
-            matricule:   user.matricule || '',
-            tel:         user.tel || '',
-        })
-        setUserSelectionne(user)
-        setModeEdition(true)
-        setModalOuvert(true)
-    }
+   const ouvrirEdition = (user) => {
+    setForm({
+        nom:         user.nom || '',
+        prenom:      user.prenom || '',
+        email:       user.email || '',
+        password:    '',
+        role:        user.role || '',
+        type_profil: user.type_profil || '',
+        statut:      user.statut || '',
+        ufr:         user.ufr || '',
+        matricule:   user.matricule || '',
+        tel:         user.tel || '',
+        date_embauche: user.date_embauche || '',
+    })
+    setUserSelectionne(user)
+    setModeEdition(true)
+    setModalOuvert(true)
+}
 
     const fermerModal = () => {
         setModalOuvert(false)
@@ -425,7 +426,11 @@ export default function AdminUtilisateurs() {
                                         className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                                 </div>
                             </div>
-
+<div>
+    <label className="block text-xs font-medium text-gray-600 mb-1">Date d'embauche</label>
+    <input name="date_embauche" type="date" value={form.date_embauche} onChange={handleChange}
+        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+</div>
                             <div className="flex gap-3 pt-2">
                                 <button type="button" onClick={fermerModal}
                                     className="flex-1 border border-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl hover:bg-gray-50 transition text-sm">

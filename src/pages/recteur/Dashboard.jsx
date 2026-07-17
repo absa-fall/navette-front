@@ -149,19 +149,27 @@ const [searchQuery, setSearchQuery] = useState('')
     }
 const supprimerArretes = async (voyageIds) => {
     if (!confirm(`Supprimer ${voyageIds.length} arrete(s) ?`)) return
-    try {
-        for (const voyageId of voyageIds) {
+    let reussis = 0
+    let echecs = 0
+    for (const voyageId of voyageIds) {
+        try {
             const arreteRes = await api.get(`/voyages-etudes/${voyageId}/arrete`)
             if (arreteRes.data?.id) {
                 await api.delete(`/arretes/${arreteRes.data.id}`)
             }
+            reussis++
+        } catch (err) {
+            console.error(`Erreur suppression arrete du voyage ${voyageId} :`, err.response?.status, err.response?.data)
+            echecs++
         }
-        setSelectedSignes([])
-        showMsg('Arrete(s) supprime(s)')
-        fetchAll()
-    } catch {
-        showMsg('Erreur lors de la suppression', true)
     }
+    setSelectedSignes([])
+    if (echecs === 0) {
+        showMsg(`${reussis} arrete(s) supprime(s)`)
+    } else {
+        showMsg(`${reussis} supprime(s), ${echecs} echec(s) — verifiez la console`, echecs === voyageIds.length)
+    }
+    fetchAll()
 }
     const definitifs                    = voyages.filter(v => v.statut_liste === 'definitive' && !v.arrete_recteur)
     const signes                        = voyages.filter(v => v.arrete_recteur)

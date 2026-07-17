@@ -27,8 +27,10 @@ export default function VoyagesEtudes() {
     const navigate = useNavigate()
     const location = useLocation()
     const tabParam = new URLSearchParams(location.search).get('tab')
-    const [voyages, setVoyages]                       = useState([])
+   const [voyages, setVoyages]                       = useState([])
     const [dossiers, setDossiers]                     = useState([])
+    const [enseignantsBloques, setEnseignantsBloques] = useState([])
+    const [debloquageLoading, setDebloquageLoading]   = useState(null)
     const [loading, setLoading]                       = useState(true)
     const [activeTab, setActiveTab]                   = useState(tabParam === 'dossiers' ? 'dossiers' : 'voyages')
     const [expanded, setExpanded]                     = useState(null)
@@ -44,7 +46,7 @@ export default function VoyagesEtudes() {
     const [signaturesDefinitives, setSignaturesDefinitives] = useState({})
     const [definitiveStep, setDefinitiveStep]         = useState({})
 
-    useEffect(() => { fetchVoyages(); fetchDossiers() }, [])
+   useEffect(() => { fetchVoyages(); fetchDossiers(); fetchEnseignantsBloques() }, [])
 
     useEffect(() => {
         setSelectedDefinitifs(prev => {
@@ -93,7 +95,27 @@ export default function VoyagesEtudes() {
             console.error('Erreur fetchDossiers :', err.response?.status, err.response?.data || err.message)
         }
     }
+const fetchEnseignantsBloques = async () => {
+        try {
+            const res = await api.get('/enseignants/bloques')
+            setEnseignantsBloques(Array.isArray(res.data) ? res.data : [])
+        } catch (err) {
+            console.error('Erreur fetchEnseignantsBloques :', err.response?.status, err.response?.data || err.message)
+        }
+    }
 
+    const leverBlocage = async (enseignantId) => {
+        setDebloquageLoading(enseignantId)
+        try {
+            await api.patch(`/enseignants/${enseignantId}/lever-blocage`)
+            showMsg('Blocage leve avec succes')
+            fetchEnseignantsBloques()
+        } catch (err) {
+            showMsg(err.response?.data?.message || 'Erreur', true)
+        } finally {
+            setDebloquageLoading(null)
+        }
+    }
     const showMsg = (msg, isError = false) => {
         if (isError) setError(msg)
         else setMessage(msg)
@@ -361,6 +383,13 @@ export default function VoyagesEtudes() {
                         Dossiers a valider
                         {dossiersEnAttente.length > 0 && (
                             <span className="bg-rose-500 text-white text-xs rounded-full px-1.5 py-0.5">{dossiersEnAttente.length}</span>
+                        )}
+                    </button>
+                    <button onClick={() => setActiveTab('bloques')}
+                        className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center gap-2 ${activeTab === 'bloques' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+                        Enseignants bloques
+                        {enseignantsBloques.length > 0 && (
+                            <span className="bg-rose-500 text-white text-xs rounded-full px-1.5 py-0.5">{enseignantsBloques.length}</span>
                         )}
                     </button>
                 </div>
@@ -846,7 +875,45 @@ export default function VoyagesEtudes() {
                                 })}
                             </div>
                         )}
-                    </div>
+                   </div>
+                )}
+
+                {/* ===== ONGLET ENSEIGNANTS BLOQUES ===== */}
+                {activeTab === 'bloques' && (
+                    enseignantsBloques.length === 0 ? (
+                        <div className="bg-white rounded-2xl p-12 text-center border border-slate-100 shadow-sm">
+                            <CheckCircle size={40} className="mx-auto mb-4 text-emerald-300" />
+                            <h3 className="text-slate-700 font-semibold mb-2">Aucun enseignant bloque</h3>
+                            <p className="text-slate-400 text-sm">Tous les enseignants sont a jour dans leurs soumissions</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {enseignantsBloques.map(e => (
+                                <div key={e.id} className="bg-white rounded-2xl border border-rose-200 shadow-sm p-5 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-rose-50 rounded-full flex items-center justify-center text-rose-700 font-semibold text-sm">
+                                            {e.prenom?.[0]}{e.nom?.[0]}
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-blue-950">{e.prenom} {e.nom}</p>
+                                            <p className="text-xs text-slate-500">{e.ufr} · {e.departement || ''}</p>
+                                            <p className="text-xs text-rose-600 mt-0.5">
+                                                Bloque depuis le {e.date_blocage ? new Date(e.date_blocage).toLocaleDateString('fr-FR') : '—'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => leverBlocage(e.id)}
+                                        disabled={debloquageLoading === e.id}
+                                        className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
+                                        {debloquageLoading === e.id
+                                            ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            : <Check size={14} />}
+                                        Lever le blocage
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )
                 )}
             </div>
         </Layout>

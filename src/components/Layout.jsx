@@ -9,10 +9,11 @@ import {
 } from 'lucide-react'
 const menuParRole = {
     admin: [
-        { label: 'Dashboard',     icon: LayoutDashboard, path: '/admin/dashboard' },
-        { label: 'Utilisateurs',  icon: Users,           path: '/admin/utilisateurs' },
-        { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
-    ],
+    { label: 'Dashboard',       icon: LayoutDashboard, path: '/admin/dashboard' },
+    { label: 'Utilisateurs',    icon: Users,           path: '/admin/utilisateurs' },
+    { label: 'Procès-verbaux',  icon: FileText,        path: '/admin/proces-verbaux' },
+    { label: 'Paramètres',      icon: Settings,        path: '/parametres' },
+],
     ddl: [
         { label: 'Dashboard',          icon: LayoutDashboard, path: '/ddl/dashboard' },
         { label: 'Mes navettes',       icon: '/im.png',       path: '/ddl/navettes' },
@@ -51,10 +52,11 @@ const menuParRole = {
         { label: 'Graphiques',     icon: BarChart2,       path: '/sg-vr/dashboard?tab=graphiques' },
          { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
     ],
-   vice_recteur: [
+  vice_recteur: [
     { label: 'Dashboard',        icon: LayoutDashboard, path: '/vice-recteur/dashboard' },
     { label: "Voyages d'etudes", icon: '/avion-voyage.png', path: '/vice-recteur/voyages-etudes' },
-     { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
+    { label: 'Procès-verbal',    icon: FileText,        path: '/vice-recteur/proces-verbal' },
+    { label: 'Paramètres',       icon: Settings,        path: '/parametres' },
 ],
     chef_departement: [
         { label: 'Dashboard',               icon: LayoutDashboard, path: '/chef-departement/dashboard' },
@@ -69,15 +71,17 @@ const menuParRole = {
          { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
     ],
     recteur: [
-        { label: 'Dashboard',               icon: LayoutDashboard, path: '/recteur/dashboard' },
-        { label: 'Arretes à signer',        icon: FileText,        path: '/recteur/dashboard?tab=arretes' },
-        { label: 'Autorisations de sortie', icon: CheckCircle,     path: '/recteur/dashboard?tab=autorisations' },
-         { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
-    ],
+    { label: 'Dashboard',               icon: LayoutDashboard, path: '/recteur/dashboard' },
+    { label: 'Arretes à signer',        icon: FileText,        path: '/recteur/dashboard?tab=arretes' },
+    { label: 'Autorisations de sortie', icon: CheckCircle,     path: '/recteur/dashboard?tab=autorisations' },
+    { label: 'Procès-verbal',           icon: FileText,        path: '/recteur/proces-verbal' },
+    { label: 'Paramètres',              icon: Settings,        path: '/parametres' },
+],
     commission: [
-        { label: 'Dashboard', icon: LayoutDashboard, path: '/commission/dashboard' },
-         { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
-    ],
+    { label: 'Dashboard',      icon: LayoutDashboard, path: '/commission/dashboard' },
+    { label: 'Procès-verbal',  icon: FileText,        path: '/commission/proces-verbal' },
+    { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
+],
     usager: [
     { label: 'Dashboard',        icon: LayoutDashboard, path: '/usager/dashboard' },
     { label: 'Réserver',         icon: '/im.png',       path: '/usager/reserver' },

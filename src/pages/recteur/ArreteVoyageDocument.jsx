@@ -221,6 +221,7 @@ export default function ArreteVoyageDocument() {
                             label={`${data.recteur?.prenom || ''} ${data.recteur?.nom?.toUpperCase() || ''}`}
                             onSaved={setSignature}
                             readOnly={!(estBrouillon && peutSigner)}
+                            initialValue={data.signature_recteur_image}
                         />
                     </div>
                 </div>
