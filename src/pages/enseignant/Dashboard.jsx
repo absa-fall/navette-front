@@ -3,8 +3,11 @@ import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import ProchaineNavette from '../../components/ProchaineNavette'
 import { useState, useEffect } from 'react'
-import { MapPin, FileText, Clock, CheckCircle, AlertTriangle, Bus } from 'lucide-react'
+import { MapPin, FileText, Clock, CheckCircle, AlertTriangle, Bus, ChevronRight, Bell } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import api from '../../api/axios'
+
+const moisLabels = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc']
 
 export default function EnseignantDashboard() {
     const navigate = useNavigate()
@@ -16,6 +19,8 @@ export default function EnseignantDashboard() {
         approuves: 0,
     })
     const [eligibilite, setEligibilite] = useState(null)
+    const [voyages, setVoyages] = useState([])
+    const [reservations, setReservations] = useState([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -23,8 +28,11 @@ export default function EnseignantDashboard() {
             api.get('/mes-voyages-etudes'),
             api.get('/rapports'),
             api.get('/voyages/eligibilite'),
-        ]).then(([voyagesRes, rapportsRes, eligRes]) => {
+            api.get('/enseignant/mes-reservations').catch(() => ({ data: [] })),
+        ]).then(([voyagesRes, rapportsRes, eligRes, reservationsRes]) => {
             const beneficiaires = voyagesRes.data
+            setVoyages(beneficiaires)
+            setReservations(reservationsRes.data || [])
             setStats({
                 voyages: beneficiaires.length,
                 rapports: rapportsRes.data.length,
@@ -36,6 +44,31 @@ export default function EnseignantDashboard() {
         .finally(() => setLoading(false))
     }, [])
 
+    // Construit les données du graphique sur les 6 derniers mois
+    // ⚠️ Adapte "date_reservation" si le champ de date de tes réservations porte un autre nom
+    // (ex: date_depart, created_at, date_navette...)
+    const dataGraphique = (() => {
+        const maintenant = new Date()
+        const mois = []
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(maintenant.getFullYear(), maintenant.getMonth() - i, 1)
+            mois.push({ key: `${d.getFullYear()}-${d.getMonth()}`, label: moisLabels[d.getMonth()], Réservations: 0 })
+        }
+        reservations.forEach(r => {
+            const dateChamp = r.date_reservation || r.date_depart || r.date_navette || r.created_at
+            if (!dateChamp) return
+            const d = new Date(dateChamp)
+            const key = `${d.getFullYear()}-${d.getMonth()}`
+            const entree = mois.find(m => m.key === key)
+            if (entree) entree.Réservations += 1
+        })
+        return mois
+    })()
+
+    const voyagesRecents = [...voyages]
+        .sort((a, b) => new Date(b.date_debut || b.created_at) - new Date(a.date_debut || a.created_at))
+        .slice(0, 5)
+
     return (
         <Layout>
             <div className="space-y-6">
@@ -43,7 +76,7 @@ export default function EnseignantDashboard() {
                 {/* Header */}
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">
-                        Bonjour, {user?.prenom} 
+                        Bonjour, {user?.prenom}
                     </h1>
                     <p className="text-gray-500 text-sm mt-1">
                         Espace enseignant — {user?.ufr}
@@ -68,92 +101,128 @@ export default function EnseignantDashboard() {
                         </p>
                     </div>
                 )}
-<ProchaineNavette />
-                {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+                <ProchaineNavette />
+
+                {/* Cartes du haut = stats + actions rapides fusionnées */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
 
                     <div
                         onClick={() => navigate('/enseignant/voyages-etudes')}
-                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
                     >
-                        <div className="bg-blue-100 p-2 rounded-xl w-fit mb-3">
-                            <MapPin size={20} className="text-blue-700" />
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="bg-blue-100 w-11 h-11 rounded-full flex items-center justify-center">
+                                <MapPin size={20} className="text-blue-700" />
+                            </div>
                         </div>
                         <p className="text-2xl font-bold text-gray-800">{stats.voyages}</p>
-                        <p className="text-sm text-gray-500 mt-1">Voyages total</p>
+                        <p className="text-sm text-gray-500 mt-1">Mes voyages d'études</p>
                     </div>
 
                     <div
-                        onClick={() => navigate('/enseignant/voyages-etudes')}
-                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => navigate('/enseignant/voyages-etudes?statut=en_attente')}
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
                     >
-                        <div className="bg-orange-100 p-2 rounded-xl w-fit mb-3">
-                            <Clock size={20} className="text-orange-700" />
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="bg-orange-100 w-11 h-11 rounded-full flex items-center justify-center">
+                                <Clock size={20} className="text-orange-700" />
+                            </div>
                         </div>
                         <p className="text-2xl font-bold text-gray-800">{stats.enAttente}</p>
                         <p className="text-sm text-gray-500 mt-1">En attente</p>
                     </div>
 
                     <div
-                        onClick={() => navigate('/enseignant/voyages-etudes')}
-                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => navigate('/enseignant/voyages-etudes?statut=approuve')}
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
                     >
-                        <div className="bg-green-100 p-2 rounded-xl w-fit mb-3">
-                            <CheckCircle size={20} className="text-green-700" />
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="bg-green-100 w-11 h-11 rounded-full flex items-center justify-center">
+                                <CheckCircle size={20} className="text-green-700" />
+                            </div>
                         </div>
                         <p className="text-2xl font-bold text-gray-800">{stats.approuves}</p>
                         <p className="text-sm text-gray-500 mt-1">Approuvés</p>
                     </div>
 
-                  
-                </div>
-
-                {/* Actions rapides */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                    <h2 className="text-lg font-semibold text-gray-800 mb-4">Actions rapides</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                    
-
-                        <div
-                            onClick={() => navigate('/enseignant/voyages-etudes')}
-                            className="flex items-center gap-4 p-4 border-2 border-dashed border-blue-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition group cursor-pointer"
-                        >
-                            <div className="bg-blue-100 p-3 rounded-xl group-hover:bg-blue-200 transition">
-                                <MapPin size={22} className="text-blue-700" />
-                            </div>
-                            <div>
-                                <p className="font-semibold text-gray-800">Mes voyages d'études</p>
-                                <p className="text-sm text-gray-500">Voir mes sélections et soumettre justificatifs</p>
+                    <div
+                        onClick={() => navigate('/enseignant/mes-reservations')}
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
+                    >
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="bg-indigo-100 w-11 h-11 rounded-full flex items-center justify-center">
+                                <Bus size={20} className="text-indigo-700" />
                             </div>
                         </div>
+                        <p className="text-2xl font-bold text-gray-800">{stats.rapports}</p>
+                        <p className="text-sm text-gray-500 mt-1">Mes réservations</p>
+                    </div>
 
-<div
-    onClick={() => navigate('/enseignant/mes-reservations')}
-    className="flex items-center gap-4 p-4 border-2 border-dashed border-indigo-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition group cursor-pointer"
->
-    <div className="bg-indigo-100 p-3 rounded-xl group-hover:bg-indigo-200 transition">
-        <Bus size={22} className="text-indigo-700" />
-    </div>
-    <div>
-        <p className="font-semibold text-gray-800">Mes réservations</p>
-        <p className="text-sm text-gray-500">Voir mes QR codes navette</p>
-    </div>
-</div>
+                    <div
+                        onClick={() => navigate('/enseignant/scanner')}
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
+                    >
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="bg-purple-100 w-11 h-11 rounded-full flex items-center justify-center">
+                                <FileText size={20} className="text-purple-700" />
+                            </div>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-800">Scan</p>
+                        <p className="text-sm text-gray-500 mt-1">Scanner le bus</p>
+                    </div>
+                </div>
 
-<div
-    onClick={() => navigate('/enseignant/scanner')}
-    className="flex items-center gap-4 p-4 border-2 border-dashed border-green-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition group cursor-pointer"
->
-    <div className="bg-green-100 p-3 rounded-xl group-hover:bg-green-200 transition">
-        <Bus size={22} className="text-green-700" />
-    </div>
-    <div>
-        <p className="font-semibold text-gray-800">Scanner le bus</p>
-        <p className="text-sm text-gray-500">Scanner le QR code du bus</p>
-    </div>
-</div>
+                {/* Graphique + Voyages récents — prend le reste de la place */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                        <h2 className="text-lg font-semibold text-gray-800 mb-4">Réservations par mois</h2>
+                        <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={dataGraphique}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                                    <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                                    <Tooltip cursor={{ fill: '#f8fafc' }} />
+                                    <Bar dataKey="Réservations" fill="#1d4ed8" radius={[6, 6, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
 
+                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-semibold text-gray-800">Voyages récents</h2>
+                            <button onClick={() => navigate('/enseignant/voyages-etudes')} className="text-sm text-blue-700 font-medium hover:underline">
+                                Voir tout
+                            </button>
+                        </div>
+                        <div className="space-y-1">
+                            {loading ? (
+                                <p className="text-sm text-gray-400">Chargement...</p>
+                            ) : voyagesRecents.length === 0 ? (
+                                <p className="text-sm text-gray-400">Aucun voyage récent</p>
+                            ) : (
+                                voyagesRecents.map(v => (
+                                    <div
+                                        key={v.id}
+                                        onClick={() => navigate('/enseignant/voyages-etudes')}
+                                        className="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-slate-50 rounded-xl px-2 transition"
+                                    >
+                                        <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-100 text-blue-700">
+                                            <Bell size={14} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-gray-800 truncate">{v.destination || v.titre || 'Voyage'}</p>
+                                            <p className="text-xs text-gray-400">
+                                                {v.date_debut ? new Date(v.date_debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : ''}
+                                            </p>
+                                        </div>
+                                        <ChevronRight size={14} className="text-gray-300" />
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

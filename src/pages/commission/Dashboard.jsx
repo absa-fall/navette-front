@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
-import { FileText, CheckCircle, AlertCircle, Eye, MessageSquare, X, Trash2, MapPin, Search } from 'lucide-react'
+import { FileText, CheckCircle, AlertCircle, Eye, MessageSquare, X, Trash2, MapPin, Search, Layers } from 'lucide-react'
 
 export default function CommissionDashboard() {
     const navigate = useNavigate()
@@ -144,6 +144,8 @@ export default function CommissionDashboard() {
     const enAttenteAffiches       = filtrerDossiers(enAttente)
     const traitesAffiches         = filtrerDossiers(traites)
 
+    const totalDossiers = listesPubliees.length + enAttente.length + traites.length
+
     return (
         <Layout>
             <div className="space-y-6">
@@ -152,44 +154,75 @@ export default function CommissionDashboard() {
                     <p className="text-gray-500 text-sm mt-1">Validation des dossiers de justificatifs</p>
                 </div>
 
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-4">
-                   <div
-    onClick={() => setFiltreVue('listes')}
-    className={`bg-white rounded-2xl p-5 shadow-sm border cursor-pointer transition hover:shadow-md ${
-        filtreVue === 'listes' ? 'border-blue-400 ring-2 ring-blue-200' : 'border-gray-100'
-    }`}
->
-                        <div className="bg-blue-100 p-2 rounded-xl w-fit mb-3">
-    <MapPin size={20} className="text-blue-600" />
-</div>
+               {/* Cartes statistiques — cliquables, juste un effet hover, pas de couleur au clic */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
+
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="bg-blue-100 w-11 h-11 rounded-full flex items-center justify-center">
+                                <Layers size={20} className="text-blue-700" />
+                            </div>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-800">{totalDossiers}</p>
+                        <p className="text-sm text-gray-500 mt-1">Total des dossiers</p>
+                    </div>
+
+                    <div
+                        onClick={() => setFiltreVue('listes')}
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
+                    >
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="bg-purple-100 w-11 h-11 rounded-full flex items-center justify-center">
+                                <MapPin size={20} className="text-purple-700" />
+                            </div>
+                        </div>
                         <p className="text-2xl font-bold text-gray-800">{listesPubliees.length}</p>
                         <p className="text-sm text-gray-500 mt-1">Listes publiées</p>
                     </div>
+
                     <div
                         onClick={() => setFiltreVue('attente')}
-                        className={`bg-white rounded-2xl p-5 shadow-sm border cursor-pointer transition hover:shadow-md ${
-                            filtreVue === 'attente' ? 'border-blue-400 ring-2 ring-gray-200' : 'border-gray-100'
-                        }`}
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
                     >
-                        <div className="bg-blue-100 p-2 rounded-xl w-fit mb-3">
-                            <FileText size={20} className="text-blue-600" />
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="bg-orange-100 w-11 h-11 rounded-full flex items-center justify-center">
+                                <FileText size={20} className="text-orange-700" />
+                            </div>
                         </div>
                         <p className="text-2xl font-bold text-gray-800">{enAttente.length}</p>
                         <p className="text-sm text-gray-500 mt-1">Dossiers a traiter</p>
                     </div>
+
                     <div
                         onClick={() => setFiltreVue('traites')}
-                        className={`bg-white rounded-2xl p-5 shadow-sm border cursor-pointer transition hover:shadow-md ${
-                            filtreVue === 'traites' ? 'border-blue-400 ring-2 ring-gray-200' : 'border-gray-100'
-                        }`}
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
                     >
-                        <div className="bg-blue-100 p-2 rounded-xl w-fit mb-3">
-                            <CheckCircle size={20} className="text-blue-600" />
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="bg-green-100 w-11 h-11 rounded-full flex items-center justify-center">
+                                <CheckCircle size={20} className="text-green-700" />
+                            </div>
                         </div>
                         <p className="text-2xl font-bold text-gray-800">{traites.length}</p>
                         <p className="text-sm text-gray-500 mt-1">Dossiers traites</p>
                     </div>
+                </div>
+
+                {/* Onglets de navigation (séparés des cartes stats) */}
+                <div className="flex gap-2 border-b border-gray-200 flex-wrap">
+                    {[
+                        { key: 'listes', label: 'Listes publiées' },
+                        { key: 'attente', label: 'A traiter' },
+                        { key: 'traites', label: 'Traites' },
+                    ].map(tab => (
+                        <button key={tab.key} onClick={() => setFiltreVue(tab.key)}
+                            className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition ${
+                                filtreVue === tab.key
+                                    ? 'border-blue-700 text-blue-700'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}>
+                            {tab.label}
+                        </button>
+                    ))}
                 </div>
 
                 {/* Recherche */}
@@ -280,9 +313,9 @@ export default function CommissionDashboard() {
                                                     className="w-4 h-4 accent-gray-700 cursor-pointer" />
                                                 <div className="flex items-center justify-between flex-1 px-2 py-1">
                                                     <div className="flex items-center gap-3">
-                                                       <div className="bg-blue-100 p-2 rounded-lg">
-    <MapPin size={14} className="text-blue-600" />
-</div>
+                                                        <div className="bg-blue-100 p-2 rounded-lg">
+                                                            <MapPin size={14} className="text-blue-600" />
+                                                        </div>
                                                         <div>
                                                             <p className="text-sm font-semibold text-gray-800">{v.destination}</p>
                                                             <p className="text-xs text-gray-500">
@@ -290,12 +323,12 @@ export default function CommissionDashboard() {
                                                             </p>
                                                         </div>
                                                     </div>
-                                                   <button
-    onClick={() => navigate(`/voyages-etudes/${v.id}/liste-publiee`)}
-    className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition">
-    <FileText size={12} />
-    Voir la liste (PDF)
-</button>
+                                                    <button
+                                                        onClick={() => navigate(`/voyages-etudes/${v.id}/liste-publiee`)}
+                                                        className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition">
+                                                        <FileText size={12} />
+                                                        Voir la liste (PDF)
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
@@ -329,8 +362,17 @@ export default function CommissionDashboard() {
                                         const avisVR = d.avis?.find(a => a.user?.role === 'vice_recteur')
 
                                         return (
-                                            <div key={d.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-                                                <div className="flex items-start justify-between">
+                                            <div key={d.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4 relative">
+                                                {avisVR && (
+                                                    <span className={`absolute top-5 right-5 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 ${
+                                                        avisVR.avis === 'valide' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                                    }`}>
+                                                        {avisVR.avis === 'valide' ? <CheckCircle size={12} /> : <X size={12} />}
+                                                        Avis VR : {avisVR.avis === 'valide' ? 'Valide' : 'Rejete'}
+                                                    </span>
+                                                )}
+
+                                                <div className="flex items-start justify-between pr-32">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 font-bold text-sm">
                                                             {d.enseignant?.prenom?.[0]}{d.enseignant?.nom?.[0]}
@@ -340,13 +382,18 @@ export default function CommissionDashboard() {
                                                             <p className="text-xs text-gray-500">{d.enseignant?.ufr}</p>
                                                         </div>
                                                     </div>
-                                                    <div className="text-right">
-                                                        <p className="text-sm font-medium text-gray-700">{d.voyage?.destination}</p>
-                                                        <p className="text-xs text-gray-500">
-                                                            {new Date(d.voyage?.date_debut).toLocaleDateString('fr-FR')} - {new Date(d.voyage?.date_fin).toLocaleDateString('fr-FR')}
-                                                        </p>
-                                                    </div>
                                                 </div>
+
+                                                <div className="text-right -mt-2">
+                                                    <p className="text-sm font-medium text-gray-700">{d.voyage?.destination}</p>
+                                                    <p className="text-xs text-gray-500">
+                                                        {new Date(d.voyage?.date_debut).toLocaleDateString('fr-FR')} - {new Date(d.voyage?.date_fin).toLocaleDateString('fr-FR')}
+                                                    </p>
+                                                </div>
+
+                                                {avisVR?.commentaire && (
+                                                    <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">{avisVR.commentaire}</p>
+                                                )}
 
                                                 {d.justificatifs?.length > 0 && (
                                                     <div className="space-y-1">
@@ -358,14 +405,6 @@ export default function CommissionDashboard() {
                                                                 <Eye size={14} /> {j.nom_original || 'Fichier PDF'}
                                                             </button>
                                                         ))}
-                                                    </div>
-                                                )}
-
-                                                {avisVR && (
-                                                    <div className={`flex items-center gap-2 p-3 rounded-xl text-sm ${avisVR.avis === 'valide' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                                                        {avisVR.avis === 'valide' ? <CheckCircle size={14} /> : <X size={14} />}
-                                                        Avis VR : <span className="font-semibold">{avisVR.avis === 'valide' ? 'Valide' : 'Rejete'}</span>
-                                                        {avisVR.commentaire && <span className="text-xs ml-1"> {avisVR.commentaire}</span>}
                                                     </div>
                                                 )}
 
@@ -385,7 +424,7 @@ export default function CommissionDashboard() {
                                                             <>
                                                                 <button onClick={() => donnerAvis(d.id, 'valide')}
                                                                     disabled={actionLoading === 'avis_' + d.id + '_valide'}
-                                                                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transitiondisabled:opacity-50">
+                                                                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
                                                                     {actionLoading === 'avis_' + d.id + '_valide'
                                                                         ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                                                         : <CheckCircle size={14} />}
@@ -420,7 +459,7 @@ export default function CommissionDashboard() {
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                                     <FileText size={40} className="mx-auto mb-4 text-gray-300" />
                                     <h3 className="text-gray-700 font-semibold mb-2">Aucun dossier traite</h3>
-                                    <p className="text-gray-400 text-sm">Les dossiers que vous aveztraites apparaitront ici</p>
+                                    <p className="text-gray-400 text-sm">Les dossiers que vous avez traites apparaitront ici</p>
                                 </div>
                             ) : traitesAffiches.length === 0 ? (
                                 <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
@@ -466,11 +505,7 @@ export default function CommissionDashboard() {
                                         const isOuvert = justifOuvert === d.id
                                         return (
                                             <div key={d.id} className={`rounded-2xl border p-4 transition ${
-                                                selected.includes(d.id)
-                                                    ? 'bg-gray-50 border-gray-300'
-                                                    : monAvis?.avis === 'valide'
-                                                        ? 'bg-green-50 border-green-200'
-                                                        : 'bg-red-50 border-red-200'
+                                                selected.includes(d.id) ? 'bg-gray-50 border-gray-300' : 'bg-white border-gray-100 shadow-sm'
                                             }`}>
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-3">
@@ -478,7 +513,7 @@ export default function CommissionDashboard() {
                                                             checked={selected.includes(d.id)}
                                                             onChange={() => toggleSelect(d.id)}
                                                             className="w-4 h-4 accent-gray-700 cursor-pointer" />
-                                                        <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-gray-700 font-bold text-xs border border-gray-200">
+                                                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-700 font-bold text-xs">
                                                             {d.enseignant?.prenom?.[0]}{d.enseignant?.nom?.[0]}
                                                         </div>
                                                         <div>
@@ -496,7 +531,7 @@ export default function CommissionDashboard() {
                                                                 <Eye size={13} /> Voir justificatifs ({d.justificatifs.length})
                                                             </button>
                                                         )}
-                                                        <span className={`text-xs font-semibold px-2.5 py-1rounded-full ${
+                                                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
                                                             monAvis?.avis === 'valide'
                                                                 ? 'bg-green-100 text-green-700'
                                                                 : 'bg-red-100 text-red-700'

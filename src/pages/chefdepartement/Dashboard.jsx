@@ -3,7 +3,13 @@ import { useLocation } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
 import { useNavigate } from 'react-router-dom'
-import { FileText, CheckCircle, AlertCircle, Send, Eye, Bell, Users, Trash2, History, Search } from 'lucide-react'
+import { FileText, CheckCircle, AlertCircle, Send, Eye, Bell, Users, Trash2, History, Search, Layers, Clock } from 'lucide-react'
+
+const tabBadgeColors = {
+    blue: 'bg-blue-100 text-blue-700',
+    green: 'bg-green-100 text-green-700',
+    gray: 'bg-gray-100 text-gray-700',
+}
 
 export default function ChefDepartementDashboard() {
     const navigate = useNavigate()
@@ -20,6 +26,7 @@ export default function ChefDepartementDashboard() {
     const [selectedHistorique, setSelectedHistorique] = useState([])
     const [autorisationsAbsence, setAutorisationsAbsence] = useState([])
     const [searchQuery, setSearchQuery] = useState('')
+    const [filtreRapide, setFiltreRapide] = useState('tous')
 
     useEffect(() => {
         const params = new URLSearchParams(location.search)
@@ -143,25 +150,19 @@ export default function ChefDepartementDashboard() {
         } finally { setActionLoading(null) }
     }
 
-    const signerEtTransmettre = async (autorisationId) => {
-        setActionLoading(autorisationId + '_signer')
-        try {
-            await api.patch(`/autorisations-absence/${autorisationId}/avis-chef-departement`, {
-                avis: 'favorable',
-            })
-            showMsg('Autorisation signee et transmise au Directeur UFR')
-            fetchDossiers()
-        } catch (err) {
-            showMsg(err.response?.data?.message || 'Erreur', true)
-        } finally {
-            setActionLoading(null)
-        }
-    }
 
 
     const voyagesUniques          = [...new Map(dossiers.map(d => [d.voyage?.id, d.voyage])).values()].filter(Boolean)
     const autorisationsEnAttente  = autorisationsAbsence.filter(a => a.statut === 'soumise')
     const historiqueAutorisations = autorisationsAbsence.filter(a => a.avis_chef_departement !== null)
+
+    // ===== STATS DERIVEES =====
+    const nouvellesListes = voyagesUniques.filter(v => !v.enseignants_notifies).length
+    const signeesCeMois = historiqueAutorisations.filter(a => {
+        const d = new Date(a.updated_at || a.periode_debut)
+        const now = new Date()
+        return a.avis_chef_departement === 'favorable' && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    }).length
 
     // ===== FILTRAGE PAR RECHERCHE =====
     const filtrerVoyages = (liste) => liste.filter(v =>
@@ -177,12 +178,34 @@ export default function ChefDepartementDashboard() {
         a.lieu_deplacement?.toLowerCase().includes(searchQuery.toLowerCase())
     )
 
-    const voyagesAffiches        = filtrerVoyages(voyagesUniques)
-    const autorisationsAffichees = filtrerAutorisations(autorisationsEnAttente)
+    // ===== FILTRAGE RAPIDE (chips) =====
+    const appliquerFiltreRapide = (liste, champDate) => {
+        if (filtreRapide === 'tous') return liste
+        const maintenant = new Date()
+        return liste.filter(item => {
+            const dateVal = item[champDate]
+            if (!dateVal) return true
+            const d = new Date(dateVal)
+            if (filtreRapide === 'semaine') {
+                const debut = new Date(maintenant); debut.setDate(maintenant.getDate() - 7)
+                return d >= debut
+            }
+            if (filtreRapide === 'mois') {
+                return d.getMonth() === maintenant.getMonth() && d.getFullYear() === maintenant.getFullYear()
+            }
+            if (filtreRapide === 'retard') {
+                return d < maintenant
+            }
+            return true
+        })
+    }
+
+    const voyagesAffiches        = appliquerFiltreRapide(filtrerVoyages(voyagesUniques), 'date_debut')
+    const autorisationsAffichees = appliquerFiltreRapide(filtrerAutorisations(autorisationsEnAttente), 'periode_debut')
     const historiqueAffiche      = filtrerAutorisations(historiqueAutorisations)
 
     const BarreSelection = ({ selected, total, onSelectAll, onDeleteSelected, onDeleteAll }) => (
-        <div className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-2.5 shadow-sm">
+        <div className="sticky top-0 z-10 flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-2.5 shadow-sm">
             <div className="flex items-center gap-3">
                 <input type="checkbox"
                     checked={selected.length === total && total > 0}
@@ -215,6 +238,38 @@ export default function ChefDepartementDashboard() {
                     <p className="text-gray-500 text-sm mt-1">Gestion des dossiers de voyage d'etudes</p>
                 </div>
 
+                {/* ===== BANDE DE STATS ===== */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                        <div className="bg-blue-100 w-9 h-9 rounded-full flex items-center justify-center mb-2.5">
+                            <Layers size={16} className="text-blue-700" />
+                        </div>
+                        <p className="text-xl font-bold text-gray-800">{dossiers.length}</p>
+                        <p className="text-xs text-gray-500 mt-1">Total dossiers</p>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                        <div className="bg-blue-100 w-9 h-9 rounded-full flex items-center justify-center mb-2.5">
+                            <Bell size={16} className="text-blue-700" />
+                        </div>
+                        <p className="text-xl font-bold text-gray-800">{nouvellesListes}</p>
+                        <p className="text-xs text-gray-500 mt-1">Nouvelles listes</p>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                        <div className="bg-orange-100 w-9 h-9 rounded-full flex items-center justify-center mb-2.5">
+                            <Clock size={16} className="text-orange-700" />
+                        </div>
+                        <p className="text-xl font-bold text-gray-800">{autorisationsEnAttente.length}</p>
+                        <p className="text-xs text-gray-500 mt-1">En attente</p>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                        <div className="bg-green-100 w-9 h-9 rounded-full flex items-center justify-center mb-2.5">
+                            <CheckCircle size={16} className="text-green-700" />
+                        </div>
+                        <p className="text-xl font-bold text-gray-800">{signeesCeMois}</p>
+                        <p className="text-xs text-gray-500 mt-1">Signées ce mois</p>
+                    </div>
+                </div>
+
                 <div className="flex gap-2 border-b border-gray-200 flex-wrap">
                     {[
                         { key: 'listes', label: 'Nouvelles listes', icon: <Bell size={14} />, count: voyagesUniques.length, color: 'blue' },
@@ -222,14 +277,14 @@ export default function ChefDepartementDashboard() {
                         { key: 'historique', label: 'Historique', icon: <History size={14} />, count: historiqueAutorisations.length, color: 'gray' },
                     ].map(tab => (
                         <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                            className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center gap-2 ${
+                            className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center gap-2 rounded-t-lg ${
                                 activeTab === tab.key
-                                    ? 'border-blue-700 text-blue-700'
+                                    ? 'border-blue-700 text-blue-700 bg-slate-50'
                                     : 'border-transparent text-gray-500 hover:text-gray-700'
                             }`}>
                             {tab.icon} {tab.label}
                             {tab.count > 0 && (
-                                <span className={`bg-${tab.color}-100 text-${tab.color}-700 text-xs rounded-full px-1.5 py-0.5 font-bold`}>
+                                <span className={`${tabBadgeColors[tab.color]} text-xs rounded-full px-1.5 py-0.5 font-bold`}>
                                     {tab.count}
                                 </span>
                             )}
@@ -237,16 +292,33 @@ export default function ChefDepartementDashboard() {
                     ))}
                 </div>
 
-                {/* Recherche */}
-                <div className="relative max-w-sm">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="Rechercher par destination, enseignant, numéro..."
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                {/* Recherche + filtres rapides */}
+                <div className="flex items-center gap-2 flex-wrap">
+                    <div className="relative max-w-sm flex-1">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Rechercher par destination, enseignant, numéro..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+                    {[
+                        { key: 'tous', label: 'Tous' },
+                        { key: 'semaine', label: 'Cette semaine' },
+                        { key: 'mois', label: 'Ce mois' },
+                        { key: 'retard', label: 'En retard' },
+                    ].map(f => (
+                        <button key={f.key} onClick={() => setFiltreRapide(f.key)}
+                            className={`text-xs px-3 py-1.5 rounded-full border transition ${
+                                filtreRapide === f.key
+                                    ? 'bg-blue-100 text-blue-700 border-transparent'
+                                    : 'border-gray-300 text-gray-500 hover:bg-gray-50'
+                            }`}>
+                            {f.label}
+                        </button>
+                    ))}
                 </div>
 
                 {message && (
@@ -387,14 +459,11 @@ export default function ChefDepartementDashboard() {
                                             </p>
 
                                             <div className="flex gap-2 flex-wrap">
-                                                <button onClick={() => signerEtTransmettre(a.id)}
-                                                    disabled={actionLoading === a.id + '_signer'}
-                                                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
-                                                    {actionLoading === a.id + '_signer'
-                                                        ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                        : <CheckCircle size={14} />}
-                                                    Signer et transmettre au Directeur UFR
-                                                </button>
+                                               <button onClick={() => navigate('/autorisation-absence/' + a.id)}
+    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition">
+    <CheckCircle size={14} />
+    Signer et transmettre au Directeur UFR
+</button>
                                                 <button onClick={() => navigate('/autorisation-absence/' + a.id)}
                                                     className="flex items-center gap-2 border border-blue-700 text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm font-semibold transition">
                                                     <Eye size={14} />

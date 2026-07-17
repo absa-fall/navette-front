@@ -130,7 +130,9 @@ export default function DemandeAutorisationAbsence() {
         setTransmitLoading(true)
         setError('')
         try {
-            await api.patch(`/autorisations-absence/${autorisationCree.id}/transmettre-vers-chef`)
+            await api.patch(`/autorisations-absence/${autorisationCree.id}/transmettre-vers-chef`, {
+                signature: signatureEnseignant
+            })
             setSuccess(true)
             setTimeout(() => navigate('/enseignant/voyages-etudes'), 2000)
         } catch (err) {
@@ -140,14 +142,13 @@ export default function DemandeAutorisationAbsence() {
         }
     }
 
-    // Signer / transmettre une demande brouillon deja existante (liste "Mes autorisations precedentes")
-    const handleSignerItem = async (id) => {
+   const handleSignerItem = async (id) => {
         setItemActionLoading(id + '_signer')
         try {
-            const res = await api.patch(`/autorisations-absence/${id}/signer`)
-            setAutorisations(prev => prev.map(a => a.id === id ? res.data.autorisation : a))
+            const res = await api.get(`/autorisations-absence/${id}`)
+            setAutorisationCree(res.data)
         } catch (err) {
-            setDeleteMsg(err.response?.data?.message || 'Erreur lors de la signature')
+            setDeleteMsg(err.response?.data?.message || 'Impossible de charger la demande')
             setTimeout(() => setDeleteMsg(''), 3000)
         } finally {
             setItemActionLoading(null)
@@ -518,20 +519,17 @@ export default function DemandeAutorisationAbsence() {
                                                         </button>
                                                     )}
 
-                                                    {/* Signee mais pas encore transmise */}
+                                                   {/* Signee mais pas encore transmise -> redirige vers le document pour signer et transmettre correctement */}
                                                     {a.statut === 'signee' && (
                                                         <button
-                                                            onClick={() => handleTransmettreItem(a.id)}
-                                                            disabled={itemActionLoading === a.id + '_transmettre'}
-                                                            className="w-full flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2.5 rounded-xl transition disabled:opacity-50"
+                                                            onClick={() => navigate(`/autorisation-absence/${a.id}/document`)}
+                                                            className="w-full flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2.5 rounded-xl transition"
                                                         >
-                                                            {itemActionLoading === a.id + '_transmettre'
-                                                                ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                                : <Send size={14} />}
-                                                            Transmettre au Chef de Département
+                                                            <Send size={14} />
+                                                            Signer et transmettre au Chef de Département
                                                         </button>
                                                     )}
-
+                                                    
                                                     {/* Bouton voir document (uniquement une fois le circuit engage) */}
                                                     {!['brouillon', 'signee'].includes(a.statut) && (
                                                         <button

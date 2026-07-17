@@ -4,79 +4,91 @@ import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
     Bus, MapPin, FileText, Users, LayoutDashboard, LogOut,
-    Menu, X, ChevronRight, Bell, Trash2, CheckCheck, BarChart2, Camera, 
-    CheckCircle, Clock, XCircle, Calendar, Truck, Lock,
+    Menu, X, ChevronRight, ChevronDown, Bell, Trash2, CheckCheck, BarChart2, Camera, 
+    CheckCircle, Clock, XCircle, Calendar, Truck, Lock, Settings, User, Plane,
 } from 'lucide-react'
 const menuParRole = {
     admin: [
         { label: 'Dashboard',     icon: LayoutDashboard, path: '/admin/dashboard' },
         { label: 'Utilisateurs',  icon: Users,           path: '/admin/utilisateurs' },
-       
+        { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
     ],
     ddl: [
         { label: 'Dashboard',          icon: LayoutDashboard, path: '/ddl/dashboard' },
-        { label: 'Mes navettes',       icon: Bus,             path: '/ddl/navettes' },
+        { label: 'Mes navettes',       icon: '/im.png',       path: '/ddl/navettes' },
         { label: 'En attente',         icon: Clock,           path: '/ddl/en-attente' },
         { label: 'Demandes rejetées',  icon: XCircle,         path: '/ddl/demandes-rejetees' },
         { label: 'Véhicules',          icon: Truck,           path: '/ddl/vehicules' },
         { label: 'Chauffeurs',         icon: Users,           path: '/ddl/chauffeurs' },
+         { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
     ],
     enseignant: [
         { label: 'Dashboard',        icon: LayoutDashboard, path: '/enseignant/dashboard' },
-        { label: 'Mes voyages',      icon: MapPin,          path: '/enseignant/voyages-etudes' },
-        { label: 'Réserver navette', icon: Bus,             path: '/enseignant/reserver' },
+        { label: 'Mes voyages',      icon: '/avion-voyage.png', path: '/enseignant/voyages-etudes' },
+        { label: 'Réserver navette', icon: '/im.png',           path: '/enseignant/reserver' },
+         { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
     ],
     drh: [
         { label: 'Dashboard',      icon: LayoutDashboard, path: '/drh/dashboard' },
         { label: 'En attente',     icon: Clock,           path: '/drh/ordres?statut=en_attente' },
         { label: 'Approuvés',      icon: CheckCircle,     path: '/drh/ordres?statut=approuve' },
         { label: 'Rejetés',        icon: XCircle,         path: '/drh/ordres?statut=rejete' },
+         { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
     ],
     sg_drh: [
         { label: 'Dashboard',       icon: LayoutDashboard, path: '/sg-drh/dashboard' },
         { label: 'Ordres à signer', icon: FileText,        path: '/sg-drh/ordres' },
+         { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
     ],
     chauffeur: [
         { label: 'Dashboard',   icon: LayoutDashboard, path: '/chauffeur/dashboard' },
-        { label: 'Mes trajets', icon: Bus,             path: '/chauffeur/trajets' },
+        { label: 'Mes trajets', icon: '/im.png',       path: '/chauffeur/trajets' },
+         { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
     ],
     sg_vr: [
         { label: 'Dashboard',      icon: LayoutDashboard, path: '/sg-vr/dashboard?tab=accueil' },
         { label: 'Récapitulatifs', icon: FileText,        path: '/sg-vr/recapitulatifs' },
         { label: 'Graphiques',     icon: BarChart2,       path: '/sg-vr/dashboard?tab=graphiques' },
+         { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
     ],
    vice_recteur: [
     { label: 'Dashboard',        icon: LayoutDashboard, path: '/vice-recteur/dashboard' },
-    { label: "Voyages d'etudes", icon: MapPin,          path: '/vice-recteur/voyages-etudes' },
+    { label: "Voyages d'etudes", icon: '/avion-voyage.png', path: '/vice-recteur/voyages-etudes' },
+     { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
 ],
     chef_departement: [
         { label: 'Dashboard',               icon: LayoutDashboard, path: '/chef-departement/dashboard' },
         { label: 'Nouvelles listes',        icon: Bell,            path: '/chef-departement/dashboard?tab=listes' },
-      
         { label: "Demandes d'autorisation", icon: CheckCircle,     path: '/chef-departement/dashboard?tab=autorisations' },
+         { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
     ],
     directeur_ufr: [
         { label: 'Dashboard',           icon: LayoutDashboard, path: '/directeur-ufr/dashboard' },
         { label: 'En attente',          icon: FileText,        path: '/directeur-ufr/dashboard?tab=attente' },
         { label: 'Transmis au Recteur', icon: CheckCircle,     path: '/directeur-ufr/dashboard?tab=transmis' },
+         { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
     ],
     recteur: [
         { label: 'Dashboard',               icon: LayoutDashboard, path: '/recteur/dashboard' },
         { label: 'Arretes à signer',        icon: FileText,        path: '/recteur/dashboard?tab=arretes' },
         { label: 'Autorisations de sortie', icon: CheckCircle,     path: '/recteur/dashboard?tab=autorisations' },
+         { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
     ],
     commission: [
         { label: 'Dashboard', icon: LayoutDashboard, path: '/commission/dashboard' },
+         { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
     ],
     usager: [
     { label: 'Dashboard',        icon: LayoutDashboard, path: '/usager/dashboard' },
-    { label: 'Réserver',         icon: Bus,             path: '/usager/reserver' },
+    { label: 'Réserver',         icon: '/im.png',       path: '/usager/reserver' },
     { label: 'Scanner le bus',   icon: Camera,          path: '/usager/scanner' },
     { label: 'Mes réservations', icon: Calendar,        path: '/usager/dashboard?tab=reservations' },
+     { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
 { label: 'Notifications',    icon: Bell,             path: '/usager/dashboard?tab=notifications' },
 ],
 }
 
+const rolesVoyage = ['vice_recteur', 'enseignant', 'commission']
 const roleLabels = {
     admin:            'Administrateur',
     ddl:              'DDL',
@@ -92,7 +104,7 @@ const roleLabels = {
     commission:       'Commission',
     usager:           'Usager',
 }
-const getRoleLabel = (user) => {
+export const getRoleLabel = (user) => {
     if (!user) return ''
 
     switch (user.role) {
@@ -142,19 +154,19 @@ const notifNavigation = {
     usager:           '/usager/dashboard',
 }
 function AvatarImg({ avatar, prenom, nom, size = 'md', className = '' }) {
-    const sizes = { sm: 'w-8 h-8 text-xs', md: 'w-9 h-9 text-sm', lg: 'w-16 h-16 text-xl' }
-    const initials = `${prenom?.[0] ?? ''}${nom?.[0] ?? ''}`
+    const sizes = { sm: 'w-8 h-8', md: 'w-9 h-9', lg: 'w-16 h-16' }
+    const iconSizes = { sm: 14, md: 16, lg: 28 }
     if (avatar) {
         return <img src={avatar} alt="avatar" className={`${sizes[size]} rounded-full object-cover flex-shrink-0 ${className}`} />
     }
     return (
-        <div className={`${sizes[size]} rounded-full flex items-center justify-center font-bold flex-shrink-0 bg-white/20 text-white ${className}`}>
-            {initials}
+        <div className={`${sizes[size]} rounded-full flex items-center justify-center flex-shrink-0 bg-white/20 text-white ${className}`}>
+            <User size={iconSizes[size]} />
         </div>
     )
 }
 
-export default function Layout({ children }) {
+export default function Layout({ children, title, subtitle }) {
     const { user, logout } = useAuth()
     const navigate   = useNavigate()
     const location   = useLocation()
@@ -181,6 +193,13 @@ const [passwordError, setPasswordError] = useState('')
 const [selectedNotif, setSelectedNotif] = useState(null)
     const totalNotifs = notifications.filter(n => !n.lu).length
     const totalLues   = notifications.filter(n => n.lu).length
+
+    const rolesSansImage = ['admin', 'chef_departement', 'recteur', 'directeur_ufr']
+    const isVoyageRole = rolesVoyage.includes(user?.role)
+   const isVoyageIcone = [...rolesVoyage, 'chef_departement', 'recteur', 'directeur_ufr'].includes(user?.role)
+    const sidebarBgImage = rolesSansImage.includes(user?.role) ? null : (isVoyageRole ? '/avion-voyage.png' : '/im.png')
+    
+    const sidebarBgPosition = isVoyageRole ? 'center 15%' : 'bottom'
 
     useEffect(() => {
         if (isMobile()) setSidebarOpen(false)
@@ -345,7 +364,7 @@ const allerVersPage = () => {
     const mobile = isMobile()
 
     return (
-        <div className="min-h-screen flex bg-[#F8FAFC]">
+        <div className="min-h-screen flex bg-slate-100">
 
             {sidebarOpen && mobile && (
                 <div
@@ -355,34 +374,83 @@ const allerVersPage = () => {
             )}
 
             <aside className={`
-                bg-blue-950 text-white flex flex-col
+                bg-blue-950 text-white flex flex-col relative overflow-hidden
                 transition-all duration-300 ease-in-out min-h-screen z-40 shadow-2xl shadow-blue-950/20
                 ${mobile
                     ? `fixed top-0 left-0 h-full w-64 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
                     : `relative ${sidebarOpen ? 'w-64' : 'w-[72px]'}`
                 }
             `}>
+                {/* Fond image — visible seulement si un rôle a une image associée
+                    (bus ou avion). L'admin n'a pas d'image de fond.
+                    Utilise une vraie balise <img> (et non un background-image CSS)
+                    pour éviter qu'elle disparaisse silencieusement lors des re-renders
+                    déclenchés par le polling (notifications/badges toutes les 5-10s). */}
+                {sidebarBgImage && (
+                    <img
+                        key={sidebarBgImage}
+                        src={sidebarBgImage}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover z-0"
+                        style={{ objectPosition: sidebarBgPosition }}
+                        onError={(e) => {
+                            console.error('Image de fond sidebar introuvable:', sidebarBgImage)
+                        }}
+                    />
+                )}
 
-                <div className={`flex items-center gap-3 h-16 border-b border-white/10 ${sidebarOpen ? 'px-5' : 'px-4 justify-center'}`}>
-                    <div className="bg-blue-500 p-2 rounded-xl flex-shrink-0 shadow-inner shadow-white/5">
-                        <Bus size={20} className="text-white" />
+                {/* Dégradé par-dessus pour garder le texte lisible */}
+                <div className="absolute inset-0 bg-gradient-to-b from-blue-950/95 via-blue-950/90 to-blue-950/80 z-0" />
+
+                {/* Barre entête de la sidebar */}
+               <div className={`relative z-10 flex items-center gap-3 h-[72px] bg-gradient-to-br from-blue-900 to-blue-950 border-b border-white/10 ${sidebarOpen ? 'px-5' : 'px-4 justify-center'}`}>
+                    <div className="bg-gradient-to-br from-blue-400 to-blue-600 p-2.5 rounded-xl flex-shrink-0 shadow-lg shadow-blue-900/40 animate-pulse-glow">
+                        {isVoyageIcone ? (
+                            <Plane size={20} className="text-white animate-fly" />
+                        ) : (
+                            <Bus size={20} className="text-white animate-drive" />
+                        )}
                     </div>
-                    {sidebarOpen && <span className="font-serif font-bold text-[15px] tracking-tight">UADB Mobilité</span>}
+                    {sidebarOpen && (
+                        <div className="flex flex-col leading-tight">
+                            <span className="font-serif font-bold text-[15px] tracking-tight text-white">UADB Mobilité</span>
+                            <span className="text-[11px] text-blue-300/80 font-medium">Université Alioune Diop de Bambey</span>
+                        </div>
+                    )}
+                    <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-400/40 to-transparent" />
                 </div>
 
-                <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto overflow-x-hidden">
+                <nav className="relative z-10 flex-1 py-4 space-y-1 overflow-y-auto overflow-x-hidden">
                     {menu.map((item) => {
-                        const Icon = item.icon
+                        const isImageIcon = typeof item.icon === 'string'
+                        const Icon = !isImageIcon ? item.icon : null
                         const isActive = (location.pathname + location.search) === item.path
                         return (
                             <Link key={item.path} to={item.path}
-                                className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+                                className={`group relative flex items-center gap-3 py-3 transition-all duration-200 ${
                                     isActive
-                                        ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-950/20'
-                                        : 'text-blue-200/80 hover:bg-white/10 hover:text-white'
+                                        ? 'bg-blue-800 text-white font-semibold rounded-l-xl ml-3 pl-3 pr-3'
+                                        : 'text-blue-200/80 hover:bg-white/10 hover:text-white rounded-xl mx-3 px-3'
                                 } ${!sidebarOpen ? 'justify-center' : ''}`}
                             >
-                                <Icon size={18} className={`flex-shrink-0 transition-transform duration-200 ${!isActive ? 'group-hover:scale-110' : ''}`} />
+                                {isActive && (
+                                    <span className="absolute left-0 top-0 h-full w-1.5 rounded-r-full bg-blue-400" />
+                                )}
+
+                               {isImageIcon ? (
+                                    <img
+                                        src={item.icon}
+                                        alt=""
+                                        className={`w-[18px] h-[18px] flex-shrink-0 object-contain transition-transform duration-200 ${
+                                            isActive ? '' : 'group-hover:scale-110 opacity-80 group-hover:opacity-100'
+                                        } ${item.icon === '/avion-voyage.png' ? 'animate-fly' : ''}`}
+                                    />
+                                ) : (
+                                    <Icon size={18} className={`flex-shrink-0 transition-transform duration-200 ${
+                                        isActive ? 'text-white' : 'group-hover:scale-110'
+                                    }`} />
+                                )}
+
                                 {sidebarOpen && (
                                     <>
                                         <span className="text-sm flex-1">{item.label}</span>
@@ -413,7 +481,7 @@ const allerVersPage = () => {
                 </nav>
 
                 {sidebarOpen && notifications.length > 0 && (
-                    <div className="px-3 pb-2 space-y-1">
+                    <div className="relative z-10 px-3 pb-2 space-y-1">
                         {totalLues > 0 && (
                             <button onClick={supprimerLues}
                                 className="w-full flex items-center gap-2 text-blue-200/70 hover:text-white text-xs px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors duration-200">
@@ -428,7 +496,7 @@ const allerVersPage = () => {
                 )}
 
                 {sidebarOpen && (
-                    <div className="p-3 border-t border-white/10">
+                    <div className="relative z-10 p-3 border-t border-white/10">
                         <div className="flex items-center gap-3 mb-2 p-2 rounded-xl hover:bg-white/5 transition-colors duration-200">
                             <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                                 <AvatarImg avatar={avatar} prenom={user?.prenom} nom={user?.nom} size="md" className="ring-2 ring-white/20" />
@@ -451,17 +519,46 @@ const allerVersPage = () => {
 
             <div className="flex-1 flex flex-col min-w-0">
 
-                <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 md:px-6 h-16 flex items-center justify-between sticky top-0 z-20 shadow-sm shadow-slate-200/50">
-                    <button onClick={() => setSidebarOpen(!sidebarOpen)}
-                        className="text-slate-500 hover:text-slate-800 hover:bg-slate-100 p-2 rounded-lg transition-colors duration-200">
-                        {sidebarOpen && !mobile ? <X size={20} /> : <Menu size={20} />}
-                    </button>
+                {/* Barre entête principale (header) */}
+                <header className="bg-white border-b border-slate-200 px-4 md:px-6 h-16 flex items-center justify-between sticky top-0 z-20 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => setSidebarOpen(!sidebarOpen)}
+                            className="text-slate-500 hover:text-blue-700 hover:bg-blue-50 p-2 rounded-lg transition-colors duration-200">
+                            {sidebarOpen && !mobile ? <X size={20} /> : <Menu size={20} />}
+                        </button>
+                        <div className="hidden md:block h-6 w-px bg-slate-200" />
+                       <div className="hidden md:flex flex-col leading-tight">
+                            {title ? (
+                                <>
+                                    <span className="text-lg font-bold text-slate-800">{title}</span>
+                                    {subtitle && <span className="text-xs text-slate-500">{subtitle}</span>}
+                                </>
+                            ) : (
+                                <>
+                                    <span className="text-sm font-semibold text-blue-800">{getRoleLabel(user)}</span>
+                                    <span className="text-xs text-purple-900">Bienvenue, {user?.prenom}</span>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                    <div className="hidden md:block relative flex-1 max-w-md mx-6">
+                        <input
+                            type="text"
+                            placeholder="Rechercher..."
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                        />
+                        <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 md:gap-3"></div>
 
                     <div className="flex items-center gap-1.5 md:gap-3">
 
                         <div className="relative notif-dropdown">
                             <button onClick={() => setNotifOpen(!notifOpen)}
-                                className="relative text-slate-500 hover:text-slate-800 p-2.5 rounded-full hover:bg-slate-100 transition-colors duration-200">
+                                className="relative text-slate-500 hover:text-blue-700 p-2.5 rounded-full hover:bg-blue-50 transition-colors duration-200">
                                 <Bell size={20} />
                                 {totalNotifs > 0 && (
                                     <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] w-[18px] h-[18px] rounded-full flex items-center justify-center font-bold ring-2 ring-white animate-pulse">
@@ -542,31 +639,29 @@ const allerVersPage = () => {
                         </div>
 
                         <div className="relative profile-dropdown">
-                            <button onClick={() => setProfileOpen(!profileOpen)}
-                                className="flex items-center gap-2 hover:bg-slate-100 pl-1.5 pr-3 py-1.5 rounded-full transition-colors duration-200">
-                                {avatar ? (
-                                    <img src={avatar} alt="avatar"
-                                        className="w-8 h-8 rounded-full object-cover ring-2 ring-blue-100" />
-                                ) : (
-                                    <div className="bg-blue-600 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-blue-100">
-                                        {user?.prenom?.[0]}{user?.nom?.[0]}
-                                    </div>
-                                )}
-                                <span className="hidden sm:block text-sm font-medium text-slate-700">
-                                    {user?.prenom} {user?.nom}
-                                </span>
-                            </button>
+                           <button onClick={() => setProfileOpen(!profileOpen)}
+    className="flex items-center gap-1.5 hover:bg-blue-50 pl-1.5 pr-2 py-1.5 rounded-full transition-colors duration-200">
+    {avatar ? (
+        <img src={avatar} alt="avatar"
+            className="w-9 h-9 rounded-full object-cover ring-2 ring-blue-100" />
+    ) : (
+        <div className="bg-blue-600 w-9 h-9 rounded-full flex items-center justify-center text-white ring-2 ring-blue-100">
+            <User size={16} />
+        </div>
+    )}
+    <ChevronDown size={16} className="text-slate-400" />
+</button>
 
                             {profileOpen && (
                                 <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl shadow-slate-300/40 border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                    <div className="bg-blue-950 p-5 flex flex-col items-center gap-3">
+                                    <div className="bg-gradient-to-br from-blue-900 to-blue-950 p-5 flex flex-col items-center gap-3">
                                         <div className="relative group">
                                             {avatar ? (
                                                 <img src={avatar} alt="avatar"
                                                     className="w-16 h-16 rounded-full object-cover border-4 border-white/30 shadow-lg" />
                                             ) : (
-                                                <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-white text-2xl font-bold border-4 border-white/30 shadow-lg">
-                                                    {user?.prenom?.[0]}{user?.nom?.[0]}
+                                                <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-white border-4 border-white/30 shadow-lg">
+                                                    <User size={28} />
                                                 </div>
                                             )}
                                             <button

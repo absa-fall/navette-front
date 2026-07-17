@@ -616,7 +616,7 @@ export default function VoyagesEtudes() {
 
                                                         {dStep === 'apercu' && (
                                                             <div className="space-y-3">
-                                                                <div className="bg-white border border-slate-200 rounded-xl px-8 py-7 font-serif text-slate-900">
+                                                               <div className="bg-white border border-gray-200 rounded-xl px-8 py-7 font-serif text-gray-900">
                                                                     <div className="flex justify-between items-start mb-4">
                                                                         <div className="text-[10px] leading-relaxed">
                                                                             <p className="font-bold">REPUBLIQUE DU SENEGAL</p>
@@ -631,7 +631,11 @@ export default function VoyagesEtudes() {
                                                                         </div>
                                                                     </div>
 
-                                                                    <hr className="border-slate-800 mb-3" />
+                                                                    <div className="flex justify-center mb-3">
+                                                                        <img src="/logo-uadb.png" alt="Logo UADB" className="w-14 h-14 object-contain" />
+                                                                    </div>
+
+                                                                    <hr className="border-gray-800 mb-3" />
 
                                                                     <div className="text-center font-bold text-[14px] underline tracking-wide mb-5">
                                                                         LISTE DEFINITIVE DES BENEFICIAIRES — {voyage.destination?.toUpperCase()}

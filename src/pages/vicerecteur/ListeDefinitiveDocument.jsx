@@ -64,9 +64,13 @@ export default function ListeDefinitiveDocument() {
                         <p className="font-bold">UNIVERSITE ALIOUNE DIOP</p>
                         <p className="italic text-[10px]">« L'excellence est ma constance, l'éthique ma vertu »</p>
                     </div>
-                    <div className="text-right text-[12px]">
-                        <p>Bambey, le {new Date().toLocaleDateString('fr-FR')}</p>
+                   <div className="text-right text-[12px]">
+                       <p>Bambey, le {voyage.date_liste_definitive ? new Date(voyage.date_liste_definitive).toLocaleDateString('fr-FR') : new Date().toLocaleDateString('fr-FR')}</p>
                     </div>
+                </div>
+
+                <div className="flex justify-center mb-3">
+                    <img src="/logo-uadb.png" alt="Logo UADB" className="w-16 h-16 object-contain" />
                 </div>
 
                 <hr className="border-gray-800 mb-4" />

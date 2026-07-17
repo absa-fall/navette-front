@@ -37,7 +37,7 @@ export default function ArreteVoyageDocument() {
             .finally(() => setLoading(false))
     }, [voyageId])
 
-    const estBrouillon = data?.statut === 'brouillon'
+   const estBrouillon = data && !data.signe
     const peutSigner = user?.role === 'recteur'
 
     const transmettre = async () => {
@@ -83,7 +83,7 @@ export default function ArreteVoyageDocument() {
                 }
             `}</style>
 
-            {/* Boutons d'action */}
+           {/* Bouton imprimer */}
             <div className="flex justify-center gap-3 mb-6 print:hidden">
                 <button
                     onClick={() => window.print()}
@@ -91,23 +91,10 @@ export default function ArreteVoyageDocument() {
                 >
                     <Printer size={16} /> Imprimer / Télécharger
                 </button>
-
-                {estBrouillon && (
-                    <button
-                        onClick={transmettre}
-                        disabled={!signature || transmission}
-                        className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white font-semibold px-6 py-2.5 rounded-xl transition disabled:opacity-50"
-                    >
-                        {transmission
-                            ? <Loader2 size={16} className="animate-spin" />
-                            : <Send size={16} />}
-                        Transmettre l'arrêté
-                    </button>
-                )}
             </div>
 
             {/* Document */}
-            <div className="max-w-3xl mx-auto bg-white border border-gray-200 shadow-sm rounded-xl px-12 py-10 print:shadow-none print:border-none print:rounded-none print:max-w-full print:px-8 print:py-4 font-serif text-gray-900">
+         <div className="max-w-3xl mx-auto bg-white border border-gray-200 shadow-sm rounded-xl px-12 py-10 print:shadow-none print:border-none print:rounded-none print:max-w-full print:px-8 print:py-4 font-serif text-gray-900 pb-24 print:pb-4">
 
                 {/* En-tête */}
                 <div className="flex justify-between items-start mb-6 print:mb-4">
@@ -237,13 +224,33 @@ export default function ArreteVoyageDocument() {
                         />
                     </div>
                 </div>
-
-                {/* Pied de page */}
+{/* Pied de page */}
                 <div className="text-center text-[10px] text-gray-600 mt-12 print:mt-6 border-t pt-3 print:pt-2">
                     <p>Tél. : (221) 33 973 30 86 // Fax : (221) 33 973 30 93 // B.P. : 30 – Bambey (République du Sénégal)</p>
                     <p>Internet : www.uadb.sn // Courriel : rectorat@uadb.edu.sn</p>
                 </div>
             </div>
+
+            {/* Barre d'action fixe — apparaît une fois la signature complétée */}
+            {estBrouillon && signature && (
+                <div className="print:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] z-40">
+                    <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
+                        <p className="text-sm text-gray-600 hidden sm:block">
+                            Signature enregistrée — prêt à transmettre l'arrêté.
+                        </p>
+                        <button
+                            onClick={transmettre}
+                            disabled={transmission}
+                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white font-semibold px-6 py-2.5 rounded-xl transition disabled:opacity-50"
+                        >
+                            {transmission
+                                ? <Loader2 size={16} className="animate-spin" />
+                                : <Send size={16} />}
+                            Transmettre l'arrêté
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

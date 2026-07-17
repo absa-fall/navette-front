@@ -10,7 +10,7 @@ export default function NouvelleNavette() {
         chauffeur_id: '',
         chauffeur_nom: '',
         chauffeur_prenom: '',
-        nationalite: 'Sénégalaise',
+        nationalite: 'Sénégalais(e)',
         grade_fonction: 'Chauffeur',
         destination: '',
         objet_mission: 'conduit la navette de l\'UAD',
@@ -211,7 +211,7 @@ setDraftId(res.data.ordre.id)
         <Layout>
             <div className="max-w-2xl mx-auto space-y-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Nouvelle demande de navette</h1>
+                    <h1 className="text-2xl font-bold text-blue-800">Nouvelle demande de navette</h1>
                     <p className="text-gray-500 text-sm mt-1">Remplissez l'ordre de mission</p>
                 </div>
                 {error && (

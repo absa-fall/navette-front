@@ -3,29 +3,33 @@ import { useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import MissionEnCours from '../../components/MissionEnCours'
+import IncidentsSignales from '../../components/IncidentsSignales'
 import { Bus, ClipboardList, CheckCircle, Clock, XCircle, QrCode } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+
+const moisLabels = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc']
 
 export default function ChauffeurDashboard() {
     const navigate = useNavigate()
 
-   const [stats, setStats] = useState({
-    trajetsAssignes: 0,
-    enAttente: 0,
-    trajetsEffectues: 0,
-    
-})
+    const [stats, setStats] = useState({
+        trajetsAssignes: 0,
+        enAttente: 0,
+        trajetsEffectues: 0,
+    })
+
+    const [trajets, setTrajets] = useState([])
 
     useEffect(() => {
         const fetchStats = async () => {
             try {
                 const res = await api.get('/notifications/sidebar')
 
-               setStats({
-    trajetsAssignes: res.data.trajetsAssignes || 0,
-    enAttente: res.data.enAttente || 0,
-    trajetsEffectues: res.data.trajetsEffectues || 0,
-    
-})
+                setStats({
+                    trajetsAssignes: res.data.trajetsAssignes || 0,
+                    enAttente: res.data.enAttente || 0,
+                    trajetsEffectues: res.data.trajetsEffectues || 0,
+                })
             } catch (error) {
                 console.error('Erreur stats chauffeur:', error)
             }
@@ -38,22 +42,52 @@ export default function ChauffeurDashboard() {
         return () => clearInterval(interval)
     }, [])
 
+    useEffect(() => {
+        const fetchTrajets = async () => {
+            try {
+                const res = await api.get('/chauffeur/trajets')
+                setTrajets(res.data)
+            } catch (error) {
+                console.error('Erreur trajets chauffeur:', error)
+            }
+        }
+        fetchTrajets()
+    }, [])
+
+    const dataGraphique = (() => {
+        const maintenant = new Date()
+        const mois = []
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(maintenant.getFullYear(), maintenant.getMonth() - i, 1)
+            mois.push({ key: `${d.getFullYear()}-${d.getMonth()}`, label: moisLabels[d.getMonth()], Trajets: 0 })
+        }
+        trajets.forEach(t => {
+            if (!t.date_depart) return
+            const d = new Date(t.date_depart)
+            const key = `${d.getFullYear()}-${d.getMonth()}`
+            const entree = mois.find(m => m.key === key)
+            if (entree) entree.Trajets += 1
+        })
+        return mois
+    })()
+
     return (
         <Layout>
             <div className="space-y-6">
 
-<div>
-    <h1 className="text-2xl font-bold text-gray-800">
-        Dashboard Chauffeur
-    </h1>
-    <p className="text-gray-500 text-sm mt-1">
-        Gestion de vos trajets
-    </p>
-</div>
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-800">
+                        Dashboard Chauffeur
+                    </h1>
+                    <p className="text-gray-500 text-sm mt-1">
+                        Gestion de vos trajets
+                    </p>
+                </div>
 
-<MissionEnCours />
+                <IncidentsSignales />
 
-<div className="grid grid-cols-1 md:grid-cols-3 gap-5"></div>
+                <MissionEnCours />
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
                     <div
@@ -107,9 +141,9 @@ export default function ChauffeurDashboard() {
                         </p>
                     </div>
 
-                    </div>
+                </div>
 
-                {/* Réservations / Mon bus / Scanner — 3 colonnes, boutons unifiés en bleu, plus de "Mes trajets du jour" */}
+                {/* Réservations / Mon bus / Scanner */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
                     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
@@ -162,6 +196,22 @@ export default function ChauffeurDashboard() {
                         </button>
                     </div>
 
+                </div>
+
+                {/* Graphique trajets par mois */}
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <h2 className="text-lg font-semibold text-gray-800 mb-4">Trajets par mois</h2>
+                    <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={dataGraphique}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                                <Tooltip cursor={{ fill: '#f8fafc' }} />
+                                <Bar dataKey="Trajets" fill="#1d4ed8" radius={[6, 6, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
 
             </div>

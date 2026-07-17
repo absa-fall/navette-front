@@ -10,7 +10,7 @@ import Login from './pages/Login'
 import Inscription from './pages/Inscription'
 
 import OrdreMissionDocument from "./pages/drh/OrdreMissionDocument";
-
+import Parametres from './pages/Parametres'
 // DDL
 import DDLDashboard from './pages/ddl/Dashboard'
 import MesNavettes from './pages/ddl/MesNavettes'
@@ -120,7 +120,7 @@ function App() {
 
                     {/* Voyages Etudes */}
                 <Route path="/autorisation-absence/:id" element={<PrivateRoute><AutorisationAbsenceDocument /></PrivateRoute>} />
-
+<Route path="/parametres" element={<PrivateRoute><Parametres /></PrivateRoute>} />
                     {/* DRH */}
                     <Route path="/drh/dashboard" element={<PrivateRoute><DRHDashboard /></PrivateRoute>} />
                     <Route path="/drh/ordres" element={<PrivateRoute><DRHOrdres /></PrivateRoute>} />

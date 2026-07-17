@@ -267,17 +267,17 @@ const supprimerArretes = async (voyageIds) => {
     )
 
     return (
-        <Layout>
+       <Layout title="Dashboard" subtitle="Signature des arretes et autorisations">
             <div className="space-y-6">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Dashboard Recteur</h1>
                     <p className="text-gray-500 text-sm mt-1">Signature des arretes et autorisations</p>
                 </div>
 
-                <div className="grid grid-cols-4 gap-4">
+               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                     <div onClick={() => setActiveTab('arretes')}
                         className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-blue-200 hover:shadow-md transition">
-                        <div className="bg-blue-50 p-2 rounded-xl w-fit mb-3">
+                        <div className="bg-blue-100 w-11 h-11 rounded-full flex items-center justify-center mb-3">
                             <FileText size={20} className="text-blue-700" />
                         </div>
                         <p className="text-2xl font-bold text-gray-800">{definitifs.length}</p>
@@ -285,30 +285,29 @@ const supprimerArretes = async (voyageIds) => {
                     </div>
                     <div onClick={() => setActiveTab('autorisations_absence')}
                         className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-blue-200 hover:shadow-md transition">
-                        <div className="bg-blue-50 p-2 rounded-xl w-fit mb-3">
-                            <FileText size={20} className="text-blue-700" />
+                        <div className="bg-orange-100 w-11 h-11 rounded-full flex items-center justify-center mb-3">
+                            <FileText size={20} className="text-orange-700" />
                         </div>
                         <p className="text-2xl font-bold text-gray-800">{autorisationsAbsenceEnAttente.length}</p>
                         <p className="text-sm text-gray-500 mt-1">Absences a signer</p>
                     </div>
                     <div onClick={() => setActiveTab('historique_arretes')}
                         className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-blue-200 hover:shadow-md transition">
-                        <div className="bg-blue-50 p-2 rounded-xl w-fit mb-3">
-                            <CheckCircle size={20} className="text-blue-700" />
+                        <div className="bg-green-100 w-11 h-11 rounded-full flex items-center justify-center mb-3">
+                            <CheckCircle size={20} className="text-green-700" />
                         </div>
                         <p className="text-2xl font-bold text-gray-800">{signes.length}</p>
                         <p className="text-sm text-gray-500 mt-1">Arretes signes</p>
                     </div>
                     <div onClick={() => setActiveTab('historique_absences')}
                         className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:border-blue-200 hover:shadow-md transition">
-                        <div className="bg-blue-50 p-2 rounded-xl w-fit mb-3">
-                            <History size={20} className="text-blue-700" />
+                        <div className="bg-purple-100 w-11 h-11 rounded-full flex items-center justify-center mb-3">
+                            <History size={20} className="text-purple-700" />
                         </div>
                         <p className="text-2xl font-bold text-gray-800">{autorisationsAbsenceSignees.length}</p>
                         <p className="text-sm text-gray-500 mt-1">Absences signees</p>
                     </div>
                 </div>
-
                 <div className="flex gap-2 border-b border-gray-200 flex-wrap">
                     {[
                         { key: 'arretes', label: 'Arretes a signer', count: definitifs.length, color: 'orange' },
@@ -403,29 +402,17 @@ const supprimerArretes = async (voyageIds) => {
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-100 text-orange-700">
-                                                    En attente
-                                                </span>
+                                              <div className="flex items-center gap-2">
+                                                    <button onClick={() => navigate(`/voyages-etudes/${voyage.id}/liste-definitive`)}
+                                                        className="flex items-center gap-1 border border-blue-200 text-blue-700 hover:bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-semibold transition">
+                                                        <Eye size={12} /> Voir la liste
+                                                    </button>
+                                                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-100 text-orange-700">
+                                                        En attente
+                                                    </span>
+                                                </div>
                                             </div>
 
-                                            <div className="space-y-2 mb-4">
-                                                {voyage.beneficiaires?.filter(b => b.dans_liste_definitive).map(b => (
-                                                    <div key={b.id} className="flex items-center gap-3 bg-gray-50 rounded-xl p-3">
-                                                        <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs">
-                                                            {b.enseignant?.prenom?.[0]}{b.enseignant?.nom?.[0]}
-                                                        </div>
-                                                        <p className="text-sm text-gray-700">{b.enseignant?.prenom} {b.enseignant?.nom}</p>
-                                                        <span className="text-xs text-gray-500">{b.enseignant?.ufr}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            <div className="flex gap-2 mb-3">
-                                                <button onClick={() => exporterPDFDefinitif(voyage)}
-                                                    className="flex-1 flex items-center justify-center gap-2 border border-blue-200 text-blue-700 hover:bg-blue-50 py-2.5 rounded-xl font-semibold text-sm transition">
-                                                    <Eye size={16} /> Voir la liste (PDF)
-                                                </button>
-                                            </div>
 
                                             {arreteOuvert !== voyage.id ? (
                                                 <button onClick={() => setArreteOuvert(voyage.id)}

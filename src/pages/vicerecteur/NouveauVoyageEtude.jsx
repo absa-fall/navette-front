@@ -27,6 +27,7 @@ export default function NouveauVoyageEtude() {
     const [showAddModal, setShowAddModal]   = useState(false)
     const [editingId, setEditingId] = useState(null)
     const [addForm, setAddForm]             = useState({ prenom: '', nom: '', ufr: 'SATIC', departement: '', matricule: '', date_embauche: '' })
+    const [ajoutManuelLoading, setAjoutManuelLoading] = useState(false)
     const [loading, setLoading]             = useState(false)
     const [loadingEns, setLoadingEns]       = useState(true)
     const [error, setError]                 = useState('')
@@ -99,25 +100,34 @@ api.get('/enseignants-permanents')
     if (tousSelectionnes) setSelected(prev => prev.filter(id => !idsEligibles.includes(id)))
     else setSelected(prev => [...new Set([...prev, ...idsEligibles])])
 }
-   const ajouterManuel = () => {
+  const ajouterManuel = async () => {
     if (!addForm.prenom || !addForm.nom || !addForm.date_embauche) return
 
     if (editingId) {
         setManuels(prev => prev.map(m => m.id === editingId ? { ...m, ...addForm } : m))
         setEditingId(null)
-    } else {
-        const fakeId = `manuel_${Date.now()}`
-        const nouvel = { ...addForm, id: fakeId, date_embauche: addForm.date_embauche || null, _manuel: true }
-        setManuels(prev => [...prev, nouvel])
-        setSelected(prev => [...prev, fakeId])
+        setUfrOuverte(addForm.ufr)
+        setFiltreUFR(prev => (prev !== 'tous' && prev !== addForm.ufr) ? 'tous' : prev)
+        setAddForm({ prenom: '', nom: '', ufr: 'SATIC', departement: '', matricule: '', date_embauche: '' })
+        setShowAddModal(false)
+        return
     }
 
-    // Garder l'enseignant visible : ouvrir son UFR et neutraliser un filtre qui le masquerait
-    setUfrOuverte(addForm.ufr)
-    setFiltreUFR(prev => (prev !== 'tous' && prev !== addForm.ufr) ? 'tous' : prev)
-
-    setAddForm({ prenom: '', nom: '', ufr: 'SATIC', departement: '', matricule: '', date_embauche: '' })
-    setShowAddModal(false)
+    setAjoutManuelLoading(true)
+    try {
+        const res = await api.post('/enseignants-manuel', addForm)
+        const nouvel = { ...res.data.enseignant, _manuel: true }
+        setManuels(prev => [...prev, nouvel])
+        setSelected(prev => [...prev, nouvel.id])
+        setUfrOuverte(addForm.ufr)
+        setFiltreUFR(prev => (prev !== 'tous' && prev !== addForm.ufr) ? 'tous' : prev)
+        setAddForm({ prenom: '', nom: '', ufr: 'SATIC', departement: '', matricule: '', date_embauche: '' })
+        setShowAddModal(false)
+    } catch (err) {
+        alert(err.response?.data?.message || "Erreur lors de l'ajout de l'enseignant")
+    } finally {
+        setAjoutManuelLoading(false)
+    }
 }
 
 const ouvrirModification = (m) => {
@@ -153,9 +163,7 @@ const fermerModal = () => {
     setLoading(true)
     setError('')
     try {
-        const idsReels = selected.filter(id => typeof id === 'number')
-        const res = await api.post('/voyages-etudes', { ...form, enseignants: idsReels })
-
+       const res = await api.post('/voyages-etudes', { ...form, enseignants: selected })
         const voyage = res.data?.voyage ?? res.data?.data ?? res.data
 
         if (!voyage || !voyage.id) {
@@ -627,9 +635,9 @@ const fermerModal = () => {
     Annuler
 </button>
 <button type="button" onClick={ajouterManuel}
-    disabled={!addForm.prenom || !addForm.nom || !addForm.date_embauche}
+    disabled={!addForm.prenom || !addForm.nom || !addForm.date_embauche || ajoutManuelLoading}
     className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition disabled:opacity-50">
-    {editingId ? 'Enregistrer' : 'Ajouter'}
+    {ajoutManuelLoading ? 'Ajout...' : (editingId ? 'Enregistrer' : 'Ajouter')}
 </button>
                         </div>
                     </div>

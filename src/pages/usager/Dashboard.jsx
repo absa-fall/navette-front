@@ -5,6 +5,7 @@ import ProchaineNavette from '../../components/ProchaineNavette'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api/axios'
 import { Bus, QrCode, Calendar, User, Bell, CheckCircle, AlertCircle, X, Clock, MapPin, Trash2, Download, Search } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import QRCode from 'react-qr-code'
 
 export default function UsagerDashboard() {
@@ -187,103 +188,107 @@ export default function UsagerDashboard() {
         else setSelected(reservationsAffichees.map(r => r.id))
     }
 
+    // Début de semaine (lundi) pour une date donnée
+    const getWeekStart = (date) => {
+        const d = new Date(date)
+        const jour = d.getDay()
+        const diff = (jour === 0 ? -6 : 1) - jour
+        d.setDate(d.getDate() + diff)
+        d.setHours(0, 0, 0, 0)
+        return d
+    }
+
+    // Données du graphique : réservations sur les 6 dernières semaines
+    const dataGraphique = (() => {
+        const maintenant = new Date()
+        const semaineActuelle = getWeekStart(maintenant)
+        const semaines = []
+        for (let i = 5; i >= 0; i--) {
+            const debut = new Date(semaineActuelle)
+            debut.setDate(debut.getDate() - i * 7)
+            semaines.push({
+                key: debut.getTime(),
+                label: debut.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
+                Réservations: 0,
+            })
+        }
+        reservations.forEach(r => {
+            if (!r.date_reservation) return
+            const debutSemaine = getWeekStart(r.date_reservation).getTime()
+            const entree = semaines.find(s => s.key === debutSemaine)
+            if (entree) entree.Réservations += 1
+        })
+        return semaines
+    })()
+
     return (
         <Layout>
             <div className="space-y-4">
 
-                {/* Carte profil + cloche notifications */}
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
-                    <div className="w-11 h-11 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-sm flex-shrink-0">
-                        {user?.prenom?.[0]}{user?.nom?.[0]}
-                    </div>
-                    <div className="flex-1">
-                        <div className="font-semibold text-gray-800 text-sm flex items-center gap-2">
-                            {user?.prenom} {user?.nom}
-
-                            {/* ✅ Cloche notifications, à côté du nom */}
-                            <span className="relative" ref={notifRef}>
-                                <button onClick={() => setNotifOuvertes(prev => !prev)}
-                                    className="relative p-1 hover:bg-gray-100 rounded-lg transition flex-shrink-0">
-                                    <Bell size={16} className="text-gray-500" />
-                                    {nonLues > 0 && (
-                                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold min-w-[14px] h-[14px] px-0.5 flex items-center justify-center rounded-full">
-                                            {nonLues}
-                                        </span>
-                                    )}
-                                </button>
-
-                                {/* Menu déroulant notifications */}
-                                {notifOuvertes && (
-                                    <div className="absolute left-0 mt-2 w-80 max-w-[90vw] bg-white rounded-2xl border border-gray-100 shadow-lg z-50 max-h-96 overflow-y-auto">
-                                        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                                            <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                                                <Bell size={15} className="text-blue-700" /> Notifications
-                                            </h3>
-                                            {nonLues > 0 && (
-                                                <button onClick={async () => {
-                                                    await api.patch('/notifications/lu-toutes')
-                                                    setNotifications(prev => prev.map(n => ({ ...n, lu: true })))
-                                                }} className="text-xs text-blue-600 hover:underline">
-                                                    Tout marquer lu
-                                                </button>
-                                            )}
-                                        </div>
-
-                                        {notifications.length === 0 ? (
-                                            <div className="text-center py-8 text-gray-400 text-xs">
-                                                <Bell size={24} className="mx-auto mb-2 opacity-30" />
-                                                Aucune notification
-                                            </div>
-                                        ) : (
-                                            <div className="divide-y divide-gray-50">
-                                                {notifications.map(notif => (
-                                                    <div key={notif.id}
-                                                        className={`p-3 flex items-start gap-2.5 ${notif.lu ? '' : 'bg-blue-50'}`}>
-                                                        <div className="mt-0.5">
-                                                            {notif.type === 'reservation_confirmee'
-                                                                ? <CheckCircle size={16} className="text-green-600" />
-                                                                : <AlertCircle size={16} className="text-red-500" />}
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className={`text-xs font-semibold ${notif.lu ? 'text-gray-600' : 'text-gray-800'}`}>{notif.titre}</p>
-                                                            <p className="text-xs text-gray-500 mt-0.5">{notif.message}</p>
-                                                            {!notif.lu && (
-                                                                <button onClick={() => marquerLue(notif.id)} className="text-xs text-blue-600 hover:underline mt-1">
-                                                                    Marquer lu
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                        <button onClick={() => supprimerNotif(notif.id)} className="text-gray-400 hover:text-red-500 transition flex-shrink-0">
-                                                            <X size={13} />
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </span>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-0.5">{user?.ufr}</p>
-                    </div>
-                    <span className="text-xs px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 whitespace-nowrap">
-                        {user?.statut}
-                    </span>
-                </div>
-
                 <ProchaineNavette />
-                {/* Actions rapides en tuiles */}
-                <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => navigate('/usager/reserver')}
-                        className="bg-blue-50 hover:bg-blue-100 rounded-2xl p-4 flex items-center gap-2.5 transition">
-                        <Calendar size={22} className="text-blue-700" />
-                        <span className="text-sm font-semibold text-blue-700">Reserver</span>
-                    </button>
-                    <button onClick={() => navigate('/usager/scanner')}
-                        className="bg-green-50 hover:bg-green-100 rounded-2xl p-4 flex items-center gap-2.5 transition">
-                        <QrCode size={22} className="text-green-700" />
-                        <span className="text-sm font-semibold text-green-700">Scanner le bus</span>
-                    </button>
+
+                {/* Cartes stats + actions rapides — toutes sur la même ligne */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="bg-blue-100 w-11 h-11 rounded-full flex items-center justify-center">
+                                <Calendar size={20} className="text-blue-700" />
+                            </div>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-800">{reservations.length}</p>
+                        <p className="text-sm text-gray-500 mt-1">Total réservations</p>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="bg-yellow-100 w-11 h-11 rounded-full flex items-center justify-center">
+                                <Clock size={20} className="text-yellow-700" />
+                            </div>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-800">
+                            {reservations.filter(r => !['confirmee', 'en_cours', 'terminee', 'refusee', 'annulee'].includes(r.statut)).length}
+                        </p>
+                        <p className="text-sm text-gray-500 mt-1">En attente</p>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="bg-purple-100 w-11 h-11 rounded-full flex items-center justify-center">
+                                <CheckCircle size={20} className="text-purple-700" />
+                            </div>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-800">
+                            {reservations.filter(r => ['confirmee', 'en_cours'].includes(r.statut)).length}
+                        </p>
+                        <p className="text-sm text-gray-500 mt-1">Confirmées</p>
+                    </div>
+
+                    <div
+                        onClick={() => navigate('/usager/reserver')}
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
+                    >
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="bg-blue-100 w-11 h-11 rounded-full flex items-center justify-center">
+                                <Calendar size={20} className="text-blue-700" />
+                            </div>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-800">+</p>
+                        <p className="text-sm text-gray-500 mt-1">Réserver</p>
+                    </div>
+
+                    <div
+                        onClick={() => navigate('/usager/scanner')}
+                        className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition"
+                    >
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="bg-green-100 w-11 h-11 rounded-full flex items-center justify-center">
+                                <QrCode size={20} className="text-green-700" />
+                            </div>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-800">Scan</p>
+                        <p className="text-sm text-gray-500 mt-1">Scanner le bus</p>
+                    </div>
                 </div>
 
                 {/* QR + Reservations en 2 colonnes */}
@@ -436,6 +441,22 @@ export default function UsagerDashboard() {
                                 </div>
                             </>
                         )}
+                    </div>
+                </div>
+
+                {/* Graphique réservations par semaine */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <h2 className="text-sm font-semibold text-gray-800 mb-4">Réservations par semaine</h2>
+                    <div className="h-56">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={dataGraphique}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                                <Tooltip cursor={{ fill: '#f8fafc' }} />
+                                <Bar dataKey="Réservations" fill="#1d4ed8" radius={[6, 6, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
                     </div>
                 </div>
             </div>

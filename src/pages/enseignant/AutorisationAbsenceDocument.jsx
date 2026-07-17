@@ -6,6 +6,8 @@ import SignaturePad from '../../components/SignaturePad'
 import { Printer, Loader2, Send, XCircle } from 'lucide-react'
 
 export default function AutorisationAbsenceDocument() {
+      console.log('COMPOSANT DOCUMENT CHARGÉ')  
+
     const { id } = useParams()
     const { user } = useAuth()
     const [autorisation, setAutorisation] = useState(null)
@@ -44,7 +46,7 @@ export default function AutorisationAbsenceDocument() {
     }
 
     const role = user?.role
-
+console.log('role:', role, '| statut:', autorisation.statut)   
     const peutSignerChef      = role === 'chef_departement'
     const peutSignerDirecteur = ['directeur_ufr', 'directeur-ufr', 'directeurufr'].includes(role)
     const peutSignerRecteur   = role === 'recteur'
@@ -52,13 +54,17 @@ export default function AutorisationAbsenceDocument() {
     const enseignantProprietaireId = autorisation.enseignant_id ?? autorisation.enseignant?.id
     const peutSignerEnseignant = role === 'enseignant' && user?.id === enseignantProprietaireId
 
-    const estBrouillon = autorisation.statut === 'brouillon'
+   const estBrouillon = autorisation.statut === 'brouillon'
+    const estSignee     = autorisation.statut === 'signee'
     const chefPeutSignerMaintenant       = peutSignerChef      && autorisation.statut === 'soumise'
-    const directeurPeutSignerMaintenant  = peutSignerDirecteur && autorisation.statut === 'avis_chef_departement'
+    const directeurPeutSignerMaintenant  = peutSignerDirecteur && autorisation.statut === 'avis_directeur_ufr' === false && autorisation.statut === 'avis_chef_departement'
     const recteurPeutSignerMaintenant    = peutSignerRecteur   && autorisation.statut === 'avis_directeur_ufr'
     const enseignantPeutSignerMaintenant = peutSignerEnseignant && estBrouillon
+    const enseignantPeutTransmettreMaintenant = peutSignerEnseignant && estSignee
 
     const peutRejeterMaintenant = chefPeutSignerMaintenant || directeurPeutSignerMaintenant
+
+    const recteurASigne = autorisation.statut === 'transmise' || !!autorisation.date_signature_recteur
 
     const transmettre = async () => {
         if (!signatureEnseignant) return
@@ -149,7 +155,6 @@ export default function AutorisationAbsenceDocument() {
     return (
         <div className="min-h-screen bg-gray-100 print:bg-white py-8 px-4 print:py-0 print:px-0">
 
-            {/* Style impression : format A4 propre */}
             <style>{`
                 @media print {
                     @page { size: A4; margin: 8mm; }
@@ -157,7 +162,6 @@ export default function AutorisationAbsenceDocument() {
                 }
             `}</style>
 
-            {/* Boutons d'action */}
             <div className="flex justify-center gap-3 mb-6 print:hidden flex-wrap">
                 <button
                     onClick={() => window.print()}
@@ -165,8 +169,7 @@ export default function AutorisationAbsenceDocument() {
                 >
                     <Printer size={16} /> Imprimer / Télécharger
                 </button>
-
-                {enseignantPeutSignerMaintenant && (
+{enseignantPeutTransmettreMaintenant && (
                     <button
                         onClick={transmettre}
                         disabled={!signatureEnseignant || transmission}
@@ -220,7 +223,6 @@ export default function AutorisationAbsenceDocument() {
                 )}
             </div>
 
-            {/* Modale de rejet */}
             {rejetOuvert && (
                 <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 print:hidden">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
@@ -246,10 +248,8 @@ export default function AutorisationAbsenceDocument() {
                 </div>
             )}
 
-            {/* Document */}
             <div className="max-w-3xl mx-auto bg-white border border-gray-200 shadow-sm rounded-xl px-12 py-10 print:shadow-none print:border-none print:rounded-none print:max-w-full print:px-8 print:py-4 font-serif text-gray-900">
 
-                {/* En-tête */}
                 <div className="flex justify-between items-start mb-5 print:mb-3">
                     <div className="text-[11px] leading-relaxed">
                         <p className="font-bold">REPUBLIQUE DU SENEGAL</p>
@@ -259,13 +259,17 @@ export default function AutorisationAbsenceDocument() {
                         <br />
                         <p className="font-bold">UNIVERSITE ALIOUNE DIOP</p>
                         <p className="italic text-[10px]">« L'excellence est ma constance, l'éthique ma vertu »</p>
+                        {recteurASigne && (
+                            <p className="font-bold text-[11px] mt-1">RECTORAT</p>
+                        )}
                     </div>
                     <div className="text-right text-[12px]">
-                        <p className="font-bold">N° {autorisation.numero || '______'}</p>
+                        <p className="font-bold">
+                            N° {autorisation.numero || '______'}{recteurASigne ? ' UAD/R/SG/DRH' : ''}
+                        </p>
                     </div>
                 </div>
 
-                {/* Logo centré */}
                 <div className="flex justify-center mb-3 print:mb-2">
                     <img src="/logo-uadb.png" alt="Logo UADB" className="w-16 h-16 object-contain" />
                 </div>
@@ -273,10 +277,9 @@ export default function AutorisationAbsenceDocument() {
                 <hr className="border-gray-800 mb-4 print:mb-3" />
 
                 <div className="text-center font-bold text-[16px] underline tracking-wide mb-6 print:mb-4">
-                    AUTORISATION D'ABSENCE
+                    {recteurASigne ? 'AUTORISATION DE SORTIE DU TERRITOIRE' : "AUTORISATION D'ABSENCE"}
                 </div>
 
-                {/* Champs */}
                 <div className="space-y-3 print:space-y-2 text-[13px] mb-8 print:mb-5">
                     <div className="flex items-baseline gap-2">
                         <span className="min-w-[220px]">Enseignant :</span>
@@ -308,6 +311,12 @@ export default function AutorisationAbsenceDocument() {
                     </div>
                 </div>
 
+                {recteurASigne && (
+                    <p className="text-[13px] mb-8 leading-relaxed">
+                        Monsieur/Madame <span className="font-bold">{autorisation.enseignant?.prenom} {autorisation.enseignant?.nom}</span> est autorisé(e) à sortir du territoire sénégalais pour des raisons professionnelles. Par conséquent, les autorités civiles et militaires des localités traversées sont priées de lui faciliter l'accomplissement de son voyage.
+                    </p>
+                )}
+
                 {estBrouillon && (
                     <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-xl p-3 text-xs mb-6 print:hidden">
                         Cette demande n'a pas encore été transmise. Signez ci-dessous puis cliquez sur « Transmettre au Chef de Département ».
@@ -329,31 +338,34 @@ export default function AutorisationAbsenceDocument() {
                     </div>
                 )}
 
-                {/* Circuit de validation / signatures */}
                 <div className="grid grid-cols-2 gap-x-6 gap-y-10 print:gap-y-6 mt-12 print:mt-6 mb-10 print:mb-5">
                     <SignaturePad
                         storageKey={`signature_chef_departement_${autorisation.id}`}
                         label="Le Chef de Département"
                         readOnly={!chefPeutSignerMaintenant}
                         onSaved={setSignatureChef}
+                        initialValue={autorisation.signature_chef_departement_image}
                     />
                     <SignaturePad
                         storageKey={`signature_directeur_ufr_${autorisation.id}`}
                         label="Le Directeur UFR"
                         readOnly={!directeurPeutSignerMaintenant}
                         onSaved={setSignatureDirecteur}
+                        initialValue={autorisation.signature_directeur_ufr_image}
                     />
                     <SignaturePad
                         storageKey={`signature_recteur_${autorisation.id}`}
                         label="Le Recteur"
                         readOnly={!recteurPeutSignerMaintenant}
                         onSaved={setSignatureRecteur}
+                        initialValue={autorisation.signature_recteur_image}
                     />
                     <SignaturePad
                         storageKey={`signature_enseignant_${autorisation.id}`}
                         label={autorisation.enseignant ? `${autorisation.enseignant.prenom} ${autorisation.enseignant.nom}` : "L'enseignant"}
                         readOnly={!enseignantPeutSignerMaintenant}
                         onSaved={setSignatureEnseignant}
+                        initialValue={autorisation.signature_enseignant_image}
                     />
                 </div>
 
