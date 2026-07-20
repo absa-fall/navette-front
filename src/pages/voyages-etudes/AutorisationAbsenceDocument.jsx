@@ -155,14 +155,34 @@ export default function AutorisationAbsenceDocument() {
         : '___________'
 
     return (
-        <div className="min-h-screen bg-gray-100 print:bg-white py-8 px-4 print:py-0 print:px-0">
+       <div className="min-h-screen print:min-h-0 bg-gray-100 print:bg-white py-8 px-4 print:py-0 print:px-0">
 
-            <style>{`
-                @media print {
-                    @page { size: A4; margin: 8mm; }
-                    html, body { height: auto !important; }
-                }
-            `}</style>
+           <style>{`
+    @media print {
+        @page { size: A4; margin: 8mm; }
+
+        html, body {
+            height: auto !important;
+            min-height: 0 !important;
+        }
+
+        /* Le conteneur du document occupe toute la hauteur utile de la
+           page A4 (297mm - 2x8mm de marge) et devient une colonne flex,
+           pour pouvoir pousser le pied de page tout en bas. */
+        .print-page-wrapper {
+            display: flex !important;
+            flex-direction: column;
+            min-height: 281mm;
+            height: 281mm;
+        }
+
+        /* margin-top: auto pousse le footer vers le bas de la colonne,
+           quelle que soit la longueur du contenu au-dessus. */
+        .print-footer {
+            margin-top: auto !important;
+        }
+    }
+`}</style>
 
             <div className="flex justify-center gap-3 mb-6 print:hidden flex-wrap">
                 <button
@@ -198,7 +218,7 @@ export default function AutorisationAbsenceDocument() {
                 </div>
             )}
 
-            <div className="max-w-3xl mx-auto bg-white border border-gray-200 shadow-sm rounded-xl px-12 py-10 print:shadow-none print:border-none print:rounded-none print:max-w-full print:px-8 print:py-4 font-serif text-gray-900 pb-24 print:pb-4">
+            <div className="print-page-wrapper max-w-3xl mx-auto bg-white border border-gray-200 shadow-sm rounded-xl px-12 py-10 print:shadow-none print:border-none print:rounded-none print:max-w-full print:px-8 print:py-4 font-serif text-gray-900 pb-24 print:pb-4">
 
                 <div className="flex justify-between items-start mb-5 print:mb-3">
                     <div className="text-[11px] leading-relaxed max-w-[55%]">
@@ -312,7 +332,7 @@ export default function AutorisationAbsenceDocument() {
                     />
                 </div>
 
-                <div className="text-center text-[10px] text-gray-600 border-t pt-3 print:pt-2">
+                <div className="print-footer text-center text-[10px] text-gray-600 border-t pt-3 print:pt-2">
                     <p>Tél. : (221) 33 973 30 86. // Fax : (221) 33 973 30 93 // B.P. : 30 – Bambey (République du Sénégal)</p>
                     <p>Internet : www.uadb.edu.sn // Courriel : rectorat@uadb.edu.sn</p>
                 </div>

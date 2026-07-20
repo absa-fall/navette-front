@@ -130,6 +130,16 @@ export default function MesReservations() {
         }
     }
 
+    // ✅ Libellé + couleur du type de réservation (aller / retour / aller_retour)
+    const typeTrajetBadge = (typeTrajet) => {
+        switch (typeTrajet) {
+            case 'aller_retour': return { label: 'Aller-Retour', color: 'bg-indigo-100 text-indigo-700' }
+            case 'retour':       return { label: 'Retour',       color: 'bg-orange-100 text-orange-700' }
+            case 'aller':        return { label: 'Aller',        color: 'bg-blue-100 text-blue-700' }
+            default:             return { label: typeTrajet || 'Aller', color: 'bg-gray-100 text-gray-600' }
+        }
+    }
+
     // ✅ Filtre de recherche : ville de depart, ville d'arrivee, ou statut
     // IMPORTANT : cette variable doit être déclarée AVANT toutSelectionne / toggleSelectAll
     // car ces deux-là en dépendent (sinon erreur "Cannot access before initialization" -> page blanche)
@@ -274,6 +284,7 @@ export default function MesReservations() {
 
                                         {liste.map((r, idx) => {
                                             const { label, color, Icon } = statutBadge(r.statut)
+                                            const typeTrajet = typeTrajetBadge(r.type_trajet)
                                             const qrVisible = (r.statut === 'confirmee' || r.statut === 'terminee' || r.statut === 'en_cours') && qrCodeUser
 
                                             return (
@@ -302,6 +313,10 @@ export default function MesReservations() {
                                                         </div>
 
                                                         <div className="flex items-center gap-2">
+                                                            {/* ✅ Badge type de reservation (aller / retour / aller-retour) */}
+                                                            <span className={`text-xs font-semibold px-3 py-1 rounded-full ${typeTrajet.color}`}>
+                                                                {typeTrajet.label}
+                                                            </span>
                                                             <span className={`flex items-center gap-1 text-xs font-semibold px-3 py-1 rounded-full ${color}`}>
                                                                 <Icon size={12} /> {label}
                                                             </span>

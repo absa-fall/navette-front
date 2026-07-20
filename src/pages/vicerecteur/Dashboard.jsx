@@ -137,7 +137,7 @@ export default function ViceRecteurDashboard() {
                     </div>
 
                     <div
-                        onClick={() => navigate('/vice-recteur/voyages-etudes?tab=dossiers')}
+                       onClick={() => navigate('/commission/dashboard')}
                         className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 cursor-pointer hover:shadow-md transition"
                     >
                         <div className="bg-purple-50 w-11 h-11 rounded-full flex items-center justify-center mb-3">

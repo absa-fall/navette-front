@@ -7,7 +7,7 @@ import api from '../../api/axios'
 import { Bus, QrCode, Calendar, User, Bell, CheckCircle, AlertCircle, X, Clock, MapPin, Trash2, Download, Search } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import QRCode from 'react-qr-code'
-
+import CarteNavette from '../../components/CarteNavette'
 export default function UsagerDashboard() {
     const { user } = useAuth()
     const navigate = useNavigate()
@@ -23,6 +23,7 @@ export default function UsagerDashboard() {
     const [annulerLoading, setAnnulerLoading] = useState(null)
     const [searchQuery, setSearchQuery] = useState('')
     const [notifOuvertes, setNotifOuvertes] = useState(false)
+    const [vehiculeActifId, setVehiculeActifId] = useState(null)
     const notifRef = useRef(null)
 
     const exporterPdf = async () => {
@@ -43,12 +44,23 @@ export default function UsagerDashboard() {
         }
     }
 
+    const fetchVehiculeActif = async () => {
+        try {
+            const res = await api.get('/ma-navette-active')
+            setVehiculeActifId(res.data.vehicule_id)
+        } catch (err) {
+            console.error(err)
+        }
+    }
+
     useEffect(() => {
         fetchNotifications()
         fetchReservations()
+        fetchVehiculeActif()
         const interval = setInterval(() => {
             fetchNotifications()
             fetchReservations()
+            fetchVehiculeActif()
         }, 15000)
         return () => clearInterval(interval)
     }, [])
@@ -163,6 +175,16 @@ export default function UsagerDashboard() {
 
     const nonLues = notifications.filter(n => !n.lu).length
 
+    // ✅ Libellé + couleur du type de réservation (aller / retour / aller_retour)
+    const typeTrajetBadge = (typeTrajet) => {
+        switch (typeTrajet) {
+            case 'aller_retour': return { label: 'Aller-Retour', color: 'bg-indigo-100 text-indigo-700' }
+            case 'retour':       return { label: 'Retour',       color: 'bg-orange-100 text-orange-700' }
+            case 'aller':        return { label: 'Aller',        color: 'bg-blue-100 text-blue-700' }
+            default:             return { label: typeTrajet || 'Aller', color: 'bg-gray-100 text-gray-600' }
+        }
+    }
+
     const statutLabel = (statut) => {
         switch (statut) {
             case 'terminee': return 'Terminee'
@@ -226,7 +248,7 @@ export default function UsagerDashboard() {
             <div className="space-y-4">
 
                 <ProchaineNavette />
-
+                {vehiculeActifId && <CarteNavette vehiculeId={vehiculeActifId} />}
                 {/* Cartes stats + actions rapides — toutes sur la même ligne */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
 
@@ -382,7 +404,9 @@ export default function UsagerDashboard() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    {reservationsAffichees.map(r => (
+                                    {reservationsAffichees.map(r => {
+                                        const typeTrajet = typeTrajetBadge(r.type_trajet)
+                                        return (
                                         <div key={r.id}
                                             className={`border rounded-xl p-3 transition ${selected.includes(r.id) ? 'border-red-200 bg-red-50' : 'border-gray-100'}`}>
                                             <div className="flex items-start justify-between mb-1.5">
@@ -395,6 +419,10 @@ export default function UsagerDashboard() {
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-1.5">
+                                                    {/* ✅ Badge type de reservation (aller / retour / aller-retour) */}
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${typeTrajet.color}`}>
+                                                        {typeTrajet.label}
+                                                    </span>
                                                     {getStatutBadge(r.statut)}
                                                     <button onClick={() => supprimerReservation(r.id)} disabled={deleteLoading === r.id}
                                                         className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-50">
@@ -437,7 +465,8 @@ export default function UsagerDashboard() {
                                                 </div>
                                             )}
                                         </div>
-                                    ))}
+                                        )
+                                    })}
                                 </div>
                             </>
                         )}

@@ -45,7 +45,7 @@ export default function ChauffeurDashboard() {
     useEffect(() => {
         const fetchTrajets = async () => {
             try {
-                const res = await api.get('/chauffeur/trajets')
+             const res = await api.get('/ordres-mission-chauffeur')
                 setTrajets(res.data)
             } catch (error) {
                 console.error('Erreur trajets chauffeur:', error)

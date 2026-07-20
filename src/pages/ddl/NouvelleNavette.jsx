@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
-import { MapPin, Calendar, FileText, CheckCircle, Bus, User, Fuel, DollarSign, Pencil, Send } from 'lucide-react'
+import { MapPin, Calendar, Clock, FileText, CheckCircle, Bus, User, Fuel, DollarSign, Pencil, Send } from 'lucide-react'
 
 export default function NouvelleNavette() {
     const navigate = useNavigate()
@@ -17,7 +17,10 @@ export default function NouvelleNavette() {
         moyen_transport: '',
         vehicule_id: '',
         date_depart: '',
+        heure_depart: '',
         date_retour: '',
+        // ✅ AJOUT : heure de retour
+        heure_retour: '',
         frais_transport: 'Appui en carburant',
         indemnite_deplacement: 'Néant',
         trajet: '',
@@ -80,7 +83,10 @@ export default function NouvelleNavette() {
         moyen_transport: form.moyen_transport,
         vehicule_id: form.vehicule_id || null,
         date_depart: form.date_depart,
+        heure_depart: form.heure_depart,
         date_retour: form.date_retour,
+        // ✅ AJOUT
+        heure_retour: form.heure_retour || null,
         frais_transport: form.frais_transport,
         indemnite_deplacement: form.indemnite_deplacement,
         trajet: form.trajet,
@@ -174,7 +180,10 @@ setDraftId(res.data.ordre.id)
                         <Row label="Objet de la mission" value={form.objet_mission} />
                         <Row label="Véhicule" value={form.moyen_transport || '—'} />
                         <Row label="Date de départ" value={form.date_depart || '—'} />
+                        <Row label="Heure de départ" value={form.heure_depart || '—'} />
                         <Row label="Date de retour" value={form.date_retour || '—'} />
+                        {/* ✅ AJOUT */}
+                        <Row label="Heure de retour" value={form.heure_retour || '—'} />
                         <Row label="Frais de transport" value={form.frais_transport} />
                         <Row label="Indemnité de déplacement" value={form.indemnite_deplacement} />
                         <Row label="Motif" value={form.motif} multiline />
@@ -206,7 +215,7 @@ setDraftId(res.data.ordre.id)
         )
     }
 
-    // ÉTAPE 1 : Formulaire (inchangé, sauf le bouton du bas)
+    // ÉTAPE 1 : Formulaire
     return (
         <Layout>
             <div className="max-w-2xl mx-auto space-y-6">
@@ -345,34 +354,67 @@ setDraftId(res.data.ordre.id)
                         </select>
                     </div>
 
-                    {/* Date départ */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            <Calendar size={14} className="inline mr-1" />
-                            Date de départ <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="date"
-                            value={form.date_depart}
-                            onChange={e => setForm({ ...form, date_depart: e.target.value })}
-                            min={new Date().toISOString().split('T')[0]}
-                            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                    {/* Date départ + Heure départ */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <Calendar size={14} className="inline mr-1" />
+                                Date de départ <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="date"
+                                value={form.date_depart}
+                                onChange={e => setForm({ ...form, date_depart: e.target.value })}
+                                min={new Date().toISOString().split('T')[0]}
+                                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                        {/* ✅ NOUVEAU : Heure de départ — sans ça, la navette gardait
+                            toujours l'heure par défaut (06:00) côté backend, ce qui
+                            faussait le lien avec les réservations des usagers. */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <Clock size={14} className="inline mr-1" />
+                                Heure de départ <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="time"
+                                value={form.heure_depart}
+                                onChange={e => setForm({ ...form, heure_depart: e.target.value })}
+                                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                required
+                            />
+                        </div>
                     </div>
 
-                    {/* Date retour */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            <Calendar size={14} className="inline mr-1" />
-                            Date de retour <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="date"
-                            value={form.date_retour}
-                            onChange={e => setForm({ ...form, date_retour: e.target.value })}
-                            min={form.date_depart || new Date().toISOString().split('T')[0]}
-                            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                    {/* Date retour + Heure retour */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <Calendar size={14} className="inline mr-1" />
+                                Date de retour <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="date"
+                                value={form.date_retour}
+                                onChange={e => setForm({ ...form, date_retour: e.target.value })}
+                                min={form.date_depart || new Date().toISOString().split('T')[0]}
+                                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                        {/* ✅ AJOUT : Heure de retour (optionnelle) */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <Clock size={14} className="inline mr-1" />
+                                Heure de retour
+                            </label>
+                            <input
+                                type="time"
+                                value={form.heure_retour}
+                                onChange={e => setForm({ ...form, heure_retour: e.target.value })}
+                                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
                     </div>
 
                     {/* Frais de transport */}

@@ -1,24 +1,28 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api/axios'
 import QRCode from 'react-qr-code'
 import {
     Bus, Calendar, Clock, MapPin,
     CheckCircle, AlertCircle, ArrowLeft,
-    ArrowRight, ArrowLeftRight, Download, XCircle
+    ArrowRight, ArrowLeftRight, Download, XCircle, Lock
 } from 'lucide-react'
 
 export default function Reserver() {
     const { user } = useAuth()
     const navigate = useNavigate()
+    const [searchParams] = useSearchParams()
+    const navetteIdFromUrl = searchParams.get('navette_id')
+
     const [form, setForm] = useState({
         type_trajet: 'aller',
         ville_depart: '',
         ville_arrivee: '',
-        date_reservation: '',
-        heure_reservation: ''
+        navette_id: navetteIdFromUrl || ''
     })
+    const [navettes, setNavettes] = useState([])
+    const [navettesLoaded, setNavettesLoaded] = useState(false)
     const [qrCode, setQrCode] = useState(null)
     const [reservation, setReservation] = useState(null)
     const [enAttente, setEnAttente] = useState(false)
@@ -29,6 +33,28 @@ export default function Reserver() {
     const pollingRef = useRef(null)
 
     const dashboard = user?.role === 'enseignant' ? '/enseignant/dashboard' : '/usager/dashboard'
+
+    // Mode "navette imposée" : on arrive via la carte "Prochaine navette"
+    const modeNavetteImposee = Boolean(navetteIdFromUrl)
+
+    // ✅ Charge les navettes réellement publiées et disponibles
+    // (le filtrage des navettes déjà "exécutées" est fait côté backend, dans prochainesNavettes())
+    useEffect(() => {
+        api.get('/navettes/prochaines')
+            .then(res => setNavettes(res.data || []))
+            .catch(() => setNavettes([]))
+            .finally(() => setNavettesLoaded(true))
+    }, [])
+
+    // Une fois les navettes chargées, si on a un navette_id dans l'URL, on le pré-sélectionne
+    useEffect(() => {
+        if (navetteIdFromUrl) {
+            setForm(prev => ({ ...prev, navette_id: navetteIdFromUrl }))
+        }
+    }, [navetteIdFromUrl, navettes])
+
+    // La navette actuellement sélectionnée (utile pour l'affichage en lecture seule)
+    const navetteSelectionnee = navettes.find(n => String(n.id) === String(form.navette_id))
 
     // Polling : verifie toutes les 10s si le chauffeur a confirme ou refuse
     useEffect(() => {
@@ -41,7 +67,6 @@ export default function Reserver() {
                         setQrCode(res.data.qr_code)
                         setReservation(res.data.reservation)
                         setEnAttente(false)
-                        // ✅ Notification visuelle au passager : confirmation
                         setNotification({
                             type: 'success',
                             message: 'Votre reservation a ete confirmee par le chauffeur !'
@@ -50,7 +75,6 @@ export default function Reserver() {
 
                     } else if (res.data.statut === 'refusee') {
                         setEnAttente(false)
-                        // ✅ On recupere la reservation avec motif_refus
                         setReservation(res.data.reservation)
                         setNotification({
                             type: 'error',
@@ -70,30 +94,32 @@ export default function Reserver() {
         const { name, value } = e.target
         setForm(prev => ({ ...prev, [name]: value }))
     }
-const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    try {
-        const categorie = user.statut === 'vacataire' ? 'Vacataire' : (user.type_profil || 'PER')
 
-        const res = await api.post('/reservations', {
-            nom: user.nom,
-            prenom: user.prenom,
-            categorie: categorie,
-            type_profil: user.statut,
-            ufr: user.ufr,
-            ...form
-        })
-        setReservation(res.data.reservation)
-        setEnAttente(true) // ✅ ajout — déclenche l'écran "en attente" + le polling
-    } catch (err) {
-        setError(err.response?.data?.message || 'Erreur lors de la réservation')
-    } finally {
-        setLoading(false)
+    const handleSubmit = async (e) => {
+        e.preventDefault()
+        setLoading(true)
+        setError('')
+        try {
+            const categorie = user.statut === 'vacataire' ? 'Vacataire' : (user.type_profil || 'PER')
+
+            const res = await api.post('/reservations', {
+                nom: user.nom,
+                prenom: user.prenom,
+                categorie: categorie,
+                type_profil: user.statut,
+                ufr: user.ufr,
+                ...form   // contient navette_id, type_trajet, ville_depart, ville_arrivee
+            })
+            setReservation(res.data.reservation)
+            setEnAttente(true)
+        } catch (err) {
+            setError(err.response?.data?.message || 'Erreur lors de la réservation')
+        } finally {
+            setLoading(false)
+        }
     }
-}
-    // ✅ NOUVEAU : Annulation par le passager apres reception du QR
+
+    // Annulation par le passager apres reception du QR
     const annulerReservation = async () => {
         if (!window.confirm('Etes-vous sur de vouloir annuler votre reservation ? Le chauffeur sera notifie.')) return
 
@@ -105,7 +131,6 @@ const handleSubmit = async (e) => {
                 type: 'info',
                 message: 'Votre reservation a ete annulee. Le chauffeur a ete notifie.'
             })
-            // Petite pause pour afficher la notif avant de reset
             setTimeout(() => {
                 nouvelleReservation()
             }, 2000)
@@ -147,8 +172,7 @@ const handleSubmit = async (e) => {
             type_trajet: 'aller',
             ville_depart: '',
             ville_arrivee: '',
-            date_reservation: '',
-            heure_reservation: ''
+            navette_id: modeNavetteImposee ? navetteIdFromUrl : ''
         })
     }
 
@@ -186,7 +210,6 @@ const handleSubmit = async (e) => {
                     </p>
                 </div>
 
-                {/* ✅ NOUVEAU : Notification flash (confirmation / refus / annulation) */}
                 {notification && (
                     <div className={`rounded-xl p-4 mb-4 text-sm flex items-center gap-2 ${
                         notification.type === 'success'
@@ -209,7 +232,6 @@ const handleSubmit = async (e) => {
                         </div>
                     )}
 
-                    {/* ✅ FIX : Reservation refusee avec motif */}
                     {reservation?.statut === 'refusee' && (
                         <div className="text-center py-4">
                             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -222,7 +244,6 @@ const handleSubmit = async (e) => {
                                 Le chauffeur a refuse votre reservation.
                             </p>
 
-                            {/* ✅ NOUVEAU : Affichage du motif de refus */}
                             {reservation.motif_refus && (
                                 <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5 text-left">
                                     <p className="text-xs text-red-500 font-semibold uppercase mb-1">Motif du refus</p>
@@ -286,7 +307,7 @@ const handleSubmit = async (e) => {
                         </div>
                     )}
 
-                    {/* ✅ QR code affiche UNIQUEMENT apres confirmation du chauffeur */}
+                    {/* QR code affiche UNIQUEMENT apres confirmation du chauffeur */}
                     {qrCode && (
                         <div className="text-center py-4">
                             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -361,7 +382,6 @@ const handleSubmit = async (e) => {
                                 Nouvelle reservation
                             </button>
 
-                            {/* ✅ NOUVEAU : Bouton annulation apres reception du QR */}
                             <button
                                 onClick={annulerReservation}
                                 disabled={loadingAnnulation}
@@ -434,31 +454,74 @@ const handleSubmit = async (e) => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        <Calendar size={14} className="inline mr-1" /> Date
-                                    </label>
-                                    <input type="date" name="date_reservation"
-                                        value={form.date_reservation}
-                                        onChange={handleChange}
-                                        min={new Date().toISOString().split('T')[0]}
-                                        className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        required />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        <Clock size={14} className="inline mr-1" /> Heure
-                                    </label>
-                                    <input type="time" name="heure_reservation"
-                                        value={form.heure_reservation}
-                                        onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        required />
-                                </div>
+                            {/* ✅ Navette : soit figée en lecture seule (arrivée via "Prochaine navette"),
+                                soit menu déroulant (arrivée via "Reserver une navette") */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <Bus size={14} className="inline mr-1" /> Navette
+                                </label>
+
+                                {modeNavetteImposee ? (
+                                    // --- Mode lecture seule : la navette a déjà été choisie sur le dashboard ---
+                                    !navettesLoaded ? (
+                                        <p className="text-sm text-gray-400 italic border border-gray-200 rounded-xl px-4 py-3">
+                                            Chargement de la navette...
+                                        </p>
+                                    ) : navetteSelectionnee ? (
+                                        <div className="w-full border-2 border-blue-200 bg-blue-50 rounded-xl px-4 py-3 flex items-center justify-between">
+                                            <div>
+                                                <p className="text-sm font-semibold text-blue-900">
+                                                    {new Date(navetteSelectionnee.date_depart).toLocaleDateString('fr-FR')} à {navetteSelectionnee.heure_depart}
+                                                </p>
+                                                <p className="text-xs text-blue-700">
+                                                    Destination : {navetteSelectionnee.destination}
+                                                </p>
+                                            </div>
+                                            <Lock size={16} className="text-blue-500 shrink-0" />
+                                        </div>
+                                    ) : (
+                                        <div className="text-sm text-red-600 border border-red-200 bg-red-50 rounded-xl px-4 py-3">
+                                            Cette navette n'est plus disponible (déjà exécutée ou expirée).
+                                            <button
+                                                type="button"
+                                                onClick={() => navigate('/usager/reserver')}
+                                                className="block mt-2 font-semibold underline"
+                                            >
+                                                Choisir une autre navette
+                                            </button>
+                                        </div>
+                                    )
+                                ) : (
+                                    // --- Mode liste déroulante classique ---
+                                    navettes.length === 0 ? (
+                                        <p className="text-sm text-gray-400 italic border border-gray-200 rounded-xl px-4 py-3">
+                                            Aucune navette disponible pour le moment
+                                        </p>
+                                    ) : (
+                                        <select
+                                            name="navette_id"
+                                            value={form.navette_id}
+                                            onChange={handleChange}
+                                            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            required
+                                        >
+                                            <option value="">Choisir une navette...</option>
+                                            {navettes.map(n => (
+                                                <option key={n.id} value={n.id}>
+                                                    {new Date(n.date_depart).toLocaleDateString('fr-FR')} à {n.heure_depart} — {n.destination}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )
+                                )}
                             </div>
 
-                            <button type="submit" disabled={loading}
+                            <button
+                                type="submit"
+                                disabled={
+                                    loading ||
+                                    (modeNavetteImposee ? !navetteSelectionnee : navettes.length === 0)
+                                }
                                 className="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
                                 {loading ? (
                                     <>

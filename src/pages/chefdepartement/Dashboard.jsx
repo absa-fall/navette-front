@@ -3,8 +3,7 @@ import { useLocation } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../api/axios'
 import { useNavigate } from 'react-router-dom'
-import { FileText, CheckCircle, AlertCircle, Send, Eye, Bell, Users, Trash2, History, Search, Layers, Clock } from 'lucide-react'
-
+import { FileText, CheckCircle, AlertCircle, Send, Eye, Bell, Users, Trash2, History, Search, Layers, Clock, X } from 'lucide-react'
 const tabBadgeColors = {
     blue: 'bg-blue-100 text-blue-700',
     green: 'bg-green-100 text-green-700',
@@ -21,12 +20,12 @@ export default function ChefDepartementDashboard() {
     const [message, setMessage]                 = useState('')
     const [error, setError]                     = useState('')
     const [selectedVoyages, setSelectedVoyages] = useState([])
-
     const [selectedAuto, setSelectedAuto]       = useState([])
     const [selectedHistorique, setSelectedHistorique] = useState([])
     const [autorisationsAbsence, setAutorisationsAbsence] = useState([])
     const [searchQuery, setSearchQuery] = useState('')
     const [filtreRapide, setFiltreRapide] = useState('tous')
+    const [pdfAffiche, setPdfAffiche] = useState(null)
 
     useEffect(() => {
         const params = new URLSearchParams(location.search)
@@ -470,11 +469,11 @@ export default function ChefDepartementDashboard() {
                                                     Voir le document
                                                 </button>
                                                 {a.justificatif_url && (
-                                                    <a href={a.justificatif_url} target="_blank" rel="noopener noreferrer"
-                                                        className="flex items-center gap-2 border border-purple-700 text-purple-700 hover:bg-purple-50 px-4 py-2 rounded-xl text-sm font-semibold transition">
-                                                        <FileText size={14} />
-                                                        Voir justificatif
-                                                    </a>
+                                                  <button onClick={() => setPdfAffiche(a.justificatif_url)}
+    className="flex items-center gap-2 border border-purple-700 text-purple-700 hover:bg-purple-50 px-4 py-2 rounded-xl text-sm font-semibold transition">
+    <FileText size={14} />
+    Voir justificatif
+</button>
                                                 )}
                                             </div>
                                         </div>
@@ -544,6 +543,25 @@ export default function ChefDepartementDashboard() {
                     </>
                 )}
             </div>
+            {pdfAffiche && (
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                <h3 className="font-semibold text-gray-800">Aperçu du justificatif</h3>
+                <button onClick={() => setPdfAffiche(null)}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition">
+                    <X size={18} />
+                </button>
+            </div>
+            <iframe
+                src={pdfAffiche}
+                className="flex-1 w-full rounded-b-2xl"
+                title="Justificatif PDF"
+            />
+        </div>
+    </div>
+)}
         </Layout>
+        
     )
 }

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Layout from '../../components/Layout'
+import { STORAGE_URL } from '../../api/storageUrl'
 import api from '../../api/axios'
 import { FileText, CheckCircle, XCircle, History, Download, Eye } from 'lucide-react'
-
+import { parseContenu } from '../../utils/rapportVoyage'
 export default function RapportsAValider() {
     const [searchParams] = useSearchParams()
     const statutFiltre = searchParams.get('statut')
@@ -66,11 +67,9 @@ export default function RapportsAValider() {
         }
     }
 
-    const voirPDF = (rapport) => {
-        if (rapport.fichier_pdf) {
-            window.open(`http://127.0.0.1:8000/storage/${rapport.fichier_pdf}`, '_blank')
-        }
-    }
+   const voirPDF = (rapport) => {
+    navigate(`/rapports/${rapport.id}/document`)
+}
 
     const telechargerPDF = (rapport) => {
         if (rapport.fichier_pdf) {
@@ -132,8 +131,9 @@ export default function RapportsAValider() {
                 </div>
 
                 <div className="bg-gray-50 rounded-xl p-3 mb-4">
-                    <p className="text-xs font-medium text-gray-500 mb-1">Contenu du rapport</p>
-                    <p className="text-sm text-gray-700 line-clamp-3">{rapport.contenu}</p>
+                   <p className="text-sm text-gray-700 line-clamp-3">
+    {Object.values(parseContenu(rapport.contenu)).filter(Boolean).join(' — ')}
+</p>
                 </div>
 
                 {/* Boutons PDF */}

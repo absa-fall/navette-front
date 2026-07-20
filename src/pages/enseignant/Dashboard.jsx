@@ -2,6 +2,7 @@ import Layout from '../../components/Layout'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import ProchaineNavette from '../../components/ProchaineNavette'
+import CarteNavette from '../../components/CarteNavette'
 import { useState, useEffect } from 'react'
 import { MapPin, FileText, Clock, CheckCircle, AlertTriangle, Bus, ChevronRight, Bell } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
@@ -21,6 +22,7 @@ export default function EnseignantDashboard() {
     const [eligibilite, setEligibilite] = useState(null)
     const [voyages, setVoyages] = useState([])
     const [reservations, setReservations] = useState([])
+    const [vehiculeActifId, setVehiculeActifId] = useState(null)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -28,11 +30,19 @@ export default function EnseignantDashboard() {
             api.get('/mes-voyages-etudes'),
             api.get('/rapports'),
             api.get('/voyages/eligibilite'),
-            api.get('/enseignant/mes-reservations').catch(() => ({ data: [] })),
+            api.get('/mes-reservations').catch(() => ({ data: [] })),
         ]).then(([voyagesRes, rapportsRes, eligRes, reservationsRes]) => {
             const beneficiaires = voyagesRes.data
             setVoyages(beneficiaires)
-            setReservations(reservationsRes.data || [])
+            // L'API peut renvoyer soit un tableau brut, soit une réponse paginée
+            // Laravel de la forme { data: [...], meta: {...}, links: {...} }
+            const rawReservations = reservationsRes.data
+            const reservationsArray = Array.isArray(rawReservations)
+                ? rawReservations
+                : Array.isArray(rawReservations?.data)
+                    ? rawReservations.data
+                    : []
+            setReservations(reservationsArray)
             setStats({
                 voyages: beneficiaires.length,
                 rapports: rapportsRes.data.length,
@@ -42,6 +52,20 @@ export default function EnseignantDashboard() {
             setEligibilite(eligRes.data)
         }).catch(() => {})
         .finally(() => setLoading(false))
+    }, [])
+
+    useEffect(() => {
+        const fetchVehiculeActif = async () => {
+            try {
+                const res = await api.get('/ma-navette-active')
+                setVehiculeActifId(res.data.vehicule_id)
+            } catch (err) {
+                console.error(err)
+            }
+        }
+        fetchVehiculeActif()
+        const interval = setInterval(fetchVehiculeActif, 15000)
+        return () => clearInterval(interval)
     }, [])
 
     // Construit les données du graphique sur les 6 derniers mois
@@ -103,6 +127,7 @@ export default function EnseignantDashboard() {
                 )}
 
                 <ProchaineNavette />
+                {vehiculeActifId && <CarteNavette vehiculeId={vehiculeActifId} />}
 
                 {/* Cartes du haut = stats + actions rapides fusionnées */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">

@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import {
     Bus, MapPin, FileText, Users, LayoutDashboard, LogOut,
     Menu, X, ChevronRight, ChevronDown, Bell, Trash2, CheckCheck, BarChart2, Camera, 
-    CheckCircle, Clock, XCircle, Calendar, Truck, Lock, Settings, User, Plane,
+    CheckCircle, Clock, XCircle, PenLine, Calendar, Truck, Lock, Settings, User, Plane,
 } from 'lucide-react'
 const menuParRole = {
     admin: [
@@ -24,11 +24,12 @@ const menuParRole = {
          { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
     ],
     enseignant: [
-        { label: 'Dashboard',        icon: LayoutDashboard, path: '/enseignant/dashboard' },
-        { label: 'Mes voyages',      icon: '/avion-voyage.png', path: '/enseignant/voyages-etudes' },
-        { label: 'Réserver navette', icon: '/im.png',           path: '/enseignant/reserver' },
-         { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
-    ],
+    { label: 'Dashboard',        icon: LayoutDashboard, path: '/enseignant/dashboard' },
+    { label: 'Mes voyages',      icon: '/avion-voyage.png', path: '/enseignant/voyages-etudes' },
+    { label: 'Mon rapport',      icon: PenLine,          path: '/enseignant/rapports' },
+    { label: 'Réserver navette', icon: '/im.png',           path: '/enseignant/reserver' },
+    { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
+],
     drh: [
         { label: 'Dashboard',      icon: LayoutDashboard, path: '/drh/dashboard' },
         { label: 'En attente',     icon: Clock,           path: '/drh/ordres?statut=en_attente' },
@@ -52,9 +53,10 @@ const menuParRole = {
         { label: 'Graphiques',     icon: BarChart2,       path: '/sg-vr/dashboard?tab=graphiques' },
          { label: 'Paramètres',     icon: Settings,        path: '/parametres' },
     ],
-  vice_recteur: [
+ vice_recteur: [
     { label: 'Dashboard',        icon: LayoutDashboard, path: '/vice-recteur/dashboard' },
     { label: "Voyages d'etudes", icon: '/avion-voyage.png', path: '/vice-recteur/voyages-etudes' },
+    { label: 'Vue Commission',   icon: Users,           path: '/commission/dashboard' },
     { label: 'Procès-verbal',    icon: FileText,        path: '/vice-recteur/proces-verbal' },
     { label: 'Paramètres',       icon: Settings,        path: '/parametres' },
 ],

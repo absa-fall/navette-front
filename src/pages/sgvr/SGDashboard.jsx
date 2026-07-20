@@ -86,12 +86,58 @@ export default function SGDashboard() {
         }
     }
 
-    const toggleSelect = (id) => {
-        setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
+    // ✅ Regroupe les 2 réservations (aller + retour) en une seule "ligne"
+    // d'affichage. On fusionne dès que 2 réservations appartiennent au même
+    // usager, à la même navette, et ont un sens opposé (aller ↔ retour) —
+    // que ce soit une réservation "aller_retour" groupée (avec groupe_id)
+    // OU deux réservations simples faites séparément pour la même navette
+    // (aucun groupe_id dans ce cas, mais même navette_id). Si le trajet lié
+    // n'est pas présent dans la liste courante (ex : filtré par la
+    // recherche, ou dans un autre onglet), on affiche la réservation seule
+    // sans casser l'affichage.
+    const regrouperAllerRetour = (liste) => {
+        const dejaTraites = new Set()
+        const resultat = []
+
+        liste.forEach(r => {
+            if (dejaTraites.has(r.id)) return
+
+            const liee = liste.find(x =>
+                x.id !== r.id &&
+                !dejaTraites.has(x.id) &&
+                x.user_id === r.user_id &&
+                x.navette_id === r.navette_id &&
+                x.trajet_sens !== r.trajet_sens
+            )
+
+            if (liee) {
+                dejaTraites.add(r.id)
+                dejaTraites.add(liee.id)
+                resultat.push({ ...r, _liee: liee })
+                return
+            }
+
+            dejaTraites.add(r.id)
+            resultat.push(r)
+        })
+
+        return resultat
+    }
+
+    // Identifiants réels concernés par une ligne affichée (1 ou 2 réservations)
+    const idsLigne = (ligne) => ligne._liee ? [ligne.id, ligne._liee.id] : [ligne.id]
+
+    const toggleSelectLigne = (ligne) => {
+        const ids = idsLigne(ligne)
+        const tousSelectionnes = ids.every(id => selected.includes(id))
+        setSelected(prev => tousSelectionnes
+            ? prev.filter(id => !ids.includes(id))
+            : [...new Set([...prev, ...ids])])
     }
 
     const toggleSelectAll = (liste) => {
-        const ids = sortedList(liste).map(r => r.id)
+        const lignes = regrouperAllerRetour(sortedList(liste))
+        const ids = lignes.flatMap(idsLigne)
         if (ids.every(id => selected.includes(id))) {
             setSelected(prev => prev.filter(id => !ids.includes(id)))
         } else {
@@ -140,7 +186,136 @@ export default function SGDashboard() {
         }))
     }
 
-    // ✅ Type de trajet ajouté dans Excel
+    // ✅ Un trajet est "non effectué" si le passager n'a jamais scanné sa
+    // montée (validee_montee = false) et que la date prévue pour CE trajet
+    // précis est dépassée. Deux cas, avec deux dates de référence différentes :
+    //
+    // Cas 1 — trajet retour d'une réservation aller-retour (l'aller a pu
+    // être fait, seul le retour manque) : on compare à la vraie date de
+    // retour de la navette (navette.date_retour), pas à date_reservation
+    // (qui vaut la date de départ, identique pour les 2 legs — voir store()).
+    //
+    // Cas 2 — réservation simple, aller seul OU retour seul (le passager
+    // n'a réservé qu'un seul sens) : on compare à date_reservation, la date
+    // de la navette pour ce trajet précis.
+    const estLegNonEffectuee = (r) => {
+        if (['terminee', 'annulee', 'refusee'].includes(r.statut)) return false
+        if (r.validee_montee) return false
+
+        const aujourdHui = new Date()
+        aujourdHui.setHours(0, 0, 0, 0)
+
+        if (r.type_trajet === 'aller_retour' && r.trajet_sens === 'retour') {
+            if (!r.navette?.date_retour) return false
+            return new Date(r.navette.date_retour) < aujourdHui
+        }
+
+        if (r.type_trajet !== 'aller_retour') {
+            if (!r.date_reservation) return false
+            return new Date(r.date_reservation) < aujourdHui
+        }
+
+        return false
+    }
+
+    // Libellé du badge : "Retour non effectué" seulement pour le retour
+    // d'un aller-retour, "Annulée" pour une réservation simple (aller seul
+    // ou retour seul) dont la date est passée sans validation de montée.
+    const labelLegNonEffectuee = (r) =>
+        (r.type_trajet === 'aller_retour' && r.trajet_sens === 'retour')
+            ? 'Retour non effectué'
+            : 'Annulée'
+
+    const sensLabel = (r) => r.trajet_sens === 'retour' ? 'Retour' : 'Aller'
+
+    // Badge "nu" (sans mention du sens), utilisé dans les lignes fusionnées
+    // où le sens est déjà indiqué par le libellé "Aller" / "Retour" à côté.
+   const badgeStatutSimple = (r) => {
+    if (estLegNonEffectuee(r)) {
+        return (
+            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 inline-flex items-center gap-1 whitespace-nowrap">
+                <AlertCircle size={11} />
+                {labelLegNonEffectuee(r)}
+            </span>
+        )
+    }
+    if (r.statut === 'terminee') return <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 whitespace-nowrap">Terminée</span>
+    if (r.statut === 'en_cours') return <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 whitespace-nowrap">En cours</span>
+    if (r.statut === 'confirmee') return <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 whitespace-nowrap">Confirmée</span>
+    if (r.statut === 'refusee') return <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap">Refusée</span>
+    if (r.statut === 'annulee') return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 whitespace-nowrap">Annulée</span>
+    if (r.statut === 'retour_non_effectue') return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 whitespace-nowrap">Retour non effectué</span>
+    if (r.statut === 'incident') return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-700 inline-flex items-center gap-1 whitespace-nowrap"><AlertCircle size={11} />Incident</span>
+    return <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 whitespace-nowrap">En attente</span>
+}
+    // Badge avec mention du sens entre parenthèses — comportement d'origine,
+    // utilisé pour les réservations simples (aller seul ou retour seul).
+  const badgeStatutAvecSens = (r) => {
+    if (estLegNonEffectuee(r)) {
+        return (
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 flex items-center gap-1 w-fit whitespace-nowrap">
+                <AlertCircle size={12} />
+                {labelLegNonEffectuee(r)}
+            </span>
+        )
+    }
+    if (r.statut === 'terminee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 whitespace-nowrap">Terminée ({sensLabel(r)})</span>
+    if (r.statut === 'en_cours') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 whitespace-nowrap">En cours ({sensLabel(r)})</span>
+    if (r.statut === 'confirmee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 whitespace-nowrap">Confirmée ({sensLabel(r)})</span>
+    if (r.statut === 'refusee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap">Refusée ({sensLabel(r)})</span>
+    if (r.statut === 'annulee') return <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 whitespace-nowrap">Annulée ({sensLabel(r)})</span>
+    if (r.statut === 'retour_non_effectue') return <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 whitespace-nowrap">Retour non effectué</span>
+    if (r.statut === 'incident') return <span className="px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-700 flex items-center gap-1 w-fit whitespace-nowrap"><AlertCircle size={12} />Incident ({sensLabel(r)})</span>
+    return <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 whitespace-nowrap">En attente ({sensLabel(r)})</span>
+}
+    // ✅ Point d'entrée : ligne fusionnée (aller-retour) → statuts sur une seule ligne.
+    // Ligne simple → comportement d'origine.
+    const getStatutBadge = (ligne) => {
+        if (ligne._liee) {
+            const [legAller, legRetour] = ligne.trajet_sens === 'retour'
+                ? [ligne._liee, ligne]
+                : [ligne, ligne._liee]
+
+            return (
+                <div className="flex items-center gap-1.5 flex-nowrap whitespace-nowrap">
+                    <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Aller</span>
+                    {badgeStatutSimple(legAller)}
+                    <span className="text-gray-300">·</span>
+                    <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Retour</span>
+                    {badgeStatutSimple(legRetour)}
+                </div>
+            )
+        }
+        return badgeStatutAvecSens(ligne)
+    }
+
+    // ✅ Libellé texte du statut (sans JSX), réutilisé par les exports
+    // Excel/PDF — même logique que les badges (estLegNonEffectuee /
+    // labelLegNonEffectuee), pour que "Annulée" / "Retour non effectué"
+    // apparaissent aussi dans les fichiers exportés, pas seulement à l'écran.
+   const libelleStatutTexte = (r) => {
+    if (estLegNonEffectuee(r)) return labelLegNonEffectuee(r)
+    if (r.statut === 'terminee') return 'Terminée'
+    if (r.statut === 'confirmee') return 'Confirmée'
+    if (r.statut === 'en_cours') return 'En cours'
+    if (r.statut === 'refusee') return 'Refusée'
+    if (r.statut === 'annulee') return 'Annulée'
+    if (r.statut === 'retour_non_effectue') return 'Retour non effectué'
+    if (r.statut === 'incident') return 'Incident'
+    return 'En attente'
+}
+
+    const getProfilBadge = (typeProfil) => {
+        const colors = {
+            'permanent': 'bg-purple-100 text-purple-700',
+            'non_permanent': 'bg-orange-100 text-orange-700',
+            'contractuel': 'bg-pink-100 text-pink-700',
+            'vacataire': 'bg-teal-100 text-teal-700',
+        }
+        return colors[typeProfil] || 'bg-gray-100 text-gray-700'
+    }
+
+    // ✅ Type de trajet ajouté dans Excel (inchangé : une ligne par trajet)
     const exportExcel = (liste) => {
         const headers = ['Nom', 'Prénom', 'Catégorie', 'Profil', 'Départ', 'Arrivée', 'Type trajet', 'Date', 'Heure', 'Montant', 'Statut']
         const rows = sortedList(liste).map(r => [
@@ -150,7 +325,7 @@ export default function SGDashboard() {
             r.date_reservation ? new Date(r.date_reservation).toLocaleDateString('fr-FR') : '-',
             r.heure_reservation || '-',
             (parseFloat(r.montant_retenue) || 0) === 0 ? '—' : (parseFloat(r.montant_retenue) || 0) + ' FCFA',
-            r.statut === 'terminee' ? 'Terminée' : r.statut === 'confirmee' ? 'Confirmée' : r.statut === 'en_cours' ? 'En cours' : 'En attente'
+            libelleStatutTexte(r)
         ])
         const csvContent = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
         const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -162,7 +337,7 @@ export default function SGDashboard() {
         URL.revokeObjectURL(url)
     }
 
-    // ✅ Type de trajet ajouté dans PDF
+    // ✅ Type de trajet ajouté dans PDF (inchangé : une ligne par trajet)
     const exportPDF = (liste) => {
         const sorted = sortedList(liste)
         const total = sorted.reduce((sum, r) => sum + (parseFloat(r.montant_retenue) || 0), 0)
@@ -200,7 +375,7 @@ export default function SGDashboard() {
                                 <td>${typeTrajetLabel[r.type_trajet] || r.type_trajet || '-'}</td>
                                 <td>${r.date_reservation ? new Date(r.date_reservation).toLocaleDateString('fr-FR') : '-'}<br>${r.heure_reservation || '-'}</td>
                                 <td>${(parseFloat(r.montant_retenue) || 0) === 0 ? '—' : (parseFloat(r.montant_retenue) || 0).toLocaleString() + ' FCFA'}</td>
-                                <td>${r.statut === 'terminee' ? 'Terminée' : r.statut === 'confirmee' ? 'Confirmée' : r.statut === 'en_cours' ? 'En cours' : 'En attente'}</td>
+                                <td>${libelleStatutTexte(r)}</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -212,51 +387,37 @@ export default function SGDashboard() {
         win.document.close()
         win.print()
     }
-const estRetourNonEffectue = (r) => {
-    if (r.type_trajet !== 'aller_retour' || r.trajet_sens !== 'retour') return false
-    if (['terminee', 'annulee', 'refusee'].includes(r.statut)) return false
-    const dateResa = new Date(r.date_reservation)
-    const aujourdHui = new Date()
-    aujourdHui.setHours(0, 0, 0, 0)
-    return dateResa < aujourdHui
-}
-   const sensLabel = (r) => r.trajet_sens === 'retour' ? 'Retour' : 'Aller'
 
-const getStatutBadge = (r) => {
-    if (estRetourNonEffectue(r)) {
-        return (
-            <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 flex items-center gap-1 w-fit">
-                <AlertCircle size={12} />
-                Retour non effectué
-            </span>
-        )
+   
+const estStatutDefinitif = (s) => ['terminee', 'annulee', 'retour_non_effectue', 'refusee'].includes(s)
+
+const statutEffectifLigne = (ligne) => {
+    if (ligne._liee) {
+        const legs = [ligne, ligne._liee]
+        if (legs.some(l => l.statut === 'incident')) return 'en_cours'
+        if (legs.every(l => estStatutDefinitif(l.statut))) return 'terminee'
+        if (legs.some(l => ['confirmee', 'en_cours'].includes(l.statut))) return 'en_cours'
+        return null
     }
-    if (r.statut === 'terminee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">Terminée ({sensLabel(r)})</span>
-    if (r.statut === 'en_cours') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">En cours ({sensLabel(r)})</span>
-    if (r.statut === 'confirmee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">Confirmée ({sensLabel(r)})</span>
-    if (r.statut === 'refusee') return <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">Refusée ({sensLabel(r)})</span>
-    return <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">En attente ({sensLabel(r)})</span>
+    if (ligne.statut === 'incident') return 'en_cours'
+    if (estStatutDefinitif(ligne.statut)) return 'terminee'
+    if (['confirmee', 'en_cours'].includes(ligne.statut)) return 'en_cours'
+    return null
 }
 
-    const getProfilBadge = (typeProfil) => {
-        const colors = {
-            'permanent': 'bg-purple-100 text-purple-700',
-            'non_permanent': 'bg-orange-100 text-orange-700',
-            'contractuel': 'bg-pink-100 text-pink-700',
-            'vacataire': 'bg-teal-100 text-teal-700',
-        }
-        return colors[typeProfil] || 'bg-gray-100 text-gray-700'
-    }
+    const lignesGroupees = regrouperAllerRetour(reservations)
 
-    const enCours = reservations.filter(r => r.statut !== 'terminee' && r.statut !== 'refusee')
-    const retoursOublies = reservations.filter(estRetourNonEffectue)
-    const terminées = reservations.filter(r => r.statut === 'terminee')
+    
+    const enCours = lignesGroupees.filter(l => statutEffectifLigne(l) === 'en_cours')
+    const retoursOublies = reservations.filter(estLegNonEffectuee)
+    const terminées = lignesGroupees.filter(l => statutEffectifLigne(l) === 'terminee')
     const totalRetenues = reservations.reduce((sum, r) => sum + (parseFloat(r.montant_retenue) || 0), 0)
     const listeActive = onglet === 'encours' ? enCours : terminées
     const estHistorique = onglet === 'historique'
+
 const renderTableau = (liste) => {
-    const sorted = sortedList(liste)
-    const allIds = sorted.map(r => r.id)
+    const sorted = regrouperAllerRetour(sortedList(liste))
+    const allIds = sorted.flatMap(idsLigne)
     const toutSelectionne = allIds.length > 0 && allIds.every(id => selected.includes(id))
     const selectedDansListe = selected.filter(id => liste.some(r => r.id === id))
 
@@ -307,78 +468,101 @@ const renderTableau = (liste) => {
                                 <td colSpan={9} className="px-4 py-8 text-center text-gray-500">Aucune réservation</td>
                             </tr>
                         ) : (
-                            sorted.map((r) => (
-                                <tr key={r.id} className={`hover:bg-gray-50 transition ${selected.includes(r.id) ? 'bg-red-50' : ''}`}>
-                                    <td className="px-4 py-3">
-                                        <input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggleSelect(r.id)}
-                                            className="w-4 h-4 rounded border-gray-300 text-blue-600" />
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs">
-                                                {(r.prenom || '').charAt(0)}{(r.nom || '').charAt(0)}
+                            sorted.map((ligne) => {
+                                const ids = idsLigne(ligne)
+                                const estSelectionnee = ids.some(id => selected.includes(id))
+                                const estFusionnee = Boolean(ligne._liee)
+
+                                // Pour l'affichage Trajet / Date, on privilégie toujours le trajet "aller"
+                                const legAller = estFusionnee
+                                    ? (ligne.trajet_sens === 'retour' ? ligne._liee : ligne)
+                                    : ligne
+
+                                const montantTotal = estFusionnee
+                                    ? (parseFloat(ligne.montant_retenue) || 0) + (parseFloat(ligne._liee.montant_retenue) || 0)
+                                    : (parseFloat(ligne.montant_retenue) || 0)
+
+                                return (
+                                    <tr key={ligne.id} className={`hover:bg-gray-50 transition ${estSelectionnee ? 'bg-red-50' : ''}`}>
+                                        <td className="px-4 py-3">
+                                            <input type="checkbox" checked={ids.every(id => selected.includes(id))} onChange={() => toggleSelectLigne(ligne)}
+                                                className="w-4 h-4 rounded border-gray-300 text-blue-600" />
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs">
+                                                    {(ligne.prenom || '').charAt(0)}{(ligne.nom || '').charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-gray-800 text-sm">{ligne.prenom} {ligne.nom}</p>
+                                                    <p className="text-xs text-gray-500">{ligne.categorie}</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="font-medium text-gray-800 text-sm">{r.prenom} {r.nom}</p>
-                                                <p className="text-xs text-gray-500">{r.categorie}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getProfilBadge(r.type_profil)}`}>
-                                            {r.type_profil}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex items-center gap-1 text-sm text-gray-700">
-                                            <MapPin size={14} className="text-blue-500" />
-                                            {r.ville_depart} <span className="text-gray-400">→</span> {r.ville_arrivee}
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                                            {typeTrajetLabel[r.type_trajet] || r.type_trajet || '-'}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <div className="text-sm text-gray-700">
-                                            <div className="flex items-center gap-1">
-                                                <Calendar size={14} className="text-gray-400" />
-                                                {r.date_reservation ? new Date(r.date_reservation).toLocaleDateString('fr-FR') : '-'}
-                                            </div>
-                                            <div className="flex items-center gap-1 text-gray-500">
-                                                <Clock size={14} className="text-gray-400" />
-                                                {r.heure_reservation || '-'}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        {editingId === r.id ? (
-                                            <div className="flex items-center gap-1">
-                                                <input type="number" value={editMontant} onChange={(e) => setEditMontant(e.target.value)}
-                                                    className="w-24 border border-blue-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                                                <button onClick={() => handleSaveMontant(r.id)} className="text-green-600 hover:text-green-800"><Check size={16} /></button>
-                                                <button onClick={() => setEditingId(null)} className="text-red-400 hover:text-red-600"><X size={16} /></button>
-                                            </div>
-                                        ) : (
-                                            <span className="text-blue-700 font-bold text-sm">
-                                                {(parseFloat(r.montant_retenue) || 0) === 0 ? '—' : (parseFloat(r.montant_retenue) || 0).toLocaleString() + ' FCFA'}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getProfilBadge(ligne.type_profil)}`}>
+                                                {ligne.type_profil}
                                             </span>
-                                        )}
-                                    </td>
-                                    <td className="px-4 py-3">{getStatutBadge(r)}</td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex items-center gap-2">
-                                            <button onClick={() => handleEditMontant(r)} className="text-blue-500 hover:text-blue-700 transition" title="Modifier le montant">
-                                                <Pencil size={15} />
-                                            </button>
-                                            <button onClick={() => handleDeleteMontant(r.id)} className="text-red-400 hover:text-red-600 transition" title="Mettre le montant à 0">
-                                                <Trash2 size={15} />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center gap-1 text-sm text-gray-700">
+                                                <MapPin size={14} className="text-blue-500" />
+                                                {legAller.ville_depart} <span className="text-gray-400">→</span> {legAller.ville_arrivee}
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                                                {typeTrajetLabel[ligne.type_trajet] || ligne.type_trajet || '-'}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <div className="text-sm text-gray-700">
+                                                <div className="flex items-center gap-1">
+                                                    <Calendar size={14} className="text-gray-400" />
+                                                    {legAller.date_reservation ? new Date(legAller.date_reservation).toLocaleDateString('fr-FR') : '-'}
+                                                </div>
+                                                <div className="flex items-center gap-1 text-gray-500">
+                                                    <Clock size={14} className="text-gray-400" />
+                                                    {legAller.heure_reservation || '-'}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            {estFusionnee ? (
+                                                <span className="text-blue-700 font-bold text-sm">
+                                                    {montantTotal === 0 ? '—' : montantTotal.toLocaleString() + ' FCFA'}
+                                                </span>
+                                            ) : editingId === ligne.id ? (
+                                                <div className="flex items-center gap-1">
+                                                    <input type="number" value={editMontant} onChange={(e) => setEditMontant(e.target.value)}
+                                                        className="w-24 border border-blue-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                                    <button onClick={() => handleSaveMontant(ligne.id)} className="text-green-600 hover:text-green-800"><Check size={16} /></button>
+                                                    <button onClick={() => setEditingId(null)} className="text-red-400 hover:text-red-600"><X size={16} /></button>
+                                                </div>
+                                            ) : (
+                                                <span className="text-blue-700 font-bold text-sm">
+                                                    {montantTotal === 0 ? '—' : montantTotal.toLocaleString() + ' FCFA'}
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3">{getStatutBadge(ligne)}</td>
+                                        <td className="px-4 py-3">
+                                            {estFusionnee ? (
+                                                <span className="text-xs text-gray-300 italic">—</span>
+                                            ) : (
+                                                <div className="flex items-center gap-2">
+                                                    <button onClick={() => handleEditMontant(ligne)} className="text-blue-500 hover:text-blue-700 transition" title="Modifier le montant">
+                                                        <Pencil size={15} />
+                                                    </button>
+                                                    <button onClick={() => handleDeleteMontant(ligne.id)} className="text-red-400 hover:text-red-600 transition" title="Mettre le montant à 0">
+                                                        <Trash2 size={15} />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </td>
+                                    </tr>
+                                )
+                            })
                         )}
                     </tbody>
                 </table>

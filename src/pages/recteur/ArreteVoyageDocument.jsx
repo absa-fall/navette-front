@@ -29,6 +29,7 @@ export default function ArreteVoyageDocument() {
     const [loading, setLoading] = useState(true)
     const [signature, setSignature] = useState(null)
     const [transmission, setTransmission] = useState(false)
+    const [notification, setNotification] = useState('') 
 
     useEffect(() => {
         api.get(`/voyages-etudes/${voyageId}/arrete`)
@@ -41,17 +42,19 @@ export default function ArreteVoyageDocument() {
     const peutSigner = user?.role === 'recteur'
 
     const transmettre = async () => {
-        if (!signature) return
-        setTransmission(true)
-        try {
-            await api.patch(`/arretes/${data.id}/transmettre`, { signature })
-            setData(prev => ({ ...prev, statut: 'transmis' }))
-        } catch (err) {
-            alert(err.response?.data?.message || 'Erreur lors de la transmission')
-        } finally {
-            setTransmission(false)
-        }
+    if (!signature) return
+    setTransmission(true)
+    try {
+        await api.patch(`/arretes/${data.id}/transmettre`, { signature })
+        setData(prev => ({ ...prev, statut: 'transmis', signe: true }))
+        setNotification('Arrêté transmis avec succès.')
+        setTimeout(() => setNotification(''), 4000)
+    } catch (err) {
+        alert(err.response?.data?.message || 'Erreur lors de la transmission')
+    } finally {
+        setTransmission(false)
     }
+}
 
     if (loading) {
         return (
@@ -73,15 +76,29 @@ export default function ArreteVoyageDocument() {
     const annee = data.date_arrete ? new Date(data.date_arrete).getFullYear() : new Date().getFullYear()
 
     return (
-        <div className="min-h-screen bg-gray-100 print:bg-white py-8 px-4 print:py-0 print:px-0">
+       <div className="min-h-screen print:min-h-0 bg-gray-100 print:bg-white py-8 px-4 print:py-0 print:px-0">
 
-            {/* Style impression : format A4 propre */}
-            <style>{`
-                @media print {
-                    @page { size: A4; margin: 8mm; }
-                    html, body { height: auto !important; }
-                }
-            `}</style>
+           <style>{`
+    @media print {
+        @page { size: A4; margin: 8mm; }
+
+        html, body {
+            height: auto !important;
+            min-height: 0 !important;
+        }
+
+        .print-page-wrapper {
+            display: flex !important;
+            flex-direction: column;
+            min-height: 281mm;
+            height: 281mm;
+        }
+
+        .print-footer {
+            margin-top: auto !important;
+        }
+    }
+`}</style>
 
            {/* Bouton imprimer */}
             <div className="flex justify-center gap-3 mb-6 print:hidden">
@@ -94,7 +111,7 @@ export default function ArreteVoyageDocument() {
             </div>
 
             {/* Document */}
-         <div className="max-w-3xl mx-auto bg-white border border-gray-200 shadow-sm rounded-xl px-12 py-10 print:shadow-none print:border-none print:rounded-none print:max-w-full print:px-8 print:py-4 font-serif text-gray-900 pb-24 print:pb-4">
+         <div className="print-page-wrapper max-w-3xl mx-auto bg-white border border-gray-200 shadow-sm rounded-xl px-12 py-10 print:shadow-none print:border-none print:rounded-none print:max-w-full print:px-8 print:py-4 font-serif text-gray-900 pb-24 print:pb-4">
 
                 {/* En-tête */}
                 <div className="flex justify-between items-start mb-6 print:mb-4">
@@ -226,12 +243,16 @@ export default function ArreteVoyageDocument() {
                     </div>
                 </div>
 {/* Pied de page */}
-                <div className="text-center text-[10px] text-gray-600 mt-12 print:mt-6 border-t pt-3 print:pt-2">
+                <div className="print-footer text-center text-[10px] text-gray-600 mt-12 print:mt-6 border-t pt-3 print:pt-2">
                     <p>Tél. : (221) 33 973 30 86 // Fax : (221) 33 973 30 93 // B.P. : 30 – Bambey (République du Sénégal)</p>
                     <p>Internet : www.uadb.sn // Courriel : rectorat@uadb.edu.sn</p>
                 </div>
             </div>
-
+{notification && (
+    <div className="print:hidden fixed top-4 left-1/2 -translate-x-1/2 bg-green-600 text-white px-5 py-2.5 rounded-xl shadow-lg z-50 text-sm font-semibold">
+        {notification}
+    </div>
+)}
             {/* Barre d'action fixe — apparaît une fois la signature complétée */}
             {estBrouillon && signature && (
                 <div className="print:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] z-40">

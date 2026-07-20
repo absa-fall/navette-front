@@ -4,7 +4,7 @@ import api from '../../api/axios'
 import Layout from '../../components/Layout'
 import { Bus, QrCode, Printer, CheckCircle } from 'lucide-react'
 import QRCode from 'react-qr-code'
-
+import SuiviGPS from '../../components/SuiviGPS'
 export default function MonBus() {
     const navigate = useNavigate()
     const [vehicules, setVehicules] = useState([])
@@ -74,6 +74,7 @@ export default function MonBus() {
 
     return (
         <Layout>
+            
             <div className="space-y-6">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Mon bus</h1>
@@ -122,36 +123,39 @@ export default function MonBus() {
                                     </div>
                                 </div>
 
-                                {/* QR Code affiché si sélectionné */}
-                                {selected?.id === v.id && (
-                                    <div className="mt-4 pt-4 border-t border-gray-100">
-                                        <div className="flex flex-col items-center gap-4">
-                                            {v.qr_code ? (
-                                                <>
-                                                    <div className="p-4 bg-white border-2 border-gray-200 rounded-2xl">
-                                                        <QRCode
-                                                            value={v.qr_code}
-                                                            size={180}
-                                                            level="H"
-                                                        />
-                                                    </div>
-                                                    <p className="font-mono text-sm font-bold text-gray-600 tracking-widest">
-                                                        {v.qr_code}
-                                                    </p>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); imprimer(v) }}
-                                                        className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition"
-                                                    >
-                                                        <Printer size={16} />
-                                                        Imprimer le QR
-                                                    </button>
-                                                </>
-                                            ) : (
-                                                <p className="text-gray-400 text-sm">QR code non disponible</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
+                                     {/* QR Code affiché si sélectionné */}
+{selected?.id === v.id && (
+    <div className="mt-4 pt-4 border-t border-gray-100">
+        <div className="mb-4">
+            <SuiviGPS vehiculeId={v.id} />
+        </div>
+        <div className="flex flex-col items-center gap-4">
+            {v.qr_code ? (
+                <>
+                    <div className="p-4 bg-white border-2 border-gray-200 rounded-2xl">
+                        <QRCode
+                            value={v.qr_code}
+                            size={180}
+                            level="H"
+                        />
+                    </div>
+                    <p className="font-mono text-sm font-bold text-gray-600 tracking-widest">
+                        {v.qr_code}
+                    </p>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); imprimer(v) }}
+                        className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition"
+                    >
+                        <Printer size={16} />
+                        Imprimer le QR
+                    </button>
+                </>
+            ) : (
+                <p className="text-gray-400 text-sm">QR code non disponible</p>
+            )}
+        </div>
+    </div>
+)}
                             </div>
                         ))}
                     </div>

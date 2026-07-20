@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
+import { STORAGE_URL } from '../../api/storageUrl'
 import api from '../../api/axios'
+import { useAuth } from '../../context/AuthContext'
 import { FileText, CheckCircle, AlertCircle, Eye, MessageSquare, X, Trash2, MapPin, Search, Layers } from 'lucide-react'
 
+
 export default function CommissionDashboard() {
+    const { user } = useAuth()
     const navigate = useNavigate()
     const [dossiers, setDossiers]           = useState([])
     const [listesPubliees, setListesPubliees] = useState([])
@@ -18,6 +22,7 @@ export default function CommissionDashboard() {
     const [selected, setSelected]           = useState([])
     const [selectedListes, setSelectedListes] = useState([])
     const [justifOuvert, setJustifOuvert]   = useState(null)
+    const [pdfAffiche, setPdfAffiche] = useState(null) 
     const [searchQuery, setSearchQuery]     = useState('')
 
     useEffect(() => { fetchDossiers(); fetchListesPubliees() }, [])
@@ -124,8 +129,11 @@ export default function CommissionDashboard() {
         } catch { showMsg('Erreur lors de la suppression', true) }
     }
 
-    const enAttente = dossiers.filter(d => !d.avis?.some(a => a.user?.role === 'commission'))
-    const traites   = dossiers.filter(d =>  d.avis?.some(a => a.user?.role === 'commission'))
+   
+const monRole = user?.role
+
+const enAttente = dossiers.filter(d => !d.avis?.some(a => a.user_id === user?.id))
+const traites   = dossiers.filter(d =>  d.avis?.some(a => a.user_id === user?.id))
 
     // Filtres de recherche
     const filtrerListes = (liste) => liste.filter(v =>
@@ -206,25 +214,28 @@ export default function CommissionDashboard() {
                         <p className="text-sm text-gray-500 mt-1">Dossiers traites</p>
                     </div>
                 </div>
-
-                {/* Onglets de navigation (séparés des cartes stats) */}
-                <div className="flex gap-2 border-b border-gray-200 flex-wrap">
-                    {[
-                        { key: 'listes', label: 'Listes publiées' },
-                        { key: 'attente', label: 'A traiter' },
-                        { key: 'traites', label: 'Traites' },
-                    ].map(tab => (
-                        <button key={tab.key} onClick={() => setFiltreVue(tab.key)}
-                            className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition ${
-                                filtreVue === tab.key
-                                    ? 'border-blue-700 text-blue-700'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                            }`}>
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-
+{/* Onglets de navigation (séparés des cartes stats) */}
+<div className="flex gap-2 border-b border-gray-200 flex-wrap">
+    {[
+        { key: 'listes', label: 'Listes publiées', count: listesPubliees.length, accent: false },
+        { key: 'attente', label: 'A traiter', count: enAttente.length, accent: true },
+        { key: 'traites', label: 'Traites', count: traites.length, accent: false },
+    ].map(tab => (
+        <button key={tab.key} onClick={() => setFiltreVue(tab.key)}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition ${
+                filtreVue === tab.key
+                    ? 'border-blue-700 text-blue-700'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}>
+            {tab.label}
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                tab.accent ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'
+            }`}>
+                {tab.count}
+            </span>
+        </button>
+    ))}
+</div>
                 {/* Recherche */}
                 <div className="relative max-w-sm">
                     <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -399,11 +410,17 @@ export default function CommissionDashboard() {
                                                     <div className="space-y-1">
                                                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Justificatifs ({d.justificatifs.length}) :</p>
                                                         {d.justificatifs.map(j => (
-                                                            <button key={j.id}
-                                                                onClick={() => window.open(`http://127.0.0.1:8000/storage/${j.fichier_pdf}`, '_blank')}
-                                                                className="flex items-center gap-2 text-sm text-gray-700 hover:underline">
-                                                                <Eye size={14} /> {j.nom_original || 'Fichier PDF'}
-                                                            </button>
+                                                          <button key={j.id}
+    onClick={() => {
+        if (j.nom_original?.startsWith('Rapport_de_voyage_')) {
+    navigate(`/rapports/${d.rapport_id}/document`)
+} else {
+    setPdfAffiche(`${STORAGE_URL}/storage/${j.fichier_pdf}`)
+}
+    }}
+    className="flex items-center gap-2 text-sm text-blue-700 hover:underline">
+    <Eye size={14} /> {j.nom_original || 'Fichier PDF'}
+</button>
                                                         ))}
                                                     </div>
                                                 )}
@@ -543,16 +560,23 @@ export default function CommissionDashboard() {
 
                                                 {isOuvert && d.justificatifs?.length > 0 && (
                                                     <div className="mt-3 pt-3 border-t border-gray-200 space-y-1">
-                                                        {d.justificatifs.map(j => (
-                                                            <button key={j.id}
-                                                                onClick={() => window.open(`http://127.0.0.1:8000/storage/${j.fichier_pdf}`, '_blank')}
-                                                                className="flex items-center gap-2 text-sm text-gray-700 hover:underline">
-                                                                <FileText size={14} /> {j.nom_original || 'Fichier PDF'}
-                                                            </button>
-                                                        ))}
+                                                      {d.justificatifs.map(j => (
+    <button key={j.id}
+        onClick={() => {
+            if (j.nom_original?.startsWith('Rapport_de_voyage_')) {
+                navigate(`/rapports/${d.rapport_id}/document`)
+            } else {
+                setPdfAffiche(`${STORAGE_URL}/storage/${j.fichier_pdf}`)
+            }
+        }}
+        className="flex items-center gap-2 text-sm text-blue-700 hover:underline">
+        <FileText size={14} /> {j.nom_original || 'Fichier PDF'}
+    </button>
+))}
                                                     </div>
                                                 )}
                                             </div>
+                                            
                                         )
                                     })}
                                 </div>
@@ -561,6 +585,23 @@ export default function CommissionDashboard() {
                     </div>
                 )}
             </div>
-        </Layout>
+      {pdfAffiche && (
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                <h3 className="font-semibold text-gray-800">Aperçu du justificatif</h3>
+                <button onClick={() => setPdfAffiche(null)}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition">
+                    <X size={18} />
+                </button>
+            </div>
+            <iframe
+                src={pdfAffiche}
+                className="flex-1 w-full rounded-b-2xl"
+                title="Justificatif PDF"
+            />
+        </div>
+    </div>
+)}  </Layout>
     )
 }

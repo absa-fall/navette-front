@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
+import { SECTIONS_RAPPORT } from '../../utils/rapportVoyage'
 import api from '../../api/axios'
 import {
     FileText, CheckCircle, XCircle, Clock, RefreshCw, Download, Eye,
-    Trash2, Send, AlertCircle, Plus, MapPin, Upload, X, ShieldCheck
+    Trash2, Send, AlertCircle, Plus, MapPin, Upload, X, ShieldCheck, PenLine
 } from 'lucide-react'
-
 const statutConfig = {
     soumis: { label: 'Soumis',  color: 'bg-blue-100 text-blue-700',  icon: Clock },
     valide: { label: 'Validé',  color: 'bg-green-100 text-green-700', icon: CheckCircle },
@@ -40,7 +40,9 @@ export default function EnseignantMesRapports() {
     const [message, setMessage]                     = useState('')
     const [error, setError]                         = useState('')
     const [activeTab, setActiveTab]                 = useState('rapports') // 'rapports' | 'voyages' | 'autorisations'
-
+const [rattachPanelOuvert, setRattachPanelOuvert] = useState(null)
+const [rattachVoyageId, setRattachVoyageId]        = useState('')
+const [rattachLoading, setRattachLoading]          = useState(false)
     // Justificatif groupé
     const [justifPanelOuvert, setJustifPanelOuvert] = useState(null)
     const [justifBeneficiaireId, setJustifBeneficiaireId] = useState('')
@@ -69,10 +71,9 @@ export default function EnseignantMesRapports() {
         setTimeout(() => { setMessage(''); setError('') }, 4000)
     }
 
-    const voirPDF = (rapport) => {
-        if (rapport.fichier_pdf)
-            window.open(`http://127.0.0.1:8000/storage/${rapport.fichier_pdf}`, '_blank')
-    }
+   const voirPDF = (rapport) => {
+    navigate(`/rapports/${rapport.id}/document`)
+}
 
     const telechargerPDF = (rapport) => {
         if (rapport.fichier_pdf) {
@@ -108,15 +109,35 @@ export default function EnseignantMesRapports() {
             setSuppLoading(null)
         }
     }
-
-    const supprimerSelection = async () => {
-        for (const id of selectedRapports) {
-            try { await api.delete(`/rapports/${id}/historique`) } catch {}
-        }
-        setRapports(prev => prev.filter(r => !selectedRapports.includes(r.id)))
-        setSelectedRapports([])
-        showMsg(`${selectedRapports.length} rapport(s) supprimé(s)`)
+const rattacherVoyage = async (rapportId) => {
+    if (!rattachVoyageId) { showMsg('Sélectionnez un voyage', true); return }
+    setRattachLoading(true)
+    try {
+        await api.patch(`/rapports/${rapportId}/rattacher-voyage`, {
+            voyage_id: rattachVoyageId,
+        })
+        showMsg('Rapport rattaché au voyage avec succès')
+        setRattachPanelOuvert(null)
+        setRattachVoyageId('')
+        fetchAll()
+    } catch (err) {
+        showMsg(err.response?.data?.message || 'Erreur lors du rattachement', true)
+    } finally {
+        setRattachLoading(false)
     }
+}
+   const supprimerSelection = async () => {
+    try {
+        await api.delete('/rapports/supprimer-selection', {
+            data: { ids: selectedRapports }
+        })
+        setRapports(prev => prev.filter(r => !selectedRapports.includes(r.id)))
+        showMsg(`${selectedRapports.length} rapport(s) supprimé(s)`)
+        setSelectedRapports([])
+    } catch (err) {
+        showMsg(err.response?.data?.message || 'Erreur lors de la suppression', true)
+    }
+}
 
     const supprimerTousRejetes = async () => {
         const rejetes = rapports.filter(r => r.statut === 'rejete')
@@ -196,7 +217,14 @@ export default function EnseignantMesRapports() {
             setJustifLoading(false)
         }
     }
-
+// Associe à chaque voyage son dernier rapport (s'il existe), pour l'afficher dans la modale
+const rapportParVoyageId = rapports.reduce((acc, r) => {
+    const voyageId = r.voyage?.id
+    if (!voyageId) return acc
+    // On garde le plus récent (rapports est déjà trié par date décroissante côté API : ->latest())
+    if (!acc[voyageId]) acc[voyageId] = r
+    return acc
+}, {})
     const voyagesEnAttente = mesVoyages.filter(b =>
         ['en_attente', 'incomplet'].includes(b.statut_justificatif)
     )
@@ -244,12 +272,18 @@ export default function EnseignantMesRapports() {
                                 <Trash2 size={14} /> Supprimer sélection ({selectedAutorisations.length})
                             </button>
                         )}
-                        {mesVoyages.length > 0 && (
-                            <button onClick={() => setShowChoixVoyage(true)}
-                                className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2.5 rounded-xl transition">
-                                <Plus size={18} /> Nouveau rapport
-                            </button>
-                        )}
+                       <div className="flex gap-2">
+    {mesVoyages.length > 0 && (
+        <button onClick={() => setShowChoixVoyage(true)}
+            className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2.5 rounded-xl transition">
+            <Plus size={18} /> Nouveau rapport (voyage)
+        </button>
+    )}
+    <button onClick={() => navigate('/enseignant/rapports/libre')}
+        className="flex items-center gap-2 bg-slate-700 hover:bg-slate-800 text-white font-semibold px-4 py-2.5 rounded-xl transition">
+        <PenLine size={18} /> Rapport libre
+    </button>
+</div>
                     </div>
                 </div>
 
@@ -303,7 +337,7 @@ export default function EnseignantMesRapports() {
                             <div className="space-y-2 max-h-80 overflow-y-auto">
                                 {mesVoyages.map(b => (
                                     <button key={b.id}
-                                        onClick={() => navigate(`/enseignant/rapports/nouveau/${b.voyage?.id}`)}
+                                       onClick={() => navigate(`/enseignant/voyages-etudes/${b.voyage?.id}/rapport`)}
                                         className="w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-blue-50 border border-transparent hover:border-blue-200 transition text-left">
                                         <div className="bg-blue-100 p-2 rounded-lg">
                                             <MapPin size={16} className="text-blue-700" />
@@ -363,9 +397,11 @@ export default function EnseignantMesRapports() {
                                                                 <p className="font-semibold text-gray-800">
                                                                     Rapport — {rapport.voyage?.destination}
                                                                 </p>
-                                                                <p className="text-sm text-gray-500 mt-0.5">
-                                                                    Déposé le {new Date(rapport.date_depot).toLocaleDateString('fr-FR')}
-                                                                </p>
+                                                               <p className="text-sm text-gray-500 mt-0.5">
+    {rapport.date_depot
+        ? `Déposé le ${new Date(rapport.date_depot).toLocaleDateString('fr-FR')}`
+        : 'Brouillon — pas encore déposé'}
+</p>
                                                                 {rapport.fichier_pdf && (
                                                                     <p className="text-xs text-green-600 mt-0.5 flex items-center gap-1">
                                                                         <FileText size={12} /> PDF joint
@@ -381,25 +417,26 @@ export default function EnseignantMesRapports() {
 
                                                 {selected === rapport.id && (
                                                     <div className="border-t border-gray-100 p-5 space-y-4">
-                                                        {rapport.contenu && (
-                                                            <div className="bg-gray-50 rounded-xl p-4">
-                                                                <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Note</p>
-                                                                <p className="text-sm text-gray-700 whitespace-pre-line">{rapport.contenu}</p>
-                                                            </div>
-                                                        )}
+                                                        {rapport.contenu && (() => {
+    let sections = null
+    try { sections = JSON.parse(rapport.contenu) } catch { sections = null }
 
-                                                        {rapport.fichier_pdf && (
-                                                            <div className="flex gap-3">
-                                                                <button onClick={() => voirPDF(rapport)}
-                                                                    className="flex-1 flex items-center justify-center gap-2 bg-blue-100 text-blue-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-200 transition">
-                                                                    <Eye size={16} /> Voir le PDF
-                                                                </button>
-                                                                <button onClick={() => telechargerPDF(rapport)}
-                                                                    className="flex-1 flex items-center justify-center gap-2 bg-green-100 text-green-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-200 transition">
-                                                                    <Download size={16} /> Télécharger
-                                                                </button>
-                                                            </div>
-                                                        )}
+    return (
+        <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Contenu du rapport</p>
+            {sections ? (
+                SECTIONS_RAPPORT.map(s => sections[s.key] ? (
+                    <div key={s.key}>
+                        <p className="text-xs font-semibold text-gray-600">{s.label}</p>
+                        <p className="text-sm text-gray-700 whitespace-pre-line">{sections[s.key]}</p>
+                    </div>
+                ) : null)
+            ) : (
+                <p className="text-sm text-gray-700 whitespace-pre-line">{rapport.contenu}</p>
+            )}
+        </div>
+    )
+})()}
 
                                                         {rapport.statut === 'rejete' && rapport.commentaire_vr && (
                                                             <div className="bg-red-50 border border-red-200 rounded-xl p-4">
@@ -410,7 +447,7 @@ export default function EnseignantMesRapports() {
 
                                                         {rapport.statut === 'rejete' && (
                                                             <button
-                                                                onClick={() => navigate(`/enseignant/rapports/resoumettre/${rapport.id}`)}
+                                                               onClick={() => navigate(`/enseignant/voyages-etudes/${rapport.voyage?.id}/rapport`)}
                                                                 className="w-full flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl text-sm font-semibold transition">
                                                                 <RefreshCw size={16} /> Re-soumettre le rapport
                                                             </button>
@@ -483,7 +520,55 @@ export default function EnseignantMesRapports() {
                                                                 )}
                                                             </div>
                                                         )}
-
+                                                        {!rapport.voyage_id && rapport.statut === 'brouillon' && (
+    <button
+        onClick={() => voirPDF(rapport)}
+        className="w-full flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white py-2.5 rounded-xl text-sm font-semibold transition"
+    >
+        <Send size={14} /> Envoyer directement au Vice-Recteur
+    </button>
+)}
+{!rapport.voyage_id && (
+    <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-3">
+        {rattachPanelOuvert !== rapport.id ? (
+            <button onClick={() => { setRattachPanelOuvert(rapport.id); setRattachVoyageId('') }}
+                className="w-full flex items-center justify-center gap-2 bg-purple-700 hover:bg-purple-800 text-white py-2.5 rounded-xl text-sm font-semibold transition">
+                <MapPin size={14} /> Rattacher à un voyage
+            </button>
+        ) : (
+            <>
+                <p className="text-sm font-semibold text-purple-800 flex items-center gap-2">
+                    <MapPin size={14} /> Choisir le voyage
+                </p>
+                <select
+                    value={rattachVoyageId}
+                    onChange={e => setRattachVoyageId(e.target.value)}
+                    className="w-full border border-purple-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-200 bg-white">
+                    <option value="">Sélectionnez un voyage...</option>
+                    {mesVoyages.map(b => (
+                        <option key={b.id} value={b.voyage?.id}>
+                            {b.voyage?.destination} — {new Date(b.voyage?.date_debut).toLocaleDateString('fr-FR')}
+                        </option>
+                    ))}
+                </select>
+                <div className="flex gap-2">
+                    <button onClick={() => rattacherVoyage(rapport.id)}
+                        disabled={rattachLoading || !rattachVoyageId}
+                        className="flex-1 flex items-center justify-center gap-2 bg-purple-700 hover:bg-purple-800 text-white py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
+                        {rattachLoading
+                            ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            : <MapPin size={14} />}
+                        Rattacher
+                    </button>
+                    <button onClick={() => setRattachPanelOuvert(null)}
+                        className="px-4 py-2 border border-gray-300 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-100 transition">
+                        Annuler
+                    </button>
+                </div>
+            </>
+        )}
+    </div>
+)}
                                                         {confirmSupp === rapport.id ? (
                                                             <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
                                                                 <p className="text-sm text-red-700 font-medium">Confirmer la suppression de ce rapport ?</p>
@@ -527,64 +612,52 @@ export default function EnseignantMesRapports() {
                                     <p className="text-gray-400 text-sm">Vous n'avez pas encore de voyage d'études</p>
                                 </div>
                             ) : (
-                                <div className="space-y-4">
-                                    {mesVoyages.map(b => {
-                                        const statutJustif = {
-                                            en_attente:   { label: 'En attente',        color: 'bg-gray-100 text-gray-600' },
-                                            soumis:       { label: 'Justificatifs soumis', color: 'bg-blue-100 text-blue-700' },
-                                            transmis_vr:  { label: 'Transmis au VR',    color: 'bg-orange-100 text-orange-700' },
-                                            valide:       { label: 'Validé',            color: 'bg-green-100 text-green-700' },
-                                            incomplet:    { label: 'Incomplet',          color: 'bg-red-100 text-red-700' },
-                                        }[b.statut_justificatif] || { label: b.statut_justificatif, color: 'bg-gray-100 text-gray-600' }
+                               <div className="space-y-2 max-h-80 overflow-y-auto">
+    {mesVoyages.map(b => {
+        const rapportExistant = rapportParVoyageId[b.voyage?.id]
+        const statutCfg = rapportExistant ? (statutConfig[rapportExistant.statut] || statutConfig['soumis']) : null
 
-                                        const statutAutorisation = autorisationStatutConfig[b.statut_autorisation]
+        const allerVers = () => {
+            setShowChoixVoyage(false)
+            if (!rapportExistant) {
+                navigate(`/enseignant/rapports/nouveau/${b.voyage?.id}`)
+            } else if (rapportExistant.statut === 'rejete') {
+                navigate(`/enseignant/rapports/resoumettre/${rapportExistant.id}`)
+            } else {
+                // brouillon, soumis ou validé : on rouvre l'historique sur ce rapport précis
+                setActiveTab('rapports')
+                setSelected(rapportExistant.id)
+            }
+        }
 
-                                        return (
-                                            <div key={b.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
-                                                <div className="flex items-start justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <input type="checkbox"
-                                                            checked={selectedVoyages.includes(b.id)}
-                                                            onChange={() => toggleSelectVoyage(b.id)}
-                                                            className="w-4 h-4 rounded border-gray-300 text-red-600 cursor-pointer"
-                                                        />
-                                                        <div className="bg-blue-100 p-3 rounded-xl">
-                                                            <MapPin size={20} className="text-blue-700" />
-                                                        </div>
-                                                        <div>
-                                                            <p className="font-semibold text-gray-800">{b.voyage?.destination}</p>
-                                                            <p className="text-sm text-gray-500">
-                                                                {new Date(b.voyage?.date_debut).toLocaleDateString('fr-FR')} — {new Date(b.voyage?.date_fin).toLocaleDateString('fr-FR')}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <span className={`text-xs font-semibold px-3 py-1.5 rounded-full ${statutJustif.color}`}>
-                                                        {statutJustif.label}
-                                                    </span>
-                                                </div>
-
-                                                {/* Statut liste définitive */}
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                    {b.dans_liste_definitive && (
-                                                        <span className="text-xs font-semibold px-3 py-1 rounded-full bg-green-100 text-green-700 flex items-center gap-1">
-                                                            <CheckCircle size={11} /> Liste définitive
-                                                        </span>
-                                                    )}
-                                                    {b.voyage?.arrete_recteur && (
-                                                        <span className="text-xs font-semibold px-3 py-1 rounded-full bg-purple-100 text-purple-700 flex items-center gap-1">
-                                                            <ShieldCheck size={11} /> Arrêté signé
-                                                        </span>
-                                                    )}
-                                                    {statutAutorisation && (
-                                                        <span className={`text-xs font-semibold px-3 py-1 rounded-full ${statutAutorisation.color}`}>
-                                                            Autorisation : {statutAutorisation.label}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
+        return (
+            <button key={b.id}
+                onClick={allerVers}
+                className="w-full flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-50 hover:bg-blue-50 border border-transparent hover:border-blue-200 transition text-left">
+                <div className="flex items-center gap-3">
+                    <div className="bg-blue-100 p-2 rounded-lg">
+                        <MapPin size={16} className="text-blue-700" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-medium text-gray-800">{b.voyage?.destination}</p>
+                        <p className="text-xs text-gray-500">
+                            {new Date(b.voyage?.date_debut).toLocaleDateString('fr-FR')} — {new Date(b.voyage?.date_fin).toLocaleDateString('fr-FR')}
+                        </p>
+                    </div>
+                </div>
+                {rapportExistant ? (
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statutCfg.color}`}>
+                        {statutCfg.label}
+                    </span>
+                ) : (
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-200 text-gray-500">
+                        À rédiger
+                    </span>
+                )}
+            </button>
+        )
+    })}
+</div>
                             )
                         )}
 

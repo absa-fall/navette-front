@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import SignaturePad from '../../components/SignaturePad'
 import html2pdf from 'html2pdf.js'
+import { STORAGE_URL } from '../../api/storageUrl'
 import api from '../../api/axios'
 import {
     MapPin, Plus, Users, CheckCircle, ChevronDown, ChevronUp,
@@ -32,7 +33,7 @@ export default function VoyagesEtudes() {
     const [enseignantsBloques, setEnseignantsBloques] = useState([])
     const [debloquageLoading, setDebloquageLoading]   = useState(null)
     const [loading, setLoading]                       = useState(true)
-    const [activeTab, setActiveTab]                   = useState(tabParam === 'dossiers' ? 'dossiers' : 'voyages')
+const [activeTab, setActiveTab]                   = useState('voyages')
     const [expanded, setExpanded]                     = useState(null)
     const [selectedDefinitifs, setSelectedDefinitifs] = useState({})
     const [avisOuvert, setAvisOuvert]                 = useState(null)
@@ -48,20 +49,19 @@ export default function VoyagesEtudes() {
 
    useEffect(() => { fetchVoyages(); fetchDossiers(); fetchEnseignantsBloques() }, [])
 
-    useEffect(() => {
-        setSelectedDefinitifs(prev => {
-            const updated = { ...prev }
-            voyages.forEach(voyage => {
-                if (voyage.statut_liste === 'publiee' && updated[voyage.id] === undefined) {
-                    updated[voyage.id] = (voyage.beneficiaires || [])
-                        .filter(b => getEligibilite(b).eligible)
-                        .map(b => b.id)
-                }
-            })
-            return updated
+   useEffect(() => {
+    setSelectedDefinitifs(prev => {
+        const updated = { ...prev }
+        voyages.forEach(voyage => {
+            if (voyage.statut_liste === 'publiee') {
+                updated[voyage.id] = (voyage.beneficiaires || [])
+                    .filter(b => getEligibilite(b).eligible)
+                    .map(b => b.id)
+            }
         })
-    }, [voyages])
-
+        return updated
+    })
+}, [voyages])
     const fetchVoyages = async () => {
         try {
             const res = await api.get('/voyages-etudes')
@@ -267,26 +267,26 @@ const fetchEnseignantsBloques = async () => {
     }
 
     const getStatutAutorisationLabel = (statut) => {
-        const map = {
-            non_demande:          { label: 'Non demande',       bg: 'bg-slate-100', text: 'text-slate-600',  dot: 'bg-slate-400' },
-            demande_chef_dept:    { label: 'Demande chef dept', bg: 'bg-amber-50',  text: 'text-amber-700',  dot: 'bg-amber-500' },
-            envoye_directeur_ufr: { label: 'Chez dir. UFR',     bg: 'bg-blue-50',   text: 'text-blue-700',   dot: 'bg-blue-600' },
-            envoye_recteur:       { label: 'Chez recteur',      bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500' },
-            approuve_recteur:     { label: 'Approuve recteur',  bg: 'bg-emerald-50',  text: 'text-emerald-700',  dot: 'bg-emerald-600' },
-        }
-        return map[statut] || { label: statut || 'Non demande', bg: 'bg-slate-100', text: 'text-slate-600', dot: 'bg-slate-400' }
+    const map = {
+        non_demande:          { label: 'Autorisation d\'absence non demandée', bg: 'bg-slate-100', text: 'text-slate-600',  dot: 'bg-slate-400' },
+        demande_chef_dept:    { label: 'Autorisation en attente (chef dép.)',  bg: 'bg-amber-50',  text: 'text-amber-700',  dot: 'bg-amber-500' },
+        envoye_directeur_ufr: { label: 'Autorisation chez directeur UFR',      bg: 'bg-blue-50',   text: 'text-blue-700',   dot: 'bg-blue-600' },
+        envoye_recteur:       { label: 'Autorisation chez recteur',           bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500' },
+        approuve_recteur:     { label: 'Autorisation approuvée',              bg: 'bg-emerald-50',  text: 'text-emerald-700',  dot: 'bg-emerald-600' },
     }
+    return map[statut] || { label: statut || 'Autorisation d\'absence non demandée', bg: 'bg-slate-100', text: 'text-slate-600', dot: 'bg-slate-400' }
+}
 
     const dossiersEnAttente = dossiers.filter(d =>
         ['soumis', 'transmis_vr', 'valide', 'incomplet'].includes(d.statut_justificatif)
     )
 
-    const getEligibilite = (b) => {
-        const justifOK = ['transmis_vr', 'valide'].includes(b.statut_justificatif)
-        const avisComm = b.avis?.some(a => a.user?.role === 'commission' && a.avis === 'valide')
-        const avisVR   = b.avis?.some(a => a.user?.role === 'vice_recteur' && a.avis === 'valide')
-        return { justifOK, avisComm, avisVR, eligible: justifOK && avisComm && avisVR }
-    }
+   const getEligibilite = (b) => {
+    const justifOK = ['transmis_vr', 'valide'].includes(b.statut_justificatif)
+    const avisComm = b.avis?.some(a => a.user?.role === 'commission' && a.avis === 'valide')
+    const avisVR   = b.avis?.some(a => a.user?.role === 'vice_recteur' && a.avis === 'valide')
+    return { justifOK, avisComm, avisVR, eligible: justifOK && avisComm && avisVR }
+}
 
     // ===== FILTRAGE PAR RECHERCHE (au bon endroit, réellement appliqué) =====
     const filtrerVoyages = (liste) => liste.filter(v =>
@@ -378,13 +378,8 @@ const fetchEnseignantsBloques = async () => {
                         className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition ${activeTab === 'voyages' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
                         Mes voyages ({voyages.length})
                     </button>
-                    <button onClick={() => setActiveTab('dossiers')}
-                        className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center gap-2 ${activeTab === 'dossiers' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
-                        Dossiers a valider
-                        {dossiersEnAttente.length > 0 && (
-                            <span className="bg-rose-500 text-white text-xs rounded-full px-1.5 py-0.5">{dossiersEnAttente.length}</span>
-                        )}
-                    </button>
+                   
+
                     <button onClick={() => setActiveTab('bloques')}
                         className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center gap-2 ${activeTab === 'bloques' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
                         Enseignants bloques
@@ -479,6 +474,12 @@ const fetchEnseignantsBloques = async () => {
                                                             <p className="text-sm text-slate-500 mt-0.5">
                                                                 Du {new Date(voyage.date_debut).toLocaleDateString('fr-FR')} au {new Date(voyage.date_fin).toLocaleDateString('fr-FR')}
                                                             </p>
+                                                            <p className="text-xs text-slate-400 mt-1">
+    Créée le {new Date(voyage.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+    {voyage.date_liste_definitive && (
+        <> · Publiée définitivement le {new Date(voyage.date_liste_definitive).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</>
+    )}
+</p>
                                                             <div className="flex items-center gap-3 mt-1">
                                                                 <span className="flex items-center gap-1 text-xs text-slate-500">
                                                                     <Users size={12} /> {voyage.beneficiaires?.length || 0} beneficiaire(s)
@@ -790,8 +791,7 @@ const fetchEnseignantsBloques = async () => {
                                                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Justificatifs ({d.justificatifs.length}) :</p>
                                                     {d.justificatifs.map(j => (
                                                         <button key={j.id}
-                                                            onClick={() => window.open(`http://127.0.0.1:8000/storage/${j.fichier_pdf}`, '_blank')}
-                                                            className="flex items-center gap-2 text-sm text-blue-700 hover:underline">
+                                                            onClick={() =>window.open(`${STORAGE_URL}/storage/${j.fichier_pdf}`, '_blank')}                                                            className="flex items-center gap-2 text-sm text-blue-700 hover:underline">
                                                             <Eye size={14} /> {j.nom_original || 'Fichier PDF'}
                                                         </button>
                                                     ))}

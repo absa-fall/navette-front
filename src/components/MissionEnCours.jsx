@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import api from '../api/axios'
 import { AlertTriangle, MapPin, Send, X } from 'lucide-react'
+import SuiviGPS from './SuiviGPS'
+import CarteNavette from './CarteNavette'
 
 export default function MissionEnCours() {
     const [ordre, setOrdre] = useState(null)
@@ -79,6 +81,14 @@ export default function MissionEnCours() {
                     {incidentEnCours ? 'Incident en cours de traitement' : 'Signaler un incident'}
                 </button>
             </div>
+
+            {/* ✅ NOUVEAU : Suivi GPS + carte du véhicule de la mission active */}
+            {ordre.vehicule_id && (
+                <div className="mt-4 space-y-4">
+                    <SuiviGPS vehiculeId={ordre.vehicule_id} />
+                    <CarteNavette vehiculeId={ordre.vehicule_id} />
+                </div>
+            )}
 
             {modalOuvert && (
                 <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">

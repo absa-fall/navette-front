@@ -58,19 +58,24 @@ export default function ListePublieeDocument() {
 
             <div className="max-w-3xl mx-auto bg-white border border-gray-200 shadow-sm rounded-xl px-12 py-10 print:shadow-none print:border-none print:rounded-none print:max-w-full print:px-8 print:py-4 font-serif text-gray-900">
 
-                <div className="text-center text-[11px] leading-relaxed mb-6 print:mb-4">
-                    <p className="font-bold">REPUBLIQUE DU SENEGAL</p>
-                    <p className="italic">Un Peuple-Un But-Une Foi</p>
-                    <p>Ministère de l'Enseignement supérieur,</p>
-                    <p>de la Recherche et de l'Innovation</p>
-                    <br />
-                    <p className="font-bold">UNIVERSITE ALIOUNE DIOP</p>
-                    <p className="italic text-[10px]">« L'excellence est ma constance, l'éthique ma vertu »</p>
+              <div className="flex justify-between items-start mb-2">
+    <div className="text-[11px] leading-relaxed">
+        <p className="font-bold">REPUBLIQUE DU SENEGAL</p>
+        <p className="italic">Un Peuple-Un But-Une Foi</p>
+        <p>Ministère de l'Enseignement supérieur,</p>
+        <p>de la Recherche et de l'Innovation</p>
+        <br />
+        <p className="font-bold">UNIVERSITE ALIOUNE DIOP</p>
+        <p className="italic text-[10px]">« L'excellence est ma constance, l'éthique ma vertu »</p>
+    </div>
+    <div className="text-right text-[12px]">
+        <p>Bambey, le {voyage.created_at ? new Date(voyage.created_at).toLocaleDateString('fr-FR') : new Date().toLocaleDateString('fr-FR')}</p>
+    </div>
+</div>
 
-                    <div className="flex justify-center mt-3">
-                        <img src="/logo-uadb.png" alt="Logo UADB" className="w-16 h-16 object-contain" />
-                    </div>
-                </div>
+<div className="flex justify-center mb-6 mt-2 print:mb-4">
+    <img src="/logo-uadb.png" alt="Logo UADB" className="w-16 h-16 object-contain" />
+</div>
 
                 <h1 className="text-lg font-bold text-blue-800 mb-1">
                     Liste des bénéficiaires publiée — {voyage.destination}

@@ -11,6 +11,7 @@ import Inscription from './pages/Inscription'
 import ActiverCompte from './pages/ActiverCompte'
 import OrdreMissionDocument from "./pages/drh/OrdreMissionDocument";
 import Parametres from './pages/Parametres'
+
 // DDL
 import DDLDashboard from './pages/ddl/Dashboard'
 import MesNavettes from './pages/ddl/MesNavettes'
@@ -20,15 +21,17 @@ import DemandesRejetees from './pages/ddl/DemandesRejetees'
 import DemandesEnAttente from './pages/ddl/DemandesEnAttente'
 import DDLVehicules from './pages/ddl/Vehicules'
 import DDLChauffeurs from './pages/ddl/DDLChauffeurs'
-// Enseignant
 import EnseignantDashboard from './pages/enseignant/Dashboard'
 import MesVoyagesEtudes from './pages/enseignant/MesVoyagesEtudes'
 import MesReservations from './pages/enseignant/MesReservations'
 import DemandeAutorisationAbsence from './pages/enseignant/DemandeAutorisationAbsence'
-
+import RedigerRapportVoyage from './pages/enseignant/RedigerRapportVoyage'
+import EnseignantMesRapports from './pages/enseignant/MesRapports'
+import RapportLibre from './pages/enseignant/RapportLibre'
 
 import AutorisationAbsenceDocument from './pages/voyages-etudes/AutorisationAbsenceDocument'
-
+import RapportDocument from './pages/voyages-etudes/RapportDocument'
+import { GPSProvider } from './context/GPSContext'
 // DRH
 import DRHDashboard from './pages/drh/Dashboard'
 import DRHOrdres from './pages/drh/OrdresMission'
@@ -60,11 +63,13 @@ import RecapitulatifDocument from './pages/sgvr/RecapitulatifDocument'
 import ViceRecteurDashboard from './pages/vicerecteur/Dashboard'
 import VoyagesATraiter from './pages/vicerecteur/VoyagesATraiter'
 import RapportsAValider from './pages/vicerecteur/RapportsAValider'
+import RapportVoyageDocument from './pages/vicerecteur/RapportVoyageDocument'
 import NouveauVoyageEtude from './pages/vicerecteur/NouveauVoyageEtude'
 import VoyagesEtudes from './pages/vicerecteur/VoyagesEtudes'
 import ListePublieeDocument from './pages/vicerecteur/ListePublieeDocument'
 import ListeDefinitiveDocument from './pages/vicerecteur/ListeDefinitiveDocument'
 import ProcesVerbalAnnuel from './pages/vicerecteur/ProcesVerbalAnnuel'
+import ProcesVerbalDocument from './pages/vicerecteur/ProcesVerbalDocument'
 // Admin
 import AdminDashboard from './pages/admin/Dashboard'
 import AdminUtilisateurs from './pages/admin/Utilisateurs'
@@ -76,7 +81,8 @@ import DirecteurUFRDashboard from './pages/directeurufr/Dashboard'
 import RecteurDashboard from './pages/recteur/Dashboard'
 import ArreteVoyageDocument from './pages/recteur/ArreteVoyageDocument'
 import CommissionDashboard from './pages/commission/Dashboard'
-import AdminProcesVerbaux from './pages/admin/ProcesVerbaux'
+
+import AdminProcesVerbaux from './pages/admin/AdminProcesVerbaux'
 const PrivateRoute = ({ children }) => {
     const { user, loading } = useAuth()
     if (loading) return (
@@ -88,8 +94,9 @@ const PrivateRoute = ({ children }) => {
 }
 
 function App() {
-    return (
-        <AuthProvider>
+   return (
+    <AuthProvider>
+        <GPSProvider>
             <BrowserRouter>
                 <Routes>
                     
@@ -111,15 +118,17 @@ function App() {
                     <Route path="/ddl/en-attente" element={<DemandesEnAttente />} />
                     <Route path="/ddl/vehicules" element={<PrivateRoute><DDLVehicules /></PrivateRoute>} />
                     <Route path="/ddl/chauffeurs" element={<PrivateRoute><DDLChauffeurs /></PrivateRoute>} />
-                    {/* Enseignant */}
-                    <Route path="/enseignant/dashboard" element={<PrivateRoute><EnseignantDashboard /></PrivateRoute>} />
-                    <Route path="/enseignant/voyages-etudes" element={<PrivateRoute><MesVoyagesEtudes /></PrivateRoute>} />
-
-                    <Route path="/enseignant/reserver" element={<PrivateRoute><Reserver /></PrivateRoute>} />
-                    <Route path="/enseignant/mes-reservations" element={<PrivateRoute><MesReservations /></PrivateRoute>} />
-                    <Route path="/enseignant/scanner" element={<PrivateRoute><ScannerBus /></PrivateRoute>} />
-                    <Route path="/enseignant/autorisation-absence/:beneficiaireId" element={<PrivateRoute><DemandeAutorisationAbsence /></PrivateRoute>} />
-
+                   {/* Enseignant */}
+<Route path="/enseignant/dashboard" element={<PrivateRoute><EnseignantDashboard /></PrivateRoute>} />
+<Route path="/enseignant/voyages-etudes" element={<PrivateRoute><MesVoyagesEtudes /></PrivateRoute>} />
+<Route path="/enseignant/voyages-etudes/:voyageId/rapport" element={<PrivateRoute><RedigerRapportVoyage /></PrivateRoute>} />
+<Route path="/enseignant/rapports" element={<PrivateRoute><EnseignantMesRapports /></PrivateRoute>} />
+<Route path="/enseignant/rapports/:id/document" element={<PrivateRoute><RapportDocument /></PrivateRoute>} />
+<Route path="/enseignant/reserver" element={<PrivateRoute><Reserver /></PrivateRoute>} />
+<Route path="/enseignant/mes-reservations" element={<PrivateRoute><MesReservations /></PrivateRoute>} />
+<Route path="/enseignant/scanner" element={<PrivateRoute><ScannerBus /></PrivateRoute>} />
+<Route path="/enseignant/autorisation-absence/:beneficiaireId" element={<PrivateRoute><DemandeAutorisationAbsence /></PrivateRoute>} />
+<Route path="/enseignant/rapports/libre" element={<PrivateRoute><RapportLibre /></PrivateRoute>} />
                     {/* Voyages Etudes */}
                 <Route path="/autorisation-absence/:id" element={<PrivateRoute><AutorisationAbsenceDocument /></PrivateRoute>} />
 <Route path="/parametres" element={<PrivateRoute><Parametres /></PrivateRoute>} />
@@ -156,9 +165,12 @@ function App() {
                     <Route path="/vice-recteur/rapports-a-valider" element={<PrivateRoute><RapportsAValider /></PrivateRoute>} />
                     <Route path="/vice-recteur/voyages-etudes" element={<PrivateRoute><VoyagesEtudes /></PrivateRoute>} />
                     <Route path="/vice-recteur/voyages-etudes/nouveau" element={<PrivateRoute><NouveauVoyageEtude /></PrivateRoute>} />
+                    <Route path="/rapports/:id/document" element={<PrivateRoute><RapportVoyageDocument /></PrivateRoute>} />
 <Route path="/voyages-etudes/:voyageId/liste-publiee" element={<ListePublieeDocument />} />
 <Route path="/voyages-etudes/:voyageId/liste-definitive" element={<ListeDefinitiveDocument />} />
 <Route path="/vice-recteur/proces-verbal" element={<PrivateRoute><ProcesVerbalAnnuel /></PrivateRoute>} />
+<Route path="/proces-verbal/:annee/document" element={<PrivateRoute><ProcesVerbalDocument /></PrivateRoute>} />
+
                     {/* Admin */}
                     <Route path="/admin/dashboard" element={<PrivateRoute><AdminDashboard /></PrivateRoute>} />
                     <Route path="/admin/utilisateurs" element={<PrivateRoute><AdminUtilisateurs /></PrivateRoute>} />
@@ -183,10 +195,11 @@ function App() {
                     {/* Fallback */}
                     <Route path="*" element={<Navigate to="/login" replace />} />
 <Route path="/activer-compte" element={<ActiverCompte />} />
-                </Routes>
+            </Routes>
             </BrowserRouter>
-        </AuthProvider>
-    )
+        </GPSProvider>
+    </AuthProvider>
+)
 }
 
 export default App

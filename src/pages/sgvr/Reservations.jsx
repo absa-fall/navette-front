@@ -36,6 +36,8 @@ export default function SGVRReservations() {
             case 'confirmee': return 'bg-blue-100 text-blue-700'
             case 'en_cours': return 'bg-green-100 text-green-700'
             case 'terminee': return 'bg-gray-100 text-gray-700'
+            case 'refusee': return 'bg-red-100 text-red-700'
+            case 'annulee': return 'bg-red-100 text-red-700'
             default: return 'bg-gray-100 text-gray-700'
         }
     }
@@ -46,6 +48,8 @@ export default function SGVRReservations() {
             case 'confirmee': return 'Confirmée'
             case 'en_cours': return 'En cours'
             case 'terminee': return 'Terminée'
+            case 'refusee': return 'Refusée'
+            case 'annulee': return 'Annulée'
             default: return statut
         }
     }
@@ -155,7 +159,7 @@ export default function SGVRReservations() {
                                         </div>
                                         <div className="flex items-center gap-2 text-gray-600">
                                             <Clock size={14} className="text-purple-500" />
-                                            {r.date_reservation} à {r.heure_reservation}
+                                            {r.date_reservation ? new Date(r.date_reservation).toLocaleDateString('fr-FR') : '-'} à {r.heure_reservation}
                                         </div>
                                         <div className="flex items-center gap-2 text-gray-600">
                                             <QrCode size={14} className="text-purple-500" />
