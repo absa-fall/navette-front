@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import api from '../../api/axios'
 import { Printer, Loader2 } from 'lucide-react'
+import SignaturePad from '../../components/SignaturePad'
 
 const LABELS_TRAJET = { aller: 'Aller', retour: 'Retour', aller_retour: 'Aller-retour' }
 
@@ -19,6 +20,8 @@ export default function RecapitulatifDocument() {
     const [recap, setRecap] = useState(null)
     const [detail, setDetail] = useState([])
     const [loading, setLoading] = useState(true)
+    const [signatureDraft, setSignatureDraft] = useState(null)
+    const [enregistrement, setEnregistrement] = useState(false)
 
     useEffect(() => {
         api.get(`/recapitulatifs/${recapId}`)
@@ -29,6 +32,21 @@ export default function RecapitulatifDocument() {
             .catch(() => {})
             .finally(() => setLoading(false))
     }, [recapId])
+
+    const enregistrerSignature = async () => {
+        if (!signatureDraft) return
+        setEnregistrement(true)
+        try {
+            const res = await api.patch(`/recapitulatifs/${recapId}/signer`, {
+                signature: signatureDraft,
+            })
+            setRecap(res.data.recapitulatif)
+        } catch (err) {
+            alert(err.response?.data?.message || 'Erreur lors de l\'enregistrement de la signature')
+        } finally {
+            setEnregistrement(false)
+        }
+    }
 
     if (loading) {
         return (
@@ -46,10 +64,11 @@ export default function RecapitulatifDocument() {
         )
     }
 
+    const signatureAffichee = signatureDraft || recap.signature_sg_vr
+
     return (
         <div className="min-h-screen bg-gray-100 print:bg-white py-8 px-4 print:py-0 print:px-0">
 
-            {/* Style impression : format A4 propre */}
             <style>{`
                 @media print {
                     @page { size: A4; margin: 8mm; }
@@ -115,6 +134,35 @@ export default function RecapitulatifDocument() {
                         ))}
                     </tbody>
                 </table>
+
+                {/* Signature du SG VR — certification du récapitulatif */}
+                <div className="flex justify-end mb-6 print:mb-4">
+                    <div className="text-center">
+                        <p className="text-xs text-gray-600 mb-2">Certifié exact par le SG Vice-Recteur</p>
+                        <SignaturePad
+                            storageKey={`signature_sg_vr_recap_${recap.id}`}
+                            label={recap.sgVr ? `${recap.sgVr.prenom} ${recap.sgVr.nom}` : 'Le SG Vice-Recteur'}
+                            readOnly={!!recap.signature_sg_vr}
+                            initialValue={signatureAffichee}
+                            onSaved={(dataUrl) => setSignatureDraft(dataUrl)}
+                        />
+                    </div>
+                </div>
+
+                {!recap.signature_sg_vr && (
+                    <div className="print:hidden flex justify-center mb-6">
+                        <button
+                            onClick={enregistrerSignature}
+                            disabled={enregistrement || !signatureDraft}
+                            className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white font-semibold px-6 py-2.5 rounded-xl transition disabled:opacity-50"
+                        >
+                            {enregistrement
+                                ? <Loader2 size={16} className="animate-spin" />
+                                : null}
+                            Enregistrer la signature
+                        </button>
+                    </div>
+                )}
 
                 <div className="text-center text-[10px] text-gray-500 mt-12 print:mt-6 border-t pt-3 print:pt-2">
                     UADB Mobilité — Généré le {new Date().toLocaleDateString('fr-FR')}

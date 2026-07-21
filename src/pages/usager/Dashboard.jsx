@@ -330,9 +330,12 @@ export default function UsagerDashboard() {
                                 </div>
                                 <p className="font-mono text-sm font-bold text-gray-600 tracking-widest">{user.qr_code}</p>
                             </>
-                        ) : (
-                            <div className="py-8 text-gray-400 text-sm">QR code non disponible</div>
-                        )}
+                       ) : (
+    <div className="py-8 text-gray-400 text-sm">
+        <p>QR code non disponible</p>
+        <p className="text-xs mt-1">Disponible après confirmation du chauffeur</p>
+    </div>
+)}
                     </div>
 
                     {/* Mes reservations */}

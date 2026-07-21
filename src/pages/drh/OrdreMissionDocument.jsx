@@ -85,14 +85,18 @@ export default function OrdreMissionDocument() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-100 print:bg-white py-8 px-4 print:py-0 print:px-0">
+        <div className="min-h-screen print:min-h-0 bg-gray-100 print:bg-white py-8 px-4 print:py-0 print:px-0">
 
-            <style>{`
-                @media print {
-                    @page { size: A4; margin: 8mm; }
-                    html, body { height: auto !important; }
-                }
-            `}</style>
+          <style>{`
+    @media print {
+        @page { size: A4; margin: 8mm; }
+        html, body {
+            height: auto !important;
+            min-height: 0 !important;
+        }
+    }
+`}</style>
+            
 
             <div className="flex justify-center mb-6 print:hidden">
                 <button
@@ -103,7 +107,7 @@ export default function OrdreMissionDocument() {
                 </button>
             </div>
 
-            <div className="doc-print max-w-3xl mx-auto bg-white border border-gray-200 shadow-sm rounded-xl px-12 py-10 print:shadow-none print:border-none print:rounded-none print:max-w-full print:px-8 print:py-4 font-serif text-gray-900">
+           <div className="doc-print max-w-3xl mx-auto bg-white border border-gray-200 shadow-sm rounded-xl px-12 py-10 print:shadow-none print:border-none print:rounded-none print:max-w-full print:px-8 print:py-4 font-serif text-gray-900">
 
                 <div className="flex justify-between items-start mb-5 print:mb-3">
                     <div className="text-[11px] leading-relaxed">

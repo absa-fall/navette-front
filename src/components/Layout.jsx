@@ -177,7 +177,8 @@ export default function Layout({ children, title, subtitle }) {
     const navigate   = useNavigate()
     const location   = useLocation()
     const fileInputRef = useRef(null)
-
+const [searchQuery, setSearchQuery] = useState('')
+const [searchOpen, setSearchOpen] = useState(false)
     const isMobile = () => window.innerWidth < 768
     const [sidebarOpen, setSidebarOpen] = useState(!isMobile())
     const [avatar, setAvatar]           = useState(null)
@@ -254,14 +255,15 @@ const [selectedNotif, setSelectedNotif] = useState(null)
         return () => clearInterval(interval)
     }, [])
 
-    useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (notifOpen && !e.target.closest('.notif-dropdown')) setNotifOpen(false)
-            if (profileOpen && !e.target.closest('.profile-dropdown')) setProfileOpen(false)
-        }
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [notifOpen, profileOpen])
+   useEffect(() => {
+    const handleClickOutside = (e) => {
+        if (notifOpen && !e.target.closest('.notif-dropdown')) setNotifOpen(false)
+        if (profileOpen && !e.target.closest('.profile-dropdown')) setProfileOpen(false)
+        if (searchOpen && !e.target.closest('.search-dropdown')) setSearchOpen(false)   // ← ajoute cette ligne
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+}, [notifOpen, profileOpen, searchOpen])   
 
     const handleAvatarChange = async (e) => {
         const file = e.target.files[0]
@@ -366,10 +368,14 @@ const allerVersPage = () => {
         navigate('/login')
     }
 
-    const menu = menuParRole[user?.role] || []
-    const mobile = isMobile()
+   const menu = menuParRole[user?.role] || []
+const mobile = isMobile()
 
-    return (
+const resultatsRecherche = searchQuery.trim().length > 0
+    ? menu.filter(item => item.label.toLowerCase().includes(searchQuery.toLowerCase()))
+    : []
+
+return (
         <div className="min-h-screen flex bg-slate-100">
 
             {sidebarOpen && mobile && (
@@ -547,16 +553,44 @@ const allerVersPage = () => {
                             )}
                         </div>
                     </div>
-                    <div className="hidden md:block relative flex-1 max-w-md mx-6">
-                        <input
-                            type="text"
-                            placeholder="Rechercher..."
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                        />
-                        <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </div>
+                   <div className="hidden md:block relative flex-1 max-w-md mx-6 search-dropdown">
+    <input
+        type="text"
+        value={searchQuery}
+        onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true) }}
+        onFocus={() => setSearchOpen(true)}
+        placeholder="Rechercher..."
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+    />
+    <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+
+    {searchOpen && searchQuery.trim().length > 0 && (
+        <div className="absolute left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden">
+            {resultatsRecherche.length === 0 ? (
+                <p className="px-4 py-3 text-sm text-slate-400">Aucun résultat</p>
+            ) : (
+                resultatsRecherche.map(item => (
+                    <button
+                        key={item.path}
+                        onClick={() => {
+                            navigate(item.path)
+                            setSearchQuery('')
+                            setSearchOpen(false)
+                        }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left transition"
+                    >
+                        {typeof item.icon === 'string'
+                            ? <img src={item.icon} alt="" className="w-4 h-4 object-contain" />
+                            : <item.icon size={16} className="text-blue-600" />}
+                        {item.label}
+                    </button>
+                ))
+            )}
+        </div>
+    )}
+</div>
 
                     <div className="flex items-center gap-1.5 md:gap-3"></div>
 

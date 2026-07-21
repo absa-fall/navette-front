@@ -258,18 +258,21 @@ export default function Reserver() {
                         </div>
                     )}
 
-                    {/* En attente de confirmation du chauffeur */}
-                    {enAttente && !qrCode && (
-                        <div className="text-center py-4">
-                            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <div className="w-8 h-8 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin" />
-                            </div>
-                            <h2 className="text-xl font-bold text-yellow-700 mb-1">
-                                Reservation envoyee
-                            </h2>
-                            <p className="text-gray-500 text-sm mb-6">
-                                En attente de confirmation du chauffeur. Cette page se met a jour automatiquement.
-                            </p>
+                   {/* En attente de confirmation du chauffeur */}
+{enAttente && !qrCode && (
+    <div className="text-center py-4">
+        <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-8 h-8 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+        <h2 className="text-xl font-bold text-yellow-700 mb-1">
+            Reservation envoyee
+        </h2>
+        <p className="text-gray-500 text-sm mb-1">
+            En attente de confirmation du chauffeur. Cette page se met a jour automatiquement.
+        </p>
+        <p className="text-gray-400 text-xs mb-6 italic">
+            Votre QR code sera disponible dès que le chauffeur aura confirmé votre réservation.
+        </p>
 
                             {reservation && (
                                 <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-left text-sm mb-6">

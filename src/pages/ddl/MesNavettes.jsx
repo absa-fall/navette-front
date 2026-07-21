@@ -30,6 +30,7 @@ export default function MesNavettes() {
     const [selected, setSelected] = useState([])
     const [deleteSelectionLoading, setDeleteSelectionLoading] = useState(false)
     const [transmettreLoading, setTransmettreLoading] = useState(null)
+    const [executeLoading, setExecuteLoading] = useState(null)
     const [searchNavettes, setSearchNavettes] = useState('')
 
     useEffect(() => {
@@ -152,6 +153,18 @@ const transmettreIncident = async (id) => {
             setTransmettreLoading(null)
         }
     }
+    const marquerExecute = async (id) => {
+    if (!confirm('Confirmez-vous que cette mission a bien été effectuée ?')) return
+    setExecuteLoading(id)
+    try {
+        await api.patch(`/ordres-mission/${id}/marquer-execute-manuel`)
+        chargerOrdres()
+    } catch (err) {
+        alert(err.response?.data?.message || 'Erreur')
+    } finally {
+        setExecuteLoading(null)
+    }
+}
     const toutSelectionne = historiqueFiltres.length > 0 && historiqueFiltres.every(o => selected.includes(o.id))
 
     const renderOrdre = (ordre, estHistorique = false) => {
@@ -232,6 +245,19 @@ const transmettreIncident = async (id) => {
     <span className="flex items-center gap-1.5 text-xs text-orange-600 font-medium px-3 py-2">
         En attente de réponse du DRH...
     </span>
+)}
+{ordre.statut === 'transmis_chauffeur' && (
+    <button
+        onClick={() => marquerExecute(ordre.id)}
+        disabled={executeLoading === ordre.id}
+        className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-xl text-xs font-semibold transition disabled:opacity-50"
+    >
+        {executeLoading === ordre.id
+            ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            : <CheckCircle size={14} />
+        }
+        Marquer comme exécuté
+    </button>
 )}
                     {!estHistorique && peutModifier && (
                         <>

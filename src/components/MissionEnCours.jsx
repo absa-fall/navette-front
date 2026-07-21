@@ -68,18 +68,18 @@ export default function MissionEnCours() {
                 )}
 
                 {/* MODIFIÉ : bouton désactivé + texte différent si incident en cours */}
-                <button
-                    onClick={() => setModalOuvert(true)}
-                    disabled={incidentEnCours}
-                    className={`w-full flex items-center justify-center gap-2 border font-semibold py-2.5 rounded-xl transition text-sm ${
-                        incidentEnCours
-                            ? 'border-gray-200 text-gray-400 cursor-not-allowed'
-                            : 'border-red-300 text-red-600 hover:bg-red-50'
-                    }`}
-                >
-                    <AlertTriangle size={16} />
-                    {incidentEnCours ? 'Incident en cours de traitement' : 'Signaler un incident'}
-                </button>
+               <button
+    onClick={() => setModalOuvert(true)}
+    disabled={incidentEnCours}
+    className={`w-full flex items-center justify-center gap-2 font-semibold py-2.5 rounded-xl transition text-sm ${
+        incidentEnCours
+            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            : 'bg-red-600 hover:bg-red-700 text-white'
+    }`}
+>
+    <AlertTriangle size={16} />
+    {incidentEnCours ? 'Incident en cours de traitement' : 'Signaler un incident'}
+</button>
             </div>
 
             {/* ✅ NOUVEAU : Suivi GPS + carte du véhicule de la mission active */}
