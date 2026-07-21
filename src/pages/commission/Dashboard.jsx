@@ -53,27 +53,30 @@ export default function CommissionDashboard() {
         setTimeout(() => { setMessage(''); setError('') }, 3000)
     }
 
-    const donnerAvis = async (beneficiaireId, avis) => {
-        setActionLoading('avis_' + beneficiaireId + '_' + avis)
-        try {
-            await api.patch(`/voyages-etudes/beneficiaire/${beneficiaireId}/avis`, {
-                avis,
-                commentaire: commentaire || null,
-            })
-            showMsg(
-                avis === 'valide'
-                    ? 'Dossier valide et transmis au Vice-Recteur'
-                    : 'Dossier rejete. Le Vice-Recteur a ete informe.'
-            )
-            setAvisOuvert(null)
-            setCommentaire('')
-            fetchDossiers()
-        } catch (err) {
-            showMsg(err.response?.data?.message || 'Erreur', true)
-        } finally {
-            setActionLoading(null)
-        }
+   const donnerAvis = async (beneficiaireId, avis) => {
+    setActionLoading('avis_' + beneficiaireId + '_' + avis)
+    try {
+        await api.patch(`/voyages-etudes/beneficiaire/${beneficiaireId}/avis`, {
+            avis,
+            commentaire: commentaire || null,
+        })
+
+        const estVR = user?.role === 'vice_recteur'
+
+        const texte = avis === 'valide'
+            ? (estVR ? 'Dossier validé.' : 'Dossier validé et transmis au Vice-Recteur.')
+            : (estVR ? 'Dossier rejeté.' : 'Dossier rejeté. Le Vice-Recteur a été informé.')
+
+        showMsg(texte)
+        setAvisOuvert(null)
+        setCommentaire('')
+        fetchDossiers()
+    } catch (err) {
+        showMsg(err.response?.data?.message || 'Erreur', true)
+    } finally {
+        setActionLoading(null)
     }
+}
 
     // ===== SÉLECTION DOSSIERS TRAITÉS =====
     const toggleSelect = (id) =>

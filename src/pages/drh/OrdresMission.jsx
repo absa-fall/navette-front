@@ -35,6 +35,7 @@ export default function DRHOrdres() {
     const [selected, setSelected] = useState([])
     const [deleteSelectionLoading, setDeleteSelectionLoading] = useState(false)
     const [searchOrdres, setSearchOrdres] = useState('')
+    const [message, setMessage] = useState('')
 
     useEffect(() => {
         chargerOrdres()
@@ -118,35 +119,38 @@ export default function DRHOrdres() {
         }
     }
 
-    const approuver = async (id) => {
-        setActionLoading(id)
-        try {
-            await api.patch(`/ordres-mission/${id}/approuver-drh`)
-            chargerOrdres()
-        } catch (err) {
-            alert(err.response?.data?.message || 'Erreur')
-        } finally {
-            setActionLoading(null)
-        }
+   const approuver = async (id) => {
+    setActionLoading(id)
+    try {
+        await api.patch(`/ordres-mission/${id}/approuver-drh`)
+        chargerOrdres()
+        setMessage('Ordre approuvé et transmis au SG DRH avec succès.')
+        setTimeout(() => setMessage(''), 4000)
+    } catch (err) {
+        alert(err.response?.data?.message || 'Erreur')
+    } finally {
+        setActionLoading(null)
     }
-
-    const rejeter = async (id) => {
-        if (!commentaire) {
-            alert('Veuillez saisir un motif de rejet')
-            return
-        }
-        setActionLoading(id)
-        try {
-            await api.patch(`/ordres-mission/${id}/rejeter-drh`, { commentaire_rejet: commentaire })
-            setRejetId(null)
-            setCommentaire('')
-            chargerOrdres()
-        } catch (err) {
-            alert(err.response?.data?.message || 'Erreur')
-        } finally {
-            setActionLoading(null)
-        }
+}
+const rejeter = async (id) => {
+    if (!commentaire) {
+        alert('Veuillez saisir un motif de rejet')
+        return
     }
+    setActionLoading(id)
+    try {
+        await api.patch(`/ordres-mission/${id}/rejeter-drh`, { commentaire_rejet: commentaire })
+        setRejetId(null)
+        setCommentaire('')
+        chargerOrdres()
+        setMessage('Ordre rejeté.')
+        setTimeout(() => setMessage(''), 4000)
+    } catch (err) {
+        alert(err.response?.data?.message || 'Erreur')
+    } finally {
+        setActionLoading(null)
+    }
+}
 
     const supprimerHistorique = async (id) => {
         if (!confirm('Voulez-vous vraiment supprimer cet ordre de l\'historique ?')) return
@@ -375,15 +379,21 @@ export default function DRHOrdres() {
     return (
         <Layout>
             <div className="space-y-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800">{getTitre()}</h1>
-                    <p className="text-gray-500 text-sm mt-1">
-                        {onglet === 'attente' 
-                            ? `${ordresFiltres.length} ordre(s) en attente` 
-                            : `${historiqueFiltres.length} ordre(s) dans l'historique`
-                        }
-                    </p>
-                </div>
+               <div>
+    <h1 className="text-2xl font-bold text-gray-800">{getTitre()}</h1>
+    <p className="text-gray-500 text-sm mt-1">
+        {onglet === 'attente' 
+            ? `${ordresFiltres.length} ordre(s) en attente` 
+            : `${historiqueFiltres.length} ordre(s) dans l'historique`
+        }
+    </p>
+</div>
+
+{message && (
+    <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl p-4 text-sm flex items-center gap-2">
+        <CheckCircle size={16} /> {message}
+    </div>
+)}
 
                 <div className="flex gap-2 border-b border-gray-200">
                     <button

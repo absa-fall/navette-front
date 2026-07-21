@@ -53,7 +53,10 @@ const [pdfAffiche, setPdfAffiche] = useState(null)
     const [selection, setSelection]              = useState([])
     const [justifOuvert, setJustifOuvert]         = useState(null)
     const [suppressionLoading, setSuppressionLoading] = useState(false)
-
+const [mesVoyages, setMesVoyages] = useState([])
+const [rattachPanelOuvert, setRattachPanelOuvert] = useState(null)
+const [rattachVoyageId, setRattachVoyageId] = useState('')
+const [rattachLoading, setRattachLoading] = useState(false)
     const estRejete = rapport?.statut === 'rejete'
     const estBrouillon = rapport?.statut === 'brouillon'
     const editable = !rapport || estRejete || estBrouillon
@@ -91,9 +94,10 @@ const [pdfAffiche, setPdfAffiche] = useState(null)
         fetchRapport()
     }, [voyageId, location.key])
 
-  useEffect(() => {
+ useEffect(() => {
     if (ongletActif === 'historique') {
         fetchHistorique()
+        api.get('/mes-voyages-etudes').then(res => setMesVoyages(res.data)).catch(() => {})
     }
 }, [ongletActif, voyageId, location.key])
     const fetchHistorique = async () => {
@@ -226,7 +230,22 @@ const supprimerSelection = async () => {
             setSuppressionLoading(false)
         }
     }
-
+const rattacherVoyage = async (rapportId) => {
+    if (!rattachVoyageId) return
+    setRattachLoading(true)
+    try {
+        await api.patch(`/rapports/${rapportId}/rattacher-voyage`, { voyage_id: rattachVoyageId })
+        setRattachPanelOuvert(null)
+        setRattachVoyageId('')
+        fetchHistorique()
+        setMessage('Rapport rattaché au voyage avec succès.')
+        setTimeout(() => setMessage(''), 4000)
+    } catch (err) {
+        setErreur(err.response?.data?.message || 'Erreur lors du rattachement.')
+    } finally {
+        setRattachLoading(false)
+    }
+}
     const badge = rapport ? statutRapportConfig[rapport.statut] : null
 
     return (
@@ -573,6 +592,43 @@ const supprimerSelection = async () => {
                                                     Voir
                                                 </button>
                                             </div>
+                                            {!r.voyage_id && (
+    <div className="mt-3 pt-3 border-t border-slate-100 pl-7">
+        {rattachPanelOuvert !== r.id ? (
+            <button
+                onClick={() => { setRattachPanelOuvert(r.id); setRattachVoyageId('') }}
+                className="text-xs font-semibold text-purple-700 hover:underline"
+            >
+                Rattacher à un voyage
+            </button>
+        ) : (
+            <div className="flex items-center gap-2 flex-wrap">
+                <select
+                    value={rattachVoyageId}
+                    onChange={e => setRattachVoyageId(e.target.value)}
+                    className="border border-purple-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none"
+                >
+                    <option value="">Sélectionnez un voyage...</option>
+                    {mesVoyages.map(b => (
+                        <option key={b.id} value={b.voyage?.id}>
+                            {b.voyage?.destination} — {new Date(b.voyage?.date_debut).toLocaleDateString('fr-FR')}
+                        </option>
+                    ))}
+                </select>
+                <button
+                    onClick={() => rattacherVoyage(r.id)}
+                    disabled={rattachLoading || !rattachVoyageId}
+                    className="bg-purple-700 hover:bg-purple-800 text-white text-xs font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50"
+                >
+                    Rattacher
+                </button>
+                <button onClick={() => setRattachPanelOuvert(null)} className="text-xs text-gray-400 hover:text-gray-600">
+                    Annuler
+                </button>
+            </div>
+        )}
+    </div>
+)}
                                         </div>
 
                                         {isOuvert && r.justificatifs?.length > 0 && (

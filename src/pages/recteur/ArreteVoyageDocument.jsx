@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
-import { Printer, Loader2, Send } from 'lucide-react'
+import { Printer, Loader2, Send, Mail } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import SignaturePad from '../../components/SignaturePad'
 
@@ -30,7 +30,7 @@ export default function ArreteVoyageDocument() {
     const [signature, setSignature] = useState(null)
     const [transmission, setTransmission] = useState(false)
     const [notification, setNotification] = useState('') 
-
+const [transmissionMail, setTransmissionMail] = useState(false)  
     useEffect(() => {
         api.get(`/voyages-etudes/${voyageId}/arrete`)
             .then(res => setData(res.data))
@@ -40,19 +40,21 @@ export default function ArreteVoyageDocument() {
 
    const estBrouillon = data && !data.signe
     const peutSigner = user?.role === 'recteur'
-
-    const transmettre = async () => {
+const transmettre = async (parMail = false) => {
     if (!signature) return
-    setTransmission(true)
+    if (parMail) setTransmissionMail(true)
+    else setTransmission(true)
     try {
-        await api.patch(`/arretes/${data.id}/transmettre`, { signature })
+        await api.patch(`/arretes/${data.id}/transmettre`, {
+            signature,
+            envoyer_email: parMail,
+        })
         setData(prev => ({ ...prev, statut: 'transmis', signe: true }))
-        setNotification('Arrêté transmis avec succès.')
-        setTimeout(() => setNotification(''), 4000)
     } catch (err) {
         alert(err.response?.data?.message || 'Erreur lors de la transmission')
     } finally {
         setTransmission(false)
+        setTransmissionMail(false)
     }
 }
 
@@ -253,26 +255,37 @@ export default function ArreteVoyageDocument() {
         {notification}
     </div>
 )}
-            {/* Barre d'action fixe — apparaît une fois la signature complétée */}
             {estBrouillon && signature && (
-                <div className="print:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] z-40">
-                    <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-                        <p className="text-sm text-gray-600 hidden sm:block">
-                            Signature enregistrée — prêt à transmettre l'arrêté.
-                        </p>
-                        <button
-                            onClick={transmettre}
-                            disabled={transmission}
-                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white font-semibold px-6 py-2.5 rounded-xl transition disabled:opacity-50"
-                        >
-                            {transmission
-                                ? <Loader2 size={16} className="animate-spin" />
-                                : <Send size={16} />}
-                            Transmettre l'arrêté
-                        </button>
-                    </div>
-                </div>
-            )}
+    <div className="print:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] z-40">
+        <div className="max-w-3xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p className="text-sm text-gray-600 hidden sm:block">
+                Signature enregistrée — prêt à transmettre l'arrêté.
+            </p>
+            <div className="flex gap-2 w-full sm:w-auto">
+                <button
+                    onClick={() => transmettre(false)}
+                    disabled={transmission || transmissionMail}
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white font-semibold px-6 py-2.5 rounded-xl transition disabled:opacity-50"
+                >
+                    {transmission
+                        ? <Loader2 size={16} className="animate-spin" />
+                        : <Send size={16} />}
+                    Transmettre
+                </button>
+                <button
+                    onClick={() => transmettre(true)}
+                    disabled={transmission || transmissionMail}
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white font-semibold px-6 py-2.5 rounded-xl transition disabled:opacity-50"
+                >
+                    {transmissionMail
+                        ? <Loader2 size={16} className="animate-spin" />
+                        : <Mail size={16} />}
+                    Transmettre par mail
+                </button>
+            </div>
+        </div>
+    </div>
+)}
         </div>
     )
 }
